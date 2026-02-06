@@ -166,7 +166,7 @@
     </div>
 
     <div class="controls">
-        ARROWS/WASD: Move | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack
+        ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack
     </div>
 
 <script>
@@ -1308,10 +1308,21 @@ class Player {
 
         if (onLadder) {
             this.vy = 0;
-            this.x = cx * TILE_SIZE + 5; 
+
+            // Allow lateral movement to get off
+            if (input !== 0) {
+                this.x += input * 3;
+            } else {
+                // Smooth snap to center
+                let targetX = cx * TILE_SIZE + (TILE_SIZE - this.w) / 2;
+                this.x += (targetX - this.x) * 0.2;
+            }
+
             if (keys['arrowup'] || keys['w']) this.y -= 3;
             if (keys['arrowdown'] || keys['s']) this.y += 3;
-            if (keys[' '] || keys['arrowup'] && !onLadder) { this.vy = JUMP_FORCE; } 
+
+            // Jump
+            if (keys[' ']) { this.vy = JUMP_FORCE; }
         } else {
             // Only apply normal physics if NOT wall jumping this frame
             if (!this.wallJumpLocked) { 
