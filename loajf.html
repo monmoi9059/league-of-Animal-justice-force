@@ -294,6 +294,94 @@ function shakeCamera(amount) {
     if(amount > 10) gameState.hitStop = 3;
 }
 
+function drawBackground(ctx, camX, camY) {
+    let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    grd.addColorStop(0, C.skyTop);
+    grd.addColorStop(1, C.skyBot);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    // Simple Moon
+    ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.beginPath();
+    ctx.arc(ctx.canvas.width - 100, 100, 50, 0, Math.PI*2);
+    ctx.fill();
+}
+
+function drawAnatomicalHero(ctx, char, frame) {
+    // Colors
+    let skin = char.cSkin;
+    let dark = char.cDark;
+    let suit = char.cSuit;
+
+    // Animation
+    let bob = Math.sin(frame * 0.5) * 2;
+    let legAngle = Math.sin(frame * 0.5) * 0.5;
+
+    // Legs
+    ctx.fillStyle = dark;
+    ctx.save();
+    ctx.translate(-5, 25);
+    ctx.rotate(legAngle);
+    ctx.fillRect(-3, 0, 6, 12); // Back Leg
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(5, 25);
+    ctx.rotate(-legAngle);
+    ctx.fillRect(-3, 0, 6, 12); // Front Leg
+    ctx.restore();
+
+    // Body
+    ctx.fillStyle = suit;
+    ctx.fillRect(-10, 10 + bob, 20, 18);
+
+    // Head
+    ctx.fillStyle = skin;
+    ctx.fillRect(-10, -5 + bob, 20, 18);
+
+    // Eyes
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(2, bob, 5, 5);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(4, bob + 1, 2, 2);
+
+    // Ears/Details based on Type
+    ctx.fillStyle = skin;
+    if (char.type === 'dog_pointy' || char.type === 'fox' || char.type === 'cat' || char.type === 'wolf') {
+        ctx.beginPath(); ctx.moveTo(-8, -5+bob); ctx.lineTo(-12, -15+bob); ctx.lineTo(-2, -5+bob); ctx.fill(); // Left Ear
+        ctx.beginPath(); ctx.moveTo(8, -5+bob); ctx.lineTo(12, -15+bob); ctx.lineTo(2, -5+bob); ctx.fill(); // Right Ear
+    }
+    else if (char.type === 'dog_flat' || char.type === 'pig' || char.type === 'bear') {
+        ctx.beginPath(); ctx.arc(-8, -5+bob, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(8, -5+bob, 4, 0, Math.PI*2); ctx.fill();
+    }
+    else if (char.type === 'rabbit') {
+        ctx.fillRect(-8, -25+bob, 4, 20);
+        ctx.fillRect(4, -25+bob, 4, 20);
+    }
+    else if (char.type === 'elephant') {
+        ctx.fillRect(8, 5+bob, 12, 4); // Trunk
+        ctx.beginPath(); ctx.arc(-8, 2+bob, 8, 0, Math.PI*2); ctx.fill(); // Ear
+    }
+    else if (char.type === 'bird') {
+        ctx.fillStyle = "#ffaa00"; // Beak
+        ctx.beginPath(); ctx.moveTo(8, 2+bob); ctx.lineTo(16, 5+bob); ctx.lineTo(8, 8+bob); ctx.fill();
+    }
+    else if (char.type === 'raccoon') {
+        ctx.fillStyle = dark; // Mask
+        ctx.fillRect(0, -2+bob, 10, 6);
+    }
+
+    // Arms
+    ctx.fillStyle = dark;
+    ctx.save();
+    ctx.translate(0, 15 + bob);
+    ctx.rotate(-legAngle);
+    ctx.fillRect(-3, 0, 6, 10);
+    ctx.restore();
+}
+
 // --- CLASSES ---
 class Particle {
     constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.life=1.0; this.vx = (Math.random()-0.5)*8; this.vy = (Math.random()-0.5)*8; this.size = Math.random()*6+3; }
@@ -494,7 +582,7 @@ class TrappedBeast {
     update() { 
         this.frame++; 
         if (this.anchorR >= 0 && this.anchorR < LEVEL_HEIGHT && this.anchorC >= 0 && this.anchorC < LEVEL_WIDTH) {
-            if (tiles[this.anchorR][this.anchorC].type === 0) this.liberate(); 
+            if (tiles[this.anchorR] && tiles[this.anchorR][this.anchorC] && tiles[this.anchorR][this.anchorC].type === 0) this.liberate();
         }
     }
     liberate() {
@@ -1025,6 +1113,7 @@ function generateLevel() {
                     if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 }; 
                 }
                 if(LEVEL_HEIGHT-1 < LEVEL_HEIGHT) newTiles[LEVEL_HEIGHT-1][x] = { type: 4, color: "#999" };
+                surfaceMap[x] = LEVEL_HEIGHT + 10;
                 continue;
             }
 
@@ -1233,7 +1322,7 @@ function winGame() {
     document.getElementById('ovTitle').innerText = "MISSION COMPLETE";
     document.getElementById('ovTitle').style.color = "gold";
     document.getElementById('ovMsg').innerText = "The Minivan has arrived!";
-    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('gameOverOverlay').style.display = 'flex';
 }
 
 function endGame() {
@@ -1241,16 +1330,10 @@ function endGame() {
     document.getElementById('ovTitle').innerText = "MISSION FAILED";
     document.getElementById('ovTitle').style.color = "red";
     document.getElementById('ovMsg').innerText = "Out of lives. The pound awaits.";
-    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('gameOverOverlay').style.display = 'flex';
 }
 
-let shootCooldown = 0;
-let specialCooldown = 0;
-
 // FRAMERATE CAP
-let lastTime = 0;
-const FPS = 60;
-const INTERVAL = 1000 / FPS;
 
 function loop(timestamp) {
     if (!lastTime) lastTime = timestamp;
@@ -1437,7 +1520,7 @@ function init() {
     document.getElementById('menuOverlay').style.display = 'flex';
     document.getElementById('gameUI').style.display = 'none';
     document.getElementById('bossHealthContainer').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
+    document.getElementById('gameOverOverlay').style.display = 'none';
 
     requestAnimationFrame(loop);
 }
