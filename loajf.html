@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>League of Animal Justice Avenger Force: Operation Dumpster Fire</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            background: radial-gradient(circle at center, #222 0%, #000 100%);
+        }
+        h1 {
+            margin: 5px;
+            color: #00ff41;
+            text-transform: uppercase;
+            font-style: italic;
+            text-shadow: 0 0 10px #00ff41, 3px 3px #ff00de;
+            letter-spacing: 2px;
+            font-size: 30px;
+            text-align: center;
+            z-index: 20;
+        }
+        #gameContainer {
+            position: relative;
+            border: 4px solid #444;
+            box-shadow: 0 0 50px rgba(0, 255, 65, 0.1);
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            width: 900px;
+            height: 500px;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #gameUI {
+            display: none;
+            position: absolute;
+            top: 15px; left: 20px; right: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            pointer-events: none;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            z-index: 5;
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            padding: 8px 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            margin-bottom: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 0 #000;
+            color: #fff;
+        }
+        #bossHealthContainer {
+            display: none;
+            position: absolute;
+            bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 20px;
+            border: 2px solid #fff;
+            background: #222;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(255, 0, 222, 0.5);
+            z-index: 5;
+        }
+        #bossHealthBar {
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, #ff00de, #ff69b4);
+            transition: width 0.2s;
+        }
+        
+        .overlay-screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 10;
+        }
+        
+        #menuOverlay {
+            background: rgba(10, 10, 20, 0.95);
+            justify-content: flex-end;
+            padding-bottom: 30px;
+            z-index: 15;
+            display: flex;
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff00de, #a020f0);
+            border: 2px solid #fff;
+            color: white;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(255, 0, 222, 0.6);
+            border-radius: 5px;
+            transition: transform 0.1s, box-shadow 0.1s;
+            margin-top: 20px;
+            pointer-events: auto;
+        }
+        button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.8); }
+        button:active { transform: scale(0.95); }
+
+        .controls {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #888;
+            font-family: monospace;
+            text-shadow: 0 0 5px #000;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>League of Animal Justice Avenger Force</h1>
+    
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="900" height="500"></canvas>
+        
+        <!-- HUD -->
+        <div id="gameUI">
+            <div class="stat-box">HERO: <span id="charName" style="color:#00ff41">IRON MUTT</span></div>
+            <div class="stat-box">HP: <span id="healthDisplay" style="color:#ff00de">❤❤❤</span></div>
+            <div class="stat-box">LIVES: <span id="livesDisplay" style="color:yellow">3</span></div>
+            <div class="stat-box">RESCUES: <span id="rescueDisplay">0</span></div>
+            <div class="stat-box">SCORE: <span id="scoreDisplay">0</span></div>
+        </div>
+        
+        <div id="bossHealthContainer">
+            <div id="bossHealthBar"></div>
+        </div>
+
+        <!-- MAIN MENU -->
+        <div id="menuOverlay" class="overlay-screen">
+            <!-- Canvas will draw the grid behind this -->
+            <button onclick="window.startGame()">DEPLOY SQUAD</button>
+        </div>
+
+        <!-- GAME OVER / WIN -->
+        <div id="gameOverOverlay" class="overlay-screen">
+            <h2 id="ovTitle" style="font-size: 50px; color: #00ff41; margin-bottom: 10px;">MISSION FAILED</h2>
+            <p id="ovMsg" style="margin-bottom: 30px; font-size: 20px;">The HOA has won.</p>
+            <button onclick="window.returnToBase()">RETURN TO BASE</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        ARROWS/WASD: Move | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack
+    </div>
+
+<script>
+(function() {
+// --- CONSTANTS ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const TILE_SIZE = 40;
+const GRAVITY = 0.6;
+const FRICTION = 0.85;
+const ACCELERATION = 0.8;
+const JUMP_FORCE = -13;
+const TERMINAL_VELOCITY = 15;
+const LEVEL_WIDTH = 400; 
+const LEVEL_HEIGHT = 60; 
+
+// --- ASSETS ---
+const C = {
+    dirtBase: "#5d4037", dirtLight: "#8d6e63", grassTop: "#4caf50",
+    stoneBase: "#546e7a", stoneLight: "#78909c",
+    skyTop: "#1e3c72", skyBot: "#2a5298", 
+    checkpoint: "#00ff41", leash: "#555", tank: "#e74c3c", ladder: "#d35400"
+};
+
+// --- ROSTER ---
+const CHARACTERS = [
+    { id: 'pug', name: 'IRON MUTT', type: 'dog_flat', cSkin: '#f3cf98', cDark: '#3b302a', cSuit: '#b0c4de', pType: 'laser', pColor: '#a020f0' },
+    { id: 'raccoon', name: 'CPT TRASH', type: 'raccoon', cSkin: '#888', cDark: '#444', cSuit: '#555', pType: 'boomerang', pColor: '#aaa' },
+    { id: 'cat', name: 'BAT CAT', type: 'cat', cSkin: '#222', cDark: '#000', cSuit: '#111', pType: 'boomerang', pColor: '#ff69b4' },
+    { id: 'corgi', name: 'THOR-GI', type: 'dog_pointy', cSkin: '#E3C099', cDark: '#FFF', cSuit: '#333', pType: 'boomerang', pColor: '#00FFFF' },
+    { id: 'hulk', name: 'HULK-POODLE', type: 'poodle', cSkin: '#00FF00', cDark: '#006400', cSuit: '#800080', pType: 'melee_smash', pColor: '#00FF00' },
+    { id: 'spider', name: 'SPIDER-PIG', type: 'pig', cSkin: '#FFC0CB', cDark: '#FF69B4', cSuit: '#FF0000', pType: 'gun', pColor: '#FFF' }, 
+    { id: 'wolvie', name: 'WOLVER-WEENIE', type: 'dog_long', cSkin: '#8B4513', cDark: '#000', cSuit: '#FFFF00', pType: 'melee_slash', pColor: '#C0C0C0' },
+    { id: 'dead', name: 'DEAD-POODLE', type: 'poodle', cSkin: '#FF0000', cDark: '#000', cSuit: '#333', pType: 'gun', pColor: '#FF0000' },
+    { id: 'cap', name: 'CAPTAIN EAGLE', type: 'bird', cSkin: '#FFF', cDark: '#A52A2A', cSuit: '#0000FF', pType: 'boomerang', pColor: '#FFF' },
+    { id: 'ironmouse', name: 'IRON-MOUSE', type: 'rodent', cSkin: '#808080', cDark: '#404040', cSuit: '#FF0000', pType: 'laser', pColor: '#FFFF00' },
+    { id: 'widow', name: 'BLACK WIDOW-PUG', type: 'dog_flat', cSkin: '#000', cDark: '#111', cSuit: '#222', pType: 'gun', pColor: '#00FFFF' },
+    { id: 'hawkeye', name: 'HAWK-HEDGEHOG', type: 'hedgehog', cSkin: '#D2B48C', cDark: '#8B4513', cSuit: '#800080', pType: 'grenade', pColor: '#DDD' },
+    { id: 'strange', name: 'DR STRANGE-CAT', type: 'cat', cSkin: '#444', cDark: '#222', cSuit: '#0000FF', pType: 'magic', pColor: '#FFA500' },
+    { id: 'panther', name: 'BLACK PANTHER', type: 'cat', cSkin: '#111', cDark: '#000', cSuit: '#222', pType: 'melee_slash', pColor: '#800080' },
+    { id: 'ant', name: 'ANT-EATER-MAN', type: 'anteater', cSkin: '#808080', cDark: '#404040', cSuit: '#FF0000', pType: 'melee_smash', pColor: '#FF0000' },
+    { id: 'starlord', name: 'STAR-LORD-FOX', type: 'fox', cSkin: '#FF8C00', cDark: '#8B0000', cSuit: '#8B4513', pType: 'laser', pColor: '#FFFF00' },
+    { id: 'gamora', name: 'GAMORA-GECKO', type: 'lizard', cSkin: '#00FF00', cDark: '#006400', cSuit: '#000', pType: 'melee_slash', pColor: '#00FF00' },
+    { id: 'drax', name: 'DRAX-BULLDOG', type: 'dog_flat', cSkin: '#008000', cDark: '#FF0000', cSuit: '#000080', pType: 'melee_slash', pColor: '#CCC' },
+    { id: 'groot', name: 'GROOT-BARK', type: 'tree', cSkin: '#8B4513', cDark: '#A0522D', cSuit: '#654321', pType: 'melee_smash', pColor: '#8B4513' },
+    { id: 'rocket', name: 'ROCKET-RABBIT', type: 'rabbit', cSkin: '#A9A9A9', cDark: '#696969', cSuit: '#FF4500', pType: 'grenade', pColor: '#FF4500' },
+    { id: 'vision', name: 'VISION-ZEBRA', type: 'horse', cSkin: '#FFC0CB', cDark: '#008000', cSuit: '#FFFF00', pType: 'laser', pColor: '#FFFF00' },
+    { id: 'scarlet', name: 'SCARLET-SKUNK', type: 'skunk', cSkin: '#000', cDark: '#FFF', cSuit: '#FF0000', pType: 'magic', pColor: '#FF0000' },
+    { id: 'quick', name: 'QUICK-CHEETAH', type: 'cat', cSkin: '#D3D3D3', cDark: '#A9A9A9', cSuit: '#87CEEB', pType: 'melee_slash', pColor: '#87CEEB' },
+    { id: 'winter', name: 'WINTER-WOLF', type: 'dog_pointy', cSkin: '#FFF', cDark: '#808080', cSuit: '#000', pType: 'gun', pColor: '#C0C0C0' },
+    { id: 'falcon', name: 'FALCON-PIGEON', type: 'bird', cSkin: '#808080', cDark: '#696969', cSuit: '#FF0000', pType: 'gun', pColor: '#CCC' },
+    { id: 'war', name: 'WAR-RHINO', type: 'rhino', cSkin: '#708090', cDark: '#2F4F4F', cSuit: '#000', pType: 'grenade', pColor: '#999' },
+    { id: 'dare', name: 'DAREDEVIL-DOG', type: 'dog_pointy', cSkin: '#B22222', cDark: '#800000', cSuit: '#FF0000', pType: 'melee_slash', pColor: '#FF0000' },
+    { id: 'punish', name: 'PUNISHER-PENGUIN', type: 'bird', cSkin: '#000', cDark: '#FFF', cSuit: '#000', pType: 'spread', pColor: '#FFF' },
+    { id: 'shang', name: 'SHANG-CHI-PANDA', type: 'bear', cSkin: '#000', cDark: '#FFF', cSuit: '#FF0000', pType: 'melee_smash', pColor: '#FFD700' },
+    { id: 'eternal', name: 'ETERNAL-ELEPHANT', type: 'elephant', cSkin: '#808080', cDark: '#696969', cSuit: '#FFD700', pType: 'magic', pColor: '#FFD700' },
+    { id: 'moon', name: 'MOON-OWL', type: 'bird', cSkin: '#FFF', cDark: '#EEE', cSuit: '#DDD', pType: 'boomerang', pColor: '#FFF' },
+    { id: 'shehulk', name: 'SHE-HULK-HAMSTER', type: 'rodent', cSkin: '#32CD32', cDark: '#006400', cSuit: '#800080', pType: 'melee_smash', pColor: '#00FF00' },
+    { id: 'ghost', name: 'GHOST-GOAT', type: 'goat', cSkin: '#FFF', cDark: '#FF4500', cSuit: '#000', pType: 'melee_slash', pColor: '#FF4500' }
+];
+
+// --- INPUT ---
+const keys = {};
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+// --- GLOBAL VARS ---
+let globalUnlocked = 1; 
+let shootCooldown = 0;
+let specialCooldown = 0;
+let lastTime = 0;
+const FPS = 60;
+const INTERVAL = 1000 / FPS;
+
+let gameState = {
+    screen: 'MENU',
+    running: false,
+    score: 0,
+    cameraX: 0, cameraY: 0,
+    shake: 0,
+    frame: 0,
+    checkpointsHit: 0,
+    rescues: 0,
+    lives: 3,
+    unlockedCount: 1, 
+    spawnPoint: { x: 100, y: 0 },
+    bossActive: false,
+    hitStop: 0
+};
+
+let tiles = [];
+let entities = [];
+let particles = [];
+let damageNumbers = [];
+let debris = [];
+let player;
+
+// --- UTILITIES ---
+function spawnDamageNumber(x, y, amount, color="white") {
+    damageNumbers.push({ x: x, y: y, text: amount, life: 60, vy: -2, color: color });
+}
+function spawnExplosion(x, y, color, scale=1) {
+    for(let i=0; i<8*scale; i++) particles.push(new Particle(x, y, color));
+}
+function spawnDebris(x, y, color) {
+    for(let i=0; i<3; i++) debris.push(new RockChunk(x, y, color));
+}
+function destroyRadius(cx, cy, r) {
+    for(let y = cy - r; y <= cy + r; y++) {
+        for(let x = cx - r; x <= cx + r; x++) {
+            if(y>=0 && y<LEVEL_HEIGHT && x>=0 && x<LEVEL_WIDTH) {
+                if(tiles[y] && tiles[y][x] && tiles[y][x].type === 1) {
+                    spawnDebris(x*TILE_SIZE, y*TILE_SIZE, C.dirtLight);
+                    tiles[y][x] = { type: 0 };
+                }
+            }
+        }
+    }
+}
+function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
+    return x2 < x1 + w1 && x2 + w2 > x1 && y2 < y1 + h1 && y2 + h2 > y1;
+}
+function shakeCamera(amount) {
+    gameState.shake = amount;
+    if(amount > 10) gameState.hitStop = 3;
+}
+
+// --- CLASSES ---
+class Particle {
+    constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.life=1.0; this.vx = (Math.random()-0.5)*8; this.vy = (Math.random()-0.5)*8; this.size = Math.random()*6+3; }
+    update() { this.x+=this.vx; this.y+=this.vy; this.vy+=0.4; this.life-=0.05; }
+    draw(ctx) { ctx.save(); ctx.fillStyle=this.color; ctx.globalAlpha=Math.max(0,this.life); ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+}
+class RockChunk {
+    constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.vx=(Math.random()-0.5)*8; this.vy=-Math.random()*5-2; this.life=120; this.angle=Math.random(); this.rotSpeed=(Math.random()-0.5)*0.5; this.size=Math.random()*8+4; }
+    update() {
+        this.x+=this.vx; this.y+=this.vy; this.vy+=0.5; this.angle+=this.rotSpeed; this.life--;
+        let r=Math.floor(this.y/TILE_SIZE); let c=Math.floor(this.x/TILE_SIZE);
+        if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type!==0) { this.vy=0; this.vx*=0.8; this.rotSpeed*=0.8; this.y=r*TILE_SIZE-2; }
+    }
+    draw(ctx) { ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle); ctx.fillStyle=this.color; ctx.fillRect(-this.size/2,-this.size/2,this.size,this.size); ctx.restore(); }
+}
+
+class PropaneTank {
+    constructor(x, y) { this.x = x; this.y = y; this.w = 30; this.h = 40; this.hp = 1; this.vy=0; }
+    update() {
+        this.vy += GRAVITY; this.y += this.vy;
+        let c = Math.floor((this.x+this.w/2)/TILE_SIZE); let r = Math.floor((this.y+this.h)/TILE_SIZE);
+        if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type===1||tiles[r][c].type===2)) {
+            if(this.vy>0) { this.y=(r*TILE_SIZE)-this.h; this.vy=0; }
+        }
+    } 
+    takeDamage() {
+        this.hp = 0; shakeCamera(20); spawnExplosion(this.x+15, this.y+20, "orange", 3);
+        let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
+        destroyRadius(c, r, 3);
+        entities.forEach(e => {
+            let dist = Math.hypot(e.x - this.x, e.y - this.y);
+            if(dist < 150 && e !== this && e.takeDamage) e.takeDamage(10);
+        });
+        if(Math.hypot(player.x - this.x, player.y - this.y) < 100) player.takeDamage();
+        spawnDamageNumber(this.x, this.y, "BOOM!", "red");
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        let grd = ctx.createLinearGradient(cx, cy, cx+this.w, cy);
+        grd.addColorStop(0, "#c0392b"); grd.addColorStop(0.5, "#e74c3c"); grd.addColorStop(1, "#922b21");
+        ctx.fillStyle = grd; ctx.fillRect(cx, cy, this.w, this.h);
+        ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(cx + 5, cy, 5, this.h);
+        ctx.fillStyle = "white"; ctx.font = "10px Arial"; ctx.fillText("TNT", cx + 4, cy + 25);
+    }
+}
+
+class Mailman {
+    constructor(x, y) { this.x = x; this.y = y; this.w = 40; this.h = 40; this.vx = 0; this.hp = 3; this.cooldown = 100; this.facing = -1; this.vy=0; }
+    update() {
+        this.vy += GRAVITY; this.y += this.vy;
+        let c = Math.floor((this.x+this.w/2)/TILE_SIZE); let r = Math.floor((this.y+this.h)/TILE_SIZE);
+        if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type===1||tiles[r][c].type===2)) {
+            if(this.vy>0) { this.y=(r*TILE_SIZE)-this.h; this.vy=0; }
+        }
+        this.cooldown--; this.facing = player.x < this.x ? -1 : 1;
+        if (this.cooldown <= 0 && Math.abs(player.x - this.x) < 400) {
+            let throwX = (player.x - this.x) * 0.03; if(throwX > 8) throwX = 8; if(throwX < -8) throwX = -8;
+            entities.push(new Package(this.x + 20, this.y, throwX, -8)); this.cooldown = 120;
+        }
+    }
+    takeDamage(amt=1) {
+        this.hp-=amt; shakeCamera(2); spawnExplosion(this.x+20, this.y+20, "#fff", 0.5);
+        spawnDamageNumber(this.x, this.y, amt * 100); if(this.hp <= 0) gameState.score += 200;
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        let grd = ctx.createLinearGradient(cx, cy, cx+this.w, cy);
+        grd.addColorStop(0, "#2c3e50"); grd.addColorStop(1, "#4a69bd");
+        ctx.fillStyle = grd; ctx.fillRect(cx, cy, this.w, this.h);
+        ctx.fillStyle = "#ecf0f1"; ctx.fillRect(cx, cy-5, this.w, 10);
+        ctx.fillStyle = "#2c3e50"; ctx.fillRect(cx + (this.facing === 1 ? 25 : -5), cy+15, 20, 20);
+    }
+}
+
+class Package {
+    constructor(x, y, vx, vy) { this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.w = 20; this.h = 20; this.life = 120; this.hp = 1; }
+    update() {
+        this.x += this.vx; this.y += this.vy; this.vy += 0.3; this.life--;
+        let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
+        let hit = false;
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) hit = true;
+        if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) hit = true;
+        if (hit || this.life <= 0) {
+            spawnExplosion(this.x, this.y, "#e67e22", 1);
+            if (Math.hypot(player.x - this.x, player.y - this.y) < 60) player.takeDamage();
+            destroyRadius(c, r, 1);
+            this.life = 0; this.hp = 0;
+        }
+    }
+    takeDamage() { this.life = 0; }
+    draw(ctx, camX, camY) {
+        ctx.fillStyle = "#d35400"; ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        ctx.fillStyle = "#f1c40f"; ctx.fillRect(this.x - camX + 5, this.y - camY, 5, this.h); 
+    }
+}
+
+class FlyingEnemy {
+    constructor(x, y) { this.x = x; this.y = y; this.w = 40; this.h = 40; this.hp = 2; this.startX = x; this.startY = y; this.frame = Math.random() * 100; }
+    update() {
+        this.frame++; this.y = this.startY + Math.sin(this.frame * 0.05) * 40;
+        if (Math.abs(player.x - this.x) < 400) this.x += (player.x > this.x ? 1 : -1) * 1.5;
+        if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) player.takeDamage();
+    }
+    takeDamage(amt=1) {
+        this.hp-=amt; shakeCamera(5); spawnExplosion(this.x+15, this.y+15, "#555", 0.5);
+        spawnDamageNumber(this.x, this.y, amt * 100); if(this.hp <= 0) gameState.score += 150;
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        let grd = ctx.createRadialGradient(cx+15, cy+15, 5, cx+15, cy+15, 15);
+        grd.addColorStop(0, "#bdc3c7"); grd.addColorStop(1, "#7f8c8d");
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(cx+15, cy+15, 15, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 10; ctx.shadowColor = "red";
+        ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(cx+15, cy+15, 5, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#ccc"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+30, cy); ctx.stroke();
+    }
+}
+
+class Boss {
+    constructor(x, y) { this.x = x; this.y = y; this.w = 120; this.h = 120; this.hp = 50; this.maxHp = 50; this.state = 'idle'; this.timer = 0; this.dirY = 1; }
+    update() {
+        if (!gameState.bossActive && Math.abs(player.x - this.x) < 600) {
+            gameState.bossActive = true; document.getElementById('bossHealthContainer').style.display = 'block';
+        }
+        if (!gameState.bossActive) return;
+        this.y += this.dirY * 2; if (this.y > (LEVEL_HEIGHT * TILE_SIZE) - 200 || this.y < 100) this.dirY *= -1;
+        this.timer++;
+        if (this.timer > 100) {
+            let angle = Math.atan2(player.y - this.y, player.x - this.x); let speed = 8;
+            entities.push(new DebrisProjectile(this.x, this.y + 60, Math.cos(angle)*speed, Math.sin(angle)*speed));
+            this.timer = 0;
+        }
+    }
+    takeDamage(amt = 1) {
+        if (!gameState.bossActive) return;
+        this.hp -= amt; shakeCamera(2);
+        let pct = (this.hp / this.maxHp) * 100;
+        document.getElementById('bossHealthBar').style.width = pct + "%";
+        spawnDamageNumber(this.x + 60, this.y + 60, amt * 100);
+        if (this.hp <= 0) {
+            shakeCamera(50); spawnExplosion(this.x + 60, this.y + 60, "#ff00de", 5);
+            gameState.bossActive = false; document.getElementById('bossHealthContainer').style.display = 'none';
+            if(tiles[12]) tiles[12][LEVEL_WIDTH - 5] = { type: 9, color: "gold" }; this.x = -9999;
+        }
+    }
+    draw(ctx, camX, camY) {
+        if (this.hp <= 0) return;
+        let cx = this.x - camX; let cy = this.y - camY;
+        let grd = ctx.createLinearGradient(cx, cy, cx, cy+this.h);
+        grd.addColorStop(0, "#444"); grd.addColorStop(1, "#222");
+        ctx.fillStyle = grd; ctx.fillRect(cx, cy, this.w, this.h); 
+        ctx.shadowBlur = 15; ctx.shadowColor = "#ff00de";
+        ctx.fillStyle = "#ff00de"; ctx.fillRect(cx + 10, cy + 10, this.w - 20, 20); 
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#111"; ctx.fillRect(cx + 20, cy + 80, 80, 40); 
+        ctx.fillStyle = "#fff"; ctx.font = "bold 20px Arial"; ctx.fillText("VACUUM KING", cx, cy - 10);
+    }
+}
+
+class DebrisProjectile {
+    constructor(x, y, vx, vy) { this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.life = 120; this.w = 20; this.h = 20; this.hp = 1; }
+    update() {
+        this.x += this.vx; this.y += this.vy; this.life--;
+        if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) {
+            player.takeDamage(); this.life = 0;
+        }
+    }
+    takeDamage() { this.life = 0; } 
+    draw(ctx, camX, camY) { ctx.fillStyle = "#95a5a6"; ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h); }
+}
+
+class Dumpster {
+    constructor(x, y) { this.x = x; this.y = y; this.w = 60; this.h = 50; this.vy = 0; this.hp = 999; this.active = true; }
+    update() {
+        if(!this.active) return;
+        this.vy += GRAVITY * 2; this.y += this.vy;
+        let r = Math.floor((this.y + this.h) / TILE_SIZE); let c = Math.floor((this.x + this.w/2) / TILE_SIZE);
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+            shakeCamera(15); spawnExplosion(this.x + 30, this.y + 50, "grey", 2);
+            destroyRadius(c, r, 2); 
+            entities.forEach(e => { if(e !== this && Math.abs(e.x - this.x) < 80 && Math.abs(e.y - this.y) < 80) if(e.takeDamage) e.takeDamage(100); });
+            this.active = false; this.hp = 0; 
+        }
+    }
+    takeDamage() {}
+    draw(ctx, camX, camY) { ctx.fillStyle = "#2c3e50"; ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h); ctx.fillStyle = "#fff"; ctx.fillText("TRASH", this.x - camX + 10, this.y - camY + 30); }
+}
+
+class TrappedBeast {
+    constructor(x, y, anchorR, anchorC) {
+        this.x = x; this.y = y; this.w = 30; this.h = 30;
+        this.anchorR = anchorR; this.anchorC = anchorC;
+        this.hp = 999; this.frame = 0; this.bobOffset = Math.random() * 10;
+        let rnd = Math.floor(Math.random() * CHARACTERS.length);
+        this.heroData = CHARACTERS[rnd];
+    }
+    update() { 
+        this.frame++; 
+        if (this.anchorR >= 0 && this.anchorR < LEVEL_HEIGHT && this.anchorC >= 0 && this.anchorC < LEVEL_WIDTH) {
+            if (tiles[this.anchorR][this.anchorC].type === 0) this.liberate(); 
+        }
+    }
+    liberate() {
+        this.hp = 0; gameState.score += 500; gameState.rescues++; gameState.lives++;
+        spawnDamageNumber(this.x, this.y, "SAVED!", "gold", 30);
+        player.setCharacter(this.heroData.id);
+        spawnExplosion(this.x + 15, this.y + 15, "gold", 2);
+        
+        if (globalUnlocked < CHARACTERS.length) {
+            globalUnlocked++;
+        }
+        
+        if (player.health < 3) player.health = 3;
+        updateUI();
+    }
+    takeDamage() {}
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        cy += Math.sin((this.frame + this.bobOffset) * 0.1) * 3;
+        let ax = (this.anchorC * TILE_SIZE) - camX + 20; let ay = (this.anchorR * TILE_SIZE) - camY + 20;
+        ctx.strokeStyle = C.leash; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(cx + 15, cy + 5); ctx.stroke();
+        ctx.save(); ctx.translate(cx + 15, cy + 15); ctx.scale(0.8, 0.8); 
+        drawAnatomicalHero(ctx, this.heroData, this.frame); ctx.restore();
+        ctx.fillStyle = "#fff"; ctx.font = "10px monospace"; ctx.fillText("HELP", cx+2, cy+35);
+    }
+}
+
+class MeleeHitbox {
+    constructor(x, y, w, h, owner, power=1) {
+        this.x = x; this.y = y; this.w = w; this.h = h;
+        this.life = 5; this.power = power;
+        this.hp = 1; 
+        spawnExplosion(x + w/2, y + h/2, "#fff", 0.5);
+    }
+    update() {
+        this.life--;
+        if (this.life <= 0) this.hp = 0;
+        let c = Math.floor((this.x + this.w/2) / TILE_SIZE);
+        let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
+        destroyRadius(c, r, 1);
+        for(let i=0; i<entities.length; i++) {
+            let e = entities[i];
+            if(e !== this && ((e.hp !== undefined && e.hp > 0))) {
+                if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
+                    if(e.takeDamage) e.takeDamage(this.power * 2);
+                }
+            }
+        }
+    }
+    draw(ctx, camX, camY) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+    }
+    takeDamage() {}
+}
+
+class Bullet {
+    constructor(x, y, dir, isSpecial, charData, isDown = false, isSecondary = false) {
+        this.x = x; this.y = y; 
+        this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5; 
+        this.color = charData.pColor;
+        this.type = charData.pType;
+        this.returnState = 0; 
+        
+        // DEFAULT VELOCITIES
+        this.vx = dir * 15; 
+        this.vy = (Math.random() - 0.5) * 2;
+
+        // DOWNWARD SHOT OVERRIDE
+        if (isDown) {
+            this.vx = 0;
+            this.vy = 15;
+            this.w = 8; this.h = 20; // Thin vertical projectile
+        }
+        
+        // SECONDARY THROW OVERRIDE (Melee chars)
+        if (isSecondary) {
+             this.vx = dir * 12;
+             this.vy = -5; // Arcing? No, prompt said throw forward. Gravity applied in update for grenades/rockets anyway.
+             this.w = 12; this.h = 12;
+             this.color = "#ccc"; // Generic projectile color
+        }
+
+        // TYPE SPECIFIC ADJUSTMENTS (Overrides defaults unless specific action like Down/Secondary)
+        if (!isDown && !isSecondary) {
+            if (this.type === 'spread') { this.w = 8; this.h = 8; this.vx = dir * 15 + (Math.random()-0.5)*5; this.vy = (Math.random()-0.5)*10; }
+            if (this.type === 'rocket' || this.type === 'grenade') { this.w = 12; this.h = 12; this.vy = -5; }
+            if (this.type === 'boomerang') { this.w = 20; this.h = 20; this.life = 100; }
+            if (this.type === 'bolt') { this.w = 25; this.h = 10; }
+            if (this.type === 'laser') { this.w = 40; this.h = 5; this.vx = dir * 25; }
+            if (this.type === 'magic') { this.w = 10; this.h = 10; this.baseY = y; this.timer = 0; }
+        }
+    }
+    update() {
+        // MOVEMENT LOGIC
+        if (this.type === 'grenade' || this.type === 'rocket') {
+            this.vy += 0.3; // Gravity
+            this.x += this.vx; this.y += this.vy;
+        } 
+        else if (this.type === 'boomerang' && this.vx !== 0) { // Only boomerang behavior if moving horizontally (not down-shot)
+            if (this.returnState === 0) { 
+                this.x += this.vx; this.vx *= 0.95; 
+                if (Math.abs(this.vx) < 1) { this.returnState = 1; }
+            } else { 
+                let dx = player.x - this.x; let dy = player.y - this.y;
+                let angle = Math.atan2(dy, dx);
+                this.x += Math.cos(angle) * 15; this.y += Math.sin(angle) * 15;
+                if (Math.abs(dx) < 20 && Math.abs(dy) < 20) this.life = 0; 
+            }
+        }
+        else if (this.type === 'magic' && this.vx !== 0) {
+            this.timer++; this.x += this.vx; this.y = this.baseY + Math.sin(this.timer * 0.2) * 20;
+        }
+        else { // Standard Linear (includes Down Shot)
+            this.x += this.vx; this.y += this.vy;
+        }
+
+        this.life--;
+
+        // COLLISIONS
+        let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+            let t = tiles[r][c];
+            if (t.type === 1 || t.type === 2) {
+                if(this.type === 'boomerang' && this.vx !== 0) { 
+                    this.returnState = 1; 
+                    if (t.type === 1) {
+                        spawnExplosion(this.x, this.y, C.dirtLight, 1);
+                        tiles[r][c] = { type: 0 };
+                    }
+                } 
+                else {
+                    spawnExplosion(this.x, this.y, C.dirtLight, 1);
+                    this.life = 0;
+                    if (t.type === 1) { tiles[r][c] = { type: 0 }; }
+                    if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.vy > 0) destroyRadius(c, r, 2); // Down shots destroy area
+                }
+            }
+        }
+
+        // ENEMY COLLISIONS
+        for(let i=0; i<entities.length; i++) {
+            let e = entities[i];
+            if((e.hp !== undefined && e.hp > 0)) {
+                if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
+                    if(e.takeDamage) e.takeDamage(this.isSpecial ? 5 : 1);
+                    if (this.type !== 'boomerang') this.life = 0;
+                    else this.returnState = 1;
+                }
+            }
+        }
+    }
+    
+    draw(ctx, camX, camY) {
+        ctx.fillStyle = this.color; ctx.shadowBlur = 5; ctx.shadowColor = this.color;
+        if(this.type === 'boomerang') {
+            ctx.save(); ctx.translate(this.x-camX, this.y-camY); ctx.rotate(Date.now() * 0.1);
+            ctx.fillRect(-10, -2, 20, 4); ctx.fillRect(-2, -10, 4, 20); 
+            ctx.restore();
+        } else {
+            ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        }
+        ctx.shadowBlur = 0;
+    }
+}
+
+class Enemy {
+    constructor(x, y) { this.x = x; this.y = y; this.w = 50; this.h = 50; this.vx = 2; this.vy = 0; this.hp = 2; this.startX = x; this.patrolDist = 120; }
+    update() {
+        // GRAVITY
+        this.vy += GRAVITY;
+        this.y += this.vy;
+        
+        let grounded = false;
+        let c = Math.floor((this.x + this.w/2) / TILE_SIZE);
+        let r = Math.floor((this.y + this.h) / TILE_SIZE);
+        
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+            if (this.vy > 0) {
+                this.y = (r * TILE_SIZE) - this.h;
+                this.vy = 0;
+                grounded = true;
+            }
+        }
+        
+        // Move only if grounded (dumb patrol logic)
+        if (grounded) {
+            this.x += this.vx; 
+            if (Math.abs(this.x - this.startX) > this.patrolDist) this.vx *= -1;
+            
+            // Wall Check
+            let tileAhead = Math.floor((this.x + (this.vx > 0 ? this.w : 0) + this.vx) / TILE_SIZE);
+            let rHead = Math.floor((this.y + this.h/2) / TILE_SIZE);
+            if (rHead>=0 && rHead<LEVEL_HEIGHT && tileAhead>=0 && tileAhead<LEVEL_WIDTH && tiles[rHead] && tiles[rHead][tileAhead] && tiles[rHead][tileAhead].type !== 0 && tiles[rHead][tileAhead].type !== 5) {
+                this.vx *= -1;
+            }
+            
+            // Cliff Check (Turn around unless falling)
+            let tileBelowAhead = Math.floor((this.y + this.h + 5) / TILE_SIZE);
+            if (tileBelowAhead>=0 && tileBelowAhead<LEVEL_HEIGHT && tileAhead>=0 && tileAhead<LEVEL_WIDTH && tiles[tileBelowAhead] && (!tiles[tileBelowAhead][tileAhead] || tiles[tileBelowAhead][tileAhead].type === 0)) {
+                this.vx *= -1;
+            }
+        }
+        
+        if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) player.takeDamage();
+        if (this.y > (LEVEL_HEIGHT * TILE_SIZE)) this.hp = 0;
+    }
+    takeDamage(amt=1) {
+        this.hp-=amt; shakeCamera(5); spawnExplosion(this.x + 20, this.y + 20, "#555", 8);
+        spawnDamageNumber(this.x, this.y, amt * 100); if(this.hp <= 0) gameState.score += 100;
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX + 25; let cy = this.y - camY + 25;
+        ctx.save(); ctx.translate(cx, cy);
+        ctx.fillStyle = "#34495e"; ctx.fillRect(-15, -15, 30, 30);
+        ctx.fillStyle = "#7f8c8d"; ctx.beginPath(); ctx.arc(0, -15, 12, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = "#e74c3c"; ctx.fillRect(-10, -15, 20, 6);
+        ctx.fillStyle = "#95a5a6"; ctx.fillRect(10, 0, 10, 25);
+        ctx.restore();
+    }
+}
+
+class Player {
+    constructor() { this.reset(); this.charData = CHARACTERS[0]; }
+    setCharacter(typeId) { 
+        this.charData = CHARACTERS.find(c => c.id === typeId) || CHARACTERS[0];
+        if (player) updateUI(); 
+    }
+    reset() {
+        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y;
+        this.w = 24; this.h = 30; // SLIM FIT HITBOX
+        this.vx = 0; this.vy = 0; this.speed = 5;
+        this.grounded = false; this.facing = 1; this.health = 3; this.invincible = 0;
+        this.stretchX = 1; this.stretchY = 1; this.animFrame = 0;
+        this.lastY = this.y;
+        this.secondaryCooldown = 0;
+    }
+    respawn() {
+        gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
+        
+        // Pick from unlocked characters
+        let unlockedChars = CHARACTERS.slice(0, globalUnlocked);
+        let newCharIndex = Math.floor(Math.random() * unlockedChars.length);
+        this.setCharacter(unlockedChars[newCharIndex].id);
+        
+        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40; 
+        this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
+        spawnExplosion(this.x, this.y, "#00ff41", 2);
+    }
+    
+    // --- NEW HELPER METHOD FOR WALL DETECTION ---
+    checkWall(dir) {
+        let sensorSize = 2; // Check 2 pixels away
+        let checkX = dir > 0 ? this.x + this.w + sensorSize : this.x - sensorSize;
+        
+        // Check top, middle, and bottom points to ensure we are really next to a wall
+        let points = [this.y, this.y + this.h/2, this.y + this.h - 1];
+        
+        for (let py of points) {
+            let r = Math.floor(py / TILE_SIZE);
+            let c = Math.floor(checkX / TILE_SIZE);
+            if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    update() {
+        this.lastY = this.y;
+        if(this.secondaryCooldown > 0) this.secondaryCooldown--;
+
+        // LADDER CHECK
+        let cx = Math.floor((this.x + this.w/2) / TILE_SIZE);
+        let cy = Math.floor((this.y + this.h/2) / TILE_SIZE);
+        let onLadder = (cy>=0 && cy<LEVEL_HEIGHT && cx>=0 && cx<LEVEL_WIDTH && tiles[cy] && tiles[cy][cx] && tiles[cy][cx].type === 6);
+
+        let input = 0;
+        if (keys['arrowleft'] || keys['a']) input = -1;
+        if (keys['arrowright'] || keys['d']) input = 1;
+        
+        // SECONDARY ATTACK
+        if ((keys['c'] || keys['v']) && this.secondaryCooldown <= 0) {
+            this.performSecondary();
+            this.secondaryCooldown = 30;
+        }
+
+        // SPRINT LOGIC
+        let isSprinting = keys['shift'];
+        this.speed = isSprinting ? 9 : 5;
+
+        // WALL LOGIC
+        let wallDir = 0;
+        if (this.checkWall(-1)) wallDir = -1;
+        if (this.checkWall(1)) wallDir = 1;
+
+        let isWallSliding = false;
+        
+        // Must be airborne, pressing against a wall, and moving downwards
+        if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
+            isWallSliding = true;
+            
+            // Wall Slide Physics (Slow fall)
+            if (this.vy > 2) this.vy = 2;
+            
+            // Wall Jump Logic
+            // We check jump key here directly to override normal jump behavior
+            if ((keys['arrowup'] || keys['w']) && !this.wallJumpLocked) {
+                this.vy = JUMP_FORCE;
+                this.vx = -wallDir * 10; // Kick off away from wall
+                this.wallJumpLocked = true; // Prevent spam
+                
+                // Visuals
+                spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, C.dirtLight, 0.5);
+                
+                // Force exit slide state immediately
+                isWallSliding = false; 
+            }
+        }
+        
+        // Reset jump lock when key released
+        if (!(keys['arrowup'] || keys['w'])) this.wallJumpLocked = false;
+
+        if (onLadder) {
+            this.vy = 0;
+            this.x = cx * TILE_SIZE + 5; 
+            if (keys['arrowup'] || keys['w']) this.y -= 3;
+            if (keys['arrowdown'] || keys['s']) this.y += 3;
+            if (keys[' '] || keys['arrowup'] && !onLadder) { this.vy = JUMP_FORCE; } 
+        } else {
+            // Only apply normal physics if NOT wall jumping this frame
+            if (!this.wallJumpLocked) { 
+                if (input !== 0) {
+                    this.vx += input * ACCELERATION; this.facing = input; 
+                    this.animFrame += isSprinting ? 2 : 1; 
+                    let dustFreq = isSprinting ? 5 : 10;
+                    if(this.grounded && this.animFrame % dustFreq === 0) particles.push(new Particle(this.x + 15, this.y + 30, "#d2b48c"));
+                } else { this.vx *= FRICTION; this.animFrame = 0; }
+                
+                if(Math.abs(this.vx) > this.speed) this.vx = Math.sign(this.vx) * this.speed;
+            }
+
+            // Normal Jump
+            if ((keys['arrowup'] || keys['w']) && this.grounded && !isWallSliding) {
+                this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
+            }
+            
+            this.vy += GRAVITY; 
+            if(this.vy > TERMINAL_VELOCITY) this.vy = TERMINAL_VELOCITY;
+        }
+        
+        // Dust particles for wall slide
+        if (isWallSliding && this.animFrame % 5 === 0) {
+             particles.push(new Particle(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h, "#fff"));
+        }
+
+        this.x += this.vx; this.checkCollisions(true);
+        this.y += this.vy; this.checkCollisions(false);
+        this.stretchX += (1 - this.stretchX) * 0.1; this.stretchY += (1 - this.stretchY) * 0.1;
+        if(this.invincible > 0) this.invincible--;
+        if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
+    }
+    checkCollisions(isX) {
+        // STANDARD AABB COLLISION (Simplified for stability)
+        // No "skin" offsets needed because character size (24x30) is smaller than tile (40x40)
+        
+        let l = Math.floor(this.x / TILE_SIZE);
+        let r = Math.floor((this.x + this.w - 0.01) / TILE_SIZE);
+        let t = Math.floor(this.y / TILE_SIZE);
+        let b = Math.floor((this.y + this.h - 0.01) / TILE_SIZE);
+
+        for(let row = t; row <= b; row++) {
+            for(let col = l; col <= r; col++) {
+                if(row>=0 && row<LEVEL_HEIGHT && col>=0 && col<LEVEL_WIDTH && tiles[row] && tiles[row][col] && tiles[row][col].type !== 0) {
+                    let type = tiles[row][col].type;
+                    
+                    if(type === 6) continue; // Ignore ladders for solid collision
+                    if(type === 4) { this.takeDamage(); return; }
+                    if(type === 9) { winGame(); return; }
+                    if(type === 5) {
+                        if(!tiles[row][col].active) {
+                            tiles[row][col].active = true; gameState.checkpointsHit++;
+                            gameState.spawnPoint = { x: col * TILE_SIZE, y: (row * TILE_SIZE) - 40 };
+                            spawnExplosion(col*TILE_SIZE+20, row*TILE_SIZE+20, "#00ff41", 2);
+                            if(this.health < 3) this.health = 3; updateUI();
+                        }
+                        continue;
+                    }
+                    if(type === 1 || type === 2) {
+                        if(isX) {
+                            if(this.vx > 0) {
+                                this.x = (col * TILE_SIZE) - this.w;
+                                this.vx = 0;
+                            } else if (this.vx < 0) {
+                                this.x = (col * TILE_SIZE) + TILE_SIZE;
+                                this.vx = 0;
+                            }
+                        } else {
+                            if(this.vy > 0) {
+                                // Only land if feet were previously above the block
+                                if (this.lastY + this.h <= row * TILE_SIZE + 15) {
+                                    this.y = (row * TILE_SIZE) - this.h;
+                                    this.vy = 0;
+                                    if(!this.grounded) { this.stretchX = 1.4; this.stretchY = 0.6; }
+                                    this.grounded = true;
+                                    return;
+                                }
+                            } else if (this.vy < 0) {
+                                this.y = (row * TILE_SIZE) + TILE_SIZE;
+                                this.vy = 0;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    takeDamage(amt = 1) {
+        if(this.invincible > 0) return;
+        this.health -= amt; shakeCamera(15); this.invincible = 60; spawnExplosion(this.x, this.y, "red");
+        if(this.health <= 0) this.respawn();
+        updateUI();
+    }
+    
+    performSecondary() {
+        let type = this.charData.pType;
+        let isMelee = (type === 'melee_slash' || type === 'melee_smash');
+
+        if (isMelee) {
+            // Throw Rock/Knife
+            entities.push(new Bullet(this.x + 15*this.facing, this.y + 10, this.facing, false, this.charData, false, true)); // isSecondary=true
+        } else {
+            // Punch/Kick
+            entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
+            // Visual
+            particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
+        }
+    }
+
+    shoot(isSpecial, isDown) {
+        particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
+        shakeCamera(2);
+        
+        let type = this.charData.pType;
+        
+        if (isSpecial) {
+             if(this.charData.id === 'raccoon') { entities.push(new Dumpster(this.x, this.y - 100)); } 
+             else { entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, true, this.charData)); this.vx -= this.facing * 15; }
+        } else {
+            if (isDown) {
+                // Downward Attack
+                if (type === 'melee_slash' || type === 'melee_smash') {
+                    // Ground Smash Hitbox
+                    entities.push(new MeleeHitbox(this.x, this.y + this.h, this.w, 40, this, 2));
+                    this.vy = -5; // Bounce up
+                } else {
+                    // Shoot Down
+                    entities.push(new Bullet(this.x + this.w/2 - 5, this.y + this.h, this.facing, isSpecial, this.charData, true));
+                    this.vy = -2; // Hover
+                }
+                return;
+            }
+
+            if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
+                let range = type === 'melee_smash' ? 80 : 50; let power = type === 'melee_smash' ? 3 : 2;
+                entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-range), this.y, range, 40, this, power));
+            } 
+            else if (type === 'spread') {
+                for(let i=0; i<3; i++) {
+                    let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
+                    b.vy = (Math.random() - 0.5) * 5; entities.push(b);
+                }
+            }
+            else { entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, false, this.charData)); }
+            this.vx -= this.facing * 2;
+        }
+    }
+    draw(ctx, camX, camY) {
+        if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
+        let cx = this.x - camX + this.w/2; 
+        let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));
+        
+        ctx.save(); 
+        ctx.translate(cx, cy); 
+        ctx.scale(this.facing * this.stretchX, this.stretchY);
+        // Shadow
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 25, 20, 5, 0, 0, Math.PI*2); ctx.fill();
+        drawAnatomicalHero(ctx, this.charData, this.animFrame);
+        ctx.restore();
+    }
+}
+
+// --- LEVEL GENERATOR ---
+function generateLevel() {
+    let newTiles = [];
+    let newEntities = [];
+    
+    // 1. Init Empty Grid
+    for (let r = 0; r < LEVEL_HEIGHT; r++) {
+        newTiles[r] = new Array(LEVEL_WIDTH).fill(null).map(() => ({ type: 0 }));
+    }
+
+    // 2. Terrain Walker
+    let currentHeight = 10; 
+    let checkpointInterval = Math.floor(LEVEL_WIDTH / 6);
+    let nextCheckpoint = checkpointInterval;
+    let checkpointsPlaced = 0;
+    let beastsPlaced = 0;
+    let lastBeastX = -60; // Initialize far back so first beast can spawn early
+    let surfaceMap = []; // Keep track of surface Y for each X
+
+    for (let x = 0; x < LEVEL_WIDTH; x++) {
+        
+        if (x > LEVEL_WIDTH - 40) {
+            currentHeight = 12; // Boss Arena
+        } 
+        else if (x > 15) {
+            if (Math.random() < 0.2) {
+                currentHeight += Math.random() > 0.5 ? -1 : 1;
+            }
+            if (currentHeight < 6) currentHeight = 6;
+            if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
+
+            // Pit Chance
+            if (Math.random() < 0.05 && x > 20) {
+                for(let y=0; y<LEVEL_HEIGHT; y++) { 
+                    if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 }; 
+                }
+                if(LEVEL_HEIGHT-1 < LEVEL_HEIGHT) newTiles[LEVEL_HEIGHT-1][x] = { type: 4, color: "#999" };
+                continue;
+            }
+
+            // DECIDE RESCUE TYPE
+            // Added Spacing Check: x - lastBeastX > 50 (2000 pixels)
+            if (beastsPlaced < 5 && (x - lastBeastX > 50) && Math.random() < 0.05) {
+                // UNDERGROUND BUNKER
+                if (currentHeight < LEVEL_HEIGHT - 15) {
+                    let w = 8;
+                    let h = 6;
+                    let startY = currentHeight + 6; // Deep enough
+                    
+                    // Carve Room
+                    for(let r=startY; r<startY+h; r++) {
+                        for(let c=x; c<x+w; c++) {
+                             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH) { // BOUNDS CHECK
+                                 if (r===startY || r===startY+h-1 || c===x || c===x+w-1) {
+                                     newTiles[r][c] = { type: 1 }; // Dirt Walls (BREAKABLE now!)
+                                 } else {
+                                     newTiles[r][c] = { type: 0 }; // Air
+                                 }
+                             }
+                        }
+                    }
+                    
+                    // Entrance
+                    if (Math.random() > 0.5) {
+                        // LADDER
+                        let shaftX = x + Math.floor(w/2);
+                        if(shaftX < LEVEL_WIDTH && startY < LEVEL_HEIGHT) { // BOUNDS CHECK
+                             newTiles[startY][shaftX] = { type: 0 };
+                             for(let y=startY; y >= currentHeight; y--) {
+                                  if (y >= 0 && y < LEVEL_HEIGHT) newTiles[y][shaftX] = { type: 6 };
+                             }
+                        }
+                    } else {
+                        // BREAKABLE CEILING
+                         for(let c=x+1; c<x+w-1; c++) {
+                             if (startY < LEVEL_HEIGHT && c < LEVEL_WIDTH) newTiles[startY][c] = { type: 1 };
+                         }
+                    }
+
+                    // Place Beast
+                    newEntities.push(new TrappedBeast((x+2)*TILE_SIZE, (startY+h-2)*TILE_SIZE, startY+h-2, x+2));
+                    beastsPlaced++;
+                    lastBeastX = x; // Update last position
+                }
+                
+                // OR FLOATING ISLAND
+                else if (Math.random() < 0.5 && currentHeight > 6) {
+                    let islandY = currentHeight - 4; 
+                    if (islandY > 2) {
+                        newTiles[islandY][x] = { type: 1 }; // Anchor
+                        newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY + 1) * TILE_SIZE, islandY, x));
+                        beastsPlaced++;
+                        lastBeastX = x; // Update last position
+                    }
+                }
+            }
+        }
+        else {
+            currentHeight = 10;
+        }
+
+        surfaceMap[x] = currentHeight;
+
+        // Fill Column
+        for (let y = 0; y < LEVEL_HEIGHT; y++) {
+            if (y >= currentHeight) {
+                let type = 1; // Dirt
+                if (x < 15 || x > LEVEL_WIDTH - 40) type = 2; // Stone safe zones
+                else if (y >= LEVEL_HEIGHT - 2) type = 2; // Bedrock
+                newTiles[y][x] = { type: type };
+            }
+        }
+    }
+
+    // 3. PASS 2: UNDERGROUND BASES
+    // We create rooms first, then populate them to ensure safety
+    // let beastsPlaced = 0; // Removed redeclaration
+    
+    // Create random underground rooms
+    for (let x = 40; x < LEVEL_WIDTH - 60; x += 50) {
+        if (Math.random() < 0.6 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
+            let roomW = 10;
+            let roomH = 6;
+            let roomY = surfaceMap[x] + 10 + Math.floor(Math.random() * 10);
+            
+            if (roomY + roomH < LEVEL_HEIGHT - 2) {
+                // Carve Room
+                for(let rx = x; rx < x + roomW; rx++) {
+                    for(let ry = roomY; ry < roomY + roomH; ry++) {
+                        if (rx===x || rx===x+roomW-1 || ry===roomY || ry===roomY+roomH-1) {
+                            // Walls
+                             if(newTiles[ry]) newTiles[ry][rx] = { type: 2 }; 
+                        } else {
+                            // Air inside
+                             if(newTiles[ry]) newTiles[ry][rx] = { type: 0 }; 
+                        }
+                    }
+                }
+                
+                // Add Ladder Shaft to surface
+                let shaftX = x + Math.floor(roomW/2);
+                if(shaftX < LEVEL_WIDTH) {
+                    for(let ly = surfaceMap[shaftX]; ly < roomY; ly++) {
+                        if(ly >= 0 && ly < LEVEL_HEIGHT) newTiles[ly][shaftX] = { type: 6 }; // Ladder
+                    }
+                    if(roomY >= 0 && roomY < LEVEL_HEIGHT) newTiles[roomY][shaftX] = { type: 0 }; // Opening
+                }
+
+                // PLACE UNDERGROUND HOSTAGE (Hanging from ceiling)
+                if (beastsPlaced < 5 && (x - lastBeastX > 50)) {
+                    let beastX = x + 3;
+                    let beastY = roomY + 1; // Top of room
+                    // Ensure space is clear
+                    if(beastY >= 0 && beastY < LEVEL_HEIGHT && beastX >= 0 && beastX < LEVEL_WIDTH && newTiles[beastY][beastX].type === 0) {
+                        // Make ceiling block Dirt so it can be broken
+                        if(roomY >= 0 && roomY < LEVEL_HEIGHT) newTiles[roomY][beastX] = { type: 1 }; 
+                        newEntities.push(new TrappedBeast(beastX * TILE_SIZE, beastY * TILE_SIZE, roomY, beastX));
+                        beastsPlaced++;
+                        lastBeastX = x;
+                    }
+                }
+                
+                // Add Guard
+                newEntities.push(new Enemy((x + 5) * TILE_SIZE, (roomY + roomH - 2) * TILE_SIZE));
+            }
+        }
+    }
+
+    // 4. PASS 3: SURFACE OBJECTS & FLOATING ISLANDS
+    // let checkpointsPlaced = 0; // Removed redeclaration
+    // let nextCheckpoint = Math.floor(LEVEL_WIDTH / 6); // Removed redeclaration
+    
+    // Reset iterator for surface pass
+    checkpointsPlaced = 0;
+    nextCheckpoint = Math.floor(LEVEL_WIDTH / 6);
+
+    for (let x = 20; x < LEVEL_WIDTH - 40; x++) {
+        let y = surfaceMap[x];
+        if (y >= LEVEL_HEIGHT) continue; // Skip pits
+
+        // Checkpoints
+        if (x >= nextCheckpoint && checkpointsPlaced < 5) {
+            newTiles[y][x] = { type: 2 }; 
+            newTiles[y-1][x] = { type: 5, active: false, id: checkpointsPlaced };
+            nextCheckpoint += Math.floor(LEVEL_WIDTH / 6);
+            checkpointsPlaced++;
+        }
+        // Floating Islands (Remaining Hostages)
+        else if (Math.random() < 0.1 && beastsPlaced < 5 && (x - lastBeastX > 50)) {
+            let islandY = y - 7;
+            if (islandY > 4) {
+                // Ensure spawn space is AIR
+                if (newTiles[islandY+1][x].type === 0) {
+                    newTiles[islandY][x] = { type: 1 }; // Anchor
+                    newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY+1) * TILE_SIZE, islandY, x));
+                    beastsPlaced++;
+                    lastBeastX = x;
+                }
+            }
+        }
+        // Enemies
+        else if (Math.random() < 0.03) {
+            if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
+        }
+        else if (Math.random() < 0.04) {
+             if (newTiles[y-1][x].type === 0) newEntities.push(new Mailman(x * TILE_SIZE, (y-1) * TILE_SIZE));
+        }
+        else if (Math.random() < 0.05) {
+             if (newTiles[y-1][x].type === 0) newEntities.push(new Enemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
+        }
+        else if (Math.random() < 0.04) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+    }
+
+    // 5. FINISH
+    // Walls
+    for(let y=0; y<LEVEL_HEIGHT; y++) {
+        newTiles[y][0] = { type: 2 };
+        newTiles[y][LEVEL_WIDTH-1] = { type: 2 };
+    }
+    // Boss
+    newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
+
+    entities = newEntities;
+    return newTiles;
+}
+
+// --- SYSTEM FUNCTIONS ---
+
+function updateUI() {
+    if (!player) return;
+    let hearts = "❤".repeat(Math.max(0, player.health));
+    document.getElementById('healthDisplay').innerText = hearts;
+    document.getElementById('scoreDisplay').innerText = gameState.score;
+    document.getElementById('rescueDisplay').innerText = gameState.rescues;
+    document.getElementById('livesDisplay').innerText = gameState.lives;
+    let charName = player.charData ? player.charData.name : "UNKNOWN";
+    document.getElementById('charName').innerText = charName;
+    if(player.charData) document.getElementById('charName').style.color = player.charData.cSkin;
+}
+
+function winGame() {
+    gameState.running = false;
+    document.getElementById('ovTitle').innerText = "MISSION COMPLETE";
+    document.getElementById('ovTitle').style.color = "gold";
+    document.getElementById('ovMsg').innerText = "The Minivan has arrived!";
+    document.getElementById('overlay').style.display = 'flex';
+}
+
+function endGame() {
+    gameState.running = false;
+    document.getElementById('ovTitle').innerText = "MISSION FAILED";
+    document.getElementById('ovTitle').style.color = "red";
+    document.getElementById('ovMsg').innerText = "Out of lives. The pound awaits.";
+    document.getElementById('overlay').style.display = 'flex';
+}
+
+let shootCooldown = 0;
+let specialCooldown = 0;
+
+// FRAMERATE CAP
+let lastTime = 0;
+const FPS = 60;
+const INTERVAL = 1000 / FPS;
+
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const deltaTime = timestamp - lastTime;
+    
+    if (deltaTime < INTERVAL) {
+        requestAnimationFrame(loop);
+        return;
+    }
+    lastTime = timestamp - (deltaTime % INTERVAL);
+    
+    // MENU MODE
+    if(gameState.screen === 'MENU') {
+        drawMenu();
+        requestAnimationFrame(loop);
+        return;
+    }
+    
+    // GAME MODE
+    if (!gameState.running) return;
+
+    if(gameState.hitStop > 0) {
+        gameState.hitStop--;
+        requestAnimationFrame(loop);
+        return;
+    }
+    
+    gameState.frame++;
+    player.update();
+    
+    if(shootCooldown > 0) shootCooldown--;
+    if(specialCooldown > 0) specialCooldown--;
+
+    if((keys['z'] || keys['j']) && shootCooldown <= 0) {
+        let isDown = keys['arrowdown'] || keys['s'];
+        player.shoot(false, isDown);
+        shootCooldown = 15; 
+    }
+    if((keys['x'] || keys['k']) && specialCooldown <= 0) { player.shoot(true, false); specialCooldown = 120; }
+
+    entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
+    entities.forEach(e => e.update());
+    
+    particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
+    damageNumbers = damageNumbers.filter(d => d.life > 0);
+    damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
+    debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
+
+    let targetX = player.x - canvas.width * 0.3; if(targetX < 0) targetX = 0;
+    if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
+    gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
+    let targetY = player.y - canvas.height * 0.5; if (targetY < 0) targetY = 0;
+    gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
+
+    let sx = (Math.random()-0.5) * gameState.shake;
+    let sy = (Math.random()-0.5) * gameState.shake;
+    gameState.shake *= 0.9;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
+    
+    ctx.save();
+    ctx.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
+
+    let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (canvas.width / TILE_SIZE) + 4;
+    let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (canvas.height / TILE_SIZE) + 4;
+    
+    for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
+        for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) {
+            if(tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+                let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
+                
+                // LADDER DRAW
+                if(t.type === 6) {
+                    ctx.fillStyle = C.ladder;
+                    ctx.fillRect(tx + 10, ty, 5, TILE_SIZE); // Left rail
+                    ctx.fillRect(tx + 25, ty, 5, TILE_SIZE); // Right rail
+                    for(let i=0; i<4; i++) ctx.fillRect(tx+10, ty + (i*10) + 2, 20, 4); // Rungs
+                }
+                else if(t.type === 5) {
+                    ctx.fillStyle = t.active ? "#00ff41" : "#555";
+                    ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
+                    ctx.fillRect(tx+15, ty+10, 5, 30);
+                    ctx.beginPath(); ctx.moveTo(tx+20, ty+10); ctx.lineTo(tx+35, ty+15); ctx.lineTo(tx+20, ty+20); ctx.fill();
+                    ctx.shadowBlur = 0; ctx.fillStyle = "#333"; ctx.fillRect(tx+5, ty+35, 30, 5);
+                }
+                else if(t.type === 4) {
+                    let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
+                    grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
+                    ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
+                } 
+                else if (t.type === 1) {
+                    ctx.fillStyle = C.dirtBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                    ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
+                    if(r > 0 && tiles[r-1][c].type === 0) { ctx.fillStyle = C.grassTop; ctx.fillRect(tx, ty, TILE_SIZE, 8); }
+                } 
+                else if (t.type === 2) {
+                    ctx.fillStyle = C.stoneBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 2; ctx.beginPath(); 
+                    ctx.moveTo(tx, ty+20); ctx.lineTo(tx+TILE_SIZE, ty+20); 
+                    ctx.stroke();
+                }
+                else if (t.type === 9) {
+                    ctx.fillStyle = "gold"; ctx.shadowBlur=30; ctx.shadowColor="gold";
+                    ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); ctx.shadowBlur=0;
+                    ctx.fillStyle = "#000"; ctx.font = "10px Arial"; ctx.fillText("VAN", tx+5, ty+25);
+                }
+            }
+        }
+    }
+
+    debris.forEach(d => d.draw(ctx));
+    entities.forEach(e => e.draw(ctx, 0, 0)); 
+    player.draw(ctx, 0, 0);
+    particles.forEach(p => p.draw(ctx));
+    
+    ctx.font = "900 20px 'Segoe UI'";
+    ctx.lineWidth = 3;
+    damageNumbers.forEach(d => {
+        ctx.fillStyle = d.color; ctx.strokeStyle = "black";
+        ctx.strokeText(d.text, d.x, d.y); ctx.fillText(d.text, d.x, d.y);
+    });
+
+    ctx.restore();
+    
+    var grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 200, canvas.width/2, canvas.height/2, 600);
+    grd.addColorStop(0, "transparent"); grd.addColorStop(1, "rgba(0,0,0,0.6)");
+    ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width, canvas.height);
+
+    requestAnimationFrame(loop);
+}
+
+// VISUALS: MENU
+function drawMenu() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grd.addColorStop(0, "#111"); grd.addColorStop(1, "#333");
+    ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width,canvas.height);
+    
+    let startX = 50; let startY = 100;
+    let padding = 80;
+    
+    ctx.font = "20px 'Courier New'";
+    ctx.fillStyle = "#00ff41";
+    ctx.textAlign = "center";
+    ctx.fillText("ROSTER STATUS: " + globalUnlocked + " / " + CHARACTERS.length + " HEROES UNLOCKED", canvas.width/2, 50);
+
+    for(let i=0; i<CHARACTERS.length; i++) {
+        let row = Math.floor(i / 10);
+        let col = i % 10;
+        let cx = startX + col * padding;
+        let cy = startY + row * padding;
+
+        ctx.fillStyle = "rgba(255,255,255,0.1)";
+        ctx.fillRect(cx-30, cy-30, 60, 60);
+        
+        if (i < globalUnlocked) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(0.8, 0.8);
+            let frame = Date.now() / 100; 
+            drawAnatomicalHero(ctx, CHARACTERS[i], frame);
+            ctx.restore();
+            
+            ctx.fillStyle = "#aaa"; ctx.font = "8px Arial"; 
+            ctx.fillText(CHARACTERS[i].name.split(" ")[0], cx, cy+40);
+        } else {
+            ctx.fillStyle = "#222";
+            ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#555"; ctx.font = "20px Arial"; ctx.fillText("?", cx, cy+7);
+        }
+    }
+}
+
+// MAIN INIT FUNCTION
+function init() {
+    lastTime = 0; 
+    
+    // Set to MENU initially
+    gameState.screen = 'MENU';
+    gameState.running = false;
+    
+    // Show Menu UI, Hide Game UI
+    document.getElementById('menuOverlay').style.display = 'flex';
+    document.getElementById('gameUI').style.display = 'none';
+    document.getElementById('bossHealthContainer').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+
+    requestAnimationFrame(loop);
+}
+
+// Start actual gameplay
+window.startGame = function() {
+    tiles = generateLevel();
+    particles = [];
+    damageNumbers = [];
+    debris = [];
+    gameState.spawnPoint = { x: 100, y: 0 };
+    gameState.checkpointsHit = 0;
+    gameState.score = 0;
+    gameState.rescues = 0;
+    gameState.lives = 3;
+    gameState.bossActive = false;
+    gameState.screen = 'GAME';
+    gameState.running = true;
+    
+    // Select random unlocked hero
+    player = new Player();
+    let rnd = Math.floor(Math.random() * globalUnlocked);
+    player.setCharacter(CHARACTERS[rnd].id);
+
+    // Switch UI
+    document.getElementById('menuOverlay').style.display = 'none';
+    document.getElementById('gameUI').style.display = 'flex';
+    
+    // Reset Time so we don't jump
+    lastTime = 0;
+}
+
+// Return to menu
+window.returnToBase = function() {
+    init();
+}
+
+// Restart level (keep unlocks)
+window.resetGame = function() {
+    window.startGame();
+};
+
+// Start App
+init();
+
+})();
+</script>
+</body>
+</html>
