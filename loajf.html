@@ -1560,56 +1560,53 @@ function generateLevel() {
         }
     }
 
-    // 3. PASS 2: UNDERGROUND BASES
-    // We create rooms first, then populate them to ensure safety
-    // let beastsPlaced = 0; // Removed redeclaration
+    // 3. PASS 2: UNDERGROUND TUNNEL NETWORK
+    // We create frequent vertical shafts connected to horizontal tunnels
     
-    // Create random underground rooms
-    for (let x = 40; x < LEVEL_WIDTH - 60; x += 25) {
-        if (Math.random() < 0.4 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
-            let roomW = 10;
-            let roomH = 6;
-            let roomY = surfaceMap[x] + 10 + Math.floor(Math.random() * 10);
+    // Create Shafts and Tunnels
+    for (let x = 40; x < LEVEL_WIDTH - 60; x += 40) { // Every 40 tiles roughly
+        if (Math.random() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
+            let startY = surfaceMap[x];
+            let bottomY = LEVEL_HEIGHT - 5;
             
-            if (roomY + roomH < LEVEL_HEIGHT - 2) {
-                // Carve Room
-                for(let rx = x; rx < x + roomW; rx++) {
-                    for(let ry = roomY; ry < roomY + roomH; ry++) {
-                        if (rx===x || rx===x+roomW-1 || ry===roomY || ry===roomY+roomH-1) {
-                            // Walls
-                             if(newTiles[ry]) newTiles[ry][rx] = { type: 2 }; 
-                        } else {
-                            // Air inside
-                             if(newTiles[ry]) newTiles[ry][rx] = { type: 0 }; 
+            // 1. Vertical Ladder Shaft (Surface to Bottom)
+            for (let y = startY; y < bottomY; y++) {
+                if (y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 6 }; // Ladder
+            }
+
+            // 2. Horizontal Tunnels branching off
+            let numTunnels = Math.floor(Math.random() * 3) + 2; // 2 to 4 tunnels
+            for (let i = 0; i < numTunnels; i++) {
+                let tunnelY = startY + 10 + Math.floor(Math.random() * (bottomY - startY - 15));
+                let tunnelLen = 10 + Math.floor(Math.random() * 15);
+                let dir = Math.random() > 0.5 ? 1 : -1;
+
+                for (let j = 0; j < tunnelLen; j++) {
+                    let tx = x + (j * dir);
+                    // Carve 3-high corridor
+                    for (let ty = tunnelY; ty < tunnelY + 3; ty++) {
+                        if (ty >= 0 && ty < LEVEL_HEIGHT && tx >= 0 && tx < LEVEL_WIDTH) {
+                            newTiles[ty][tx] = { type: 0 }; // Air
+                        }
+                    }
+
+                    // Populate Tunnel
+                    if (Math.random() < 0.05 && j > 5) {
+                         // Enemy
+                         newEntities.push(new Enemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
+                    }
+
+                    // Hostage Check (Hanging from ceiling of tunnel)
+                    if (beastsPlaced < 5 && (tx - lastBeastX > 50 || lastBeastX - tx > 50) && Math.random() < 0.02) {
+                        let beastY = tunnelY; // Top of tunnel
+                        if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) { // Ensure attached to ceiling
+                            newTiles[beastY-1][tx] = { type: 1 }; // Dirt anchor
+                            newEntities.push(new TrappedBeast(tx * TILE_SIZE, (beastY + 1) * TILE_SIZE, beastY-1, tx));
+                            beastsPlaced++;
+                            lastBeastX = tx;
                         }
                     }
                 }
-                
-                // Add Ladder Shaft to surface
-                let shaftX = x + Math.floor(roomW/2);
-                if(shaftX < LEVEL_WIDTH) {
-                    for(let ly = surfaceMap[shaftX]; ly < roomY; ly++) {
-                        if(ly >= 0 && ly < LEVEL_HEIGHT) newTiles[ly][shaftX] = { type: 6 }; // Ladder
-                    }
-                    if(roomY >= 0 && roomY < LEVEL_HEIGHT) newTiles[roomY][shaftX] = { type: 0 }; // Opening
-                }
-
-                // PLACE UNDERGROUND HOSTAGE (Hanging from ceiling)
-                if (beastsPlaced < 5 && (x - lastBeastX > 50)) {
-                    let beastX = x + 3;
-                    let beastY = roomY + 1; // Top of room
-                    // Ensure space is clear
-                    if(beastY >= 0 && beastY < LEVEL_HEIGHT && beastX >= 0 && beastX < LEVEL_WIDTH && newTiles[beastY][beastX].type === 0) {
-                        // Make ceiling block Dirt so it can be broken
-                        if(roomY >= 0 && roomY < LEVEL_HEIGHT) newTiles[roomY][beastX] = { type: 1 }; 
-                        newEntities.push(new TrappedBeast(beastX * TILE_SIZE, beastY * TILE_SIZE, roomY, beastX));
-                        beastsPlaced++;
-                        lastBeastX = x;
-                    }
-                }
-                
-                // Add Guard
-                newEntities.push(new Enemy((x + 5) * TILE_SIZE, (roomY + roomH - 2) * TILE_SIZE));
             }
         }
     }
