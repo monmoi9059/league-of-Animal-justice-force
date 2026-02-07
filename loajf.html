@@ -463,7 +463,7 @@ function drawHeroHead(ctx, char) {
     }
 }
 
-function drawAnatomicalHero(ctx, char, frame) {
+function drawAnatomicalHero(ctx, char, frame, attackAnim = null) {
     let skin = char.cSkin;
     let dark = char.cDark;
     let suit = char.cSuit;
@@ -473,6 +473,32 @@ function drawAnatomicalHero(ctx, char, frame) {
     let runCycle = Math.sin(frame * 0.5);
     let legAngle = runCycle * 0.8;
     let armAngle = -runCycle * 0.8;
+
+    let armOffsetX = 0;
+    let armOffsetY = 0;
+    let legOffsetX = 0;
+    let legOffsetY = 0;
+
+    if (attackAnim && attackAnim.timer > 0) {
+        let t = attackAnim.timer / attackAnim.max;
+        let p = Math.sin(t * Math.PI);
+
+        if (attackAnim.type === 'kick') {
+            legAngle = -Math.PI/2 * p; // Kick Up
+            legOffsetX = p * 10;
+            armAngle = Math.PI/4; // Balance
+        } else if (attackAnim.type === 'punch' || attackAnim.type === 'shoot') {
+             armAngle = -Math.PI/2;
+             armOffsetX = p * 15;
+        } else if (attackAnim.type === 'slash') {
+             armAngle = -Math.PI/2 + (t * Math.PI) - Math.PI/2; // Downward slash arc
+        } else if (attackAnim.type === 'smash_down') {
+             armAngle = Math.PI;
+             if(t < 0.5) armAngle = 0; // Wind up then smash
+        } else if (attackAnim.type === 'throw') {
+             armAngle = -Math.PI/2 + (1-t) * Math.PI;
+        }
+    }
 
     let isBulky = ['rhino', 'elephant', 'bear', 'poodle', 'tree'].includes(char.type);
     let isSmall = ['rodent', 'hedgehog', 'rabbit', 'pig'].includes(char.type);
@@ -535,18 +561,23 @@ function drawAnatomicalHero(ctx, char, frame) {
     drawHeroHead(ctx, char);
     ctx.restore();
 
-    // FRONT LEG
+    // FRONT LEG (ANIMATED FOR KICK)
     ctx.fillStyle = dark;
     ctx.save();
-    ctx.translate(4, 25 + bob);
-    ctx.rotate(-legAngle);
+    ctx.translate(4 + legOffsetX, 25 + bob + legOffsetY);
+    // If kicking, override rotation logic. Otherwise use run cycle.
+    if(attackAnim && attackAnim.type === 'kick' && attackAnim.timer > 0) {
+        ctx.rotate(legAngle); // legAngle is calculated in attack block
+    } else {
+        ctx.rotate(-legAngle); // Normal run cycle (opposite of back leg)
+    }
     drawRoundedRect(ctx, -3, 0, 6, 12, 3);
     ctx.restore();
 
-    // FRONT ARM
+    // FRONT ARM (ANIMATED)
     ctx.fillStyle = suit;
     ctx.save();
-    ctx.translate(0, 15 + bob);
+    ctx.translate(0 + armOffsetX, 15 + bob + armOffsetY);
     ctx.rotate(armAngle);
     drawRoundedRect(ctx, -3, 0, 6, 12, 3);
     // Hand
@@ -936,7 +967,7 @@ class TrappedBeast {
 class MeleeHitbox {
     constructor(x, y, w, h, owner, power=1) {
         this.x = x; this.y = y; this.w = w; this.h = h;
-        this.life = 5; this.power = power;
+        this.life = 15; this.power = power;
         this.hp = 1; 
         spawnExplosion(x + w/2, y + h/2, "#fff", 0.5);
     }
@@ -1219,6 +1250,7 @@ class Player {
         this.stretchX = 1; this.stretchY = 1; this.animFrame = 0;
         this.lastY = this.y;
         this.secondaryCooldown = 0;
+        this.attackAnim = { type: null, timer: 0, max: 0 };
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
@@ -1254,6 +1286,7 @@ class Player {
     update() {
         this.lastY = this.y;
         if(this.secondaryCooldown > 0) this.secondaryCooldown--;
+        if(this.attackAnim.timer > 0) this.attackAnim.timer--;
 
         // LADDER CHECK
         let cx = Math.floor((this.x + this.w/2) / TILE_SIZE);
@@ -1426,11 +1459,13 @@ class Player {
         if (isMelee) {
             // Throw Rock/Knife
             entities.push(new Bullet(this.x + 15*this.facing, this.y + 10, this.facing, false, this.charData, false, true)); // isSecondary=true
+            this.attackAnim = { type: 'throw', timer: 15, max: 15 };
         } else {
             // Punch/Kick
             entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
             // Visual
             particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
+            this.attackAnim = { type: 'kick', timer: 15, max: 15 };
         }
     }
 
@@ -1443,6 +1478,7 @@ class Player {
         if (isSpecial) {
              if(this.charData.id === 'raccoon') { entities.push(new Dumpster(this.x, this.y - 100)); } 
              else { entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, true, this.charData)); this.vx -= this.facing * 15; }
+             this.attackAnim = { type: 'punch', timer: 15, max: 15 };
         } else {
             if (isDown) {
                 // Downward Attack
@@ -1450,6 +1486,7 @@ class Player {
                     // Ground Smash Hitbox
                     entities.push(new MeleeHitbox(this.x, this.y + this.h, this.w, 40, this, 2));
                     this.vy = -5; // Bounce up
+                    this.attackAnim = { type: 'smash_down', timer: 20, max: 20 };
                 } else {
                     // Shoot Down
                     entities.push(new Bullet(this.x + this.w/2 - 5, this.y + this.h, this.facing, isSpecial, this.charData, true));
@@ -1461,14 +1498,19 @@ class Player {
             if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
                 let range = type === 'melee_smash' ? 80 : 50; let power = type === 'melee_smash' ? 3 : 2;
                 entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-range), this.y, range, 40, this, power));
+                this.attackAnim = { type: 'slash', timer: 15, max: 15 };
             } 
             else if (type === 'spread') {
                 for(let i=0; i<3; i++) {
                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
                     b.vy = (Math.random() - 0.5) * 5; entities.push(b);
                 }
+                this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
             }
-            else { entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, false, this.charData)); }
+            else {
+                entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, false, this.charData));
+                this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
+            }
             this.vx -= this.facing * 2;
         }
     }
@@ -1482,7 +1524,7 @@ class Player {
         ctx.scale(this.facing * this.stretchX, this.stretchY);
         // Shadow
         ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 25, 20, 5, 0, 0, Math.PI*2); ctx.fill();
-        drawAnatomicalHero(ctx, this.charData, this.animFrame);
+        drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim);
         ctx.restore();
     }
 }
