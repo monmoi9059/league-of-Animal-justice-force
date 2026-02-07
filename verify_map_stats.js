@@ -1,4 +1,10 @@
 
+function secureRandom() {
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    return array[0] / 4294967296;
+}
+
 const TILE_SIZE = 40;
 const LEVEL_WIDTH = 400;
 const LEVEL_HEIGHT = 60;
@@ -39,14 +45,14 @@ function generateLevel() {
             currentHeight = 12; // Boss Arena
         }
         else if (x > 15) {
-            if (Math.random() < 0.2) {
-                currentHeight += Math.random() > 0.5 ? -1 : 1;
+            if (secureRandom() < 0.2) {
+                currentHeight += secureRandom() > 0.5 ? -1 : 1;
             }
             if (currentHeight < 6) currentHeight = 6;
             if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
 
             // Pit Chance
-            if (Math.random() < 0.05 && x > 20) {
+            if (secureRandom() < 0.05 && x > 20) {
                 for(let y=0; y<LEVEL_HEIGHT; y++) {
                     if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 };
                 }
@@ -57,9 +63,9 @@ function generateLevel() {
 
             // DECIDE RESCUE TYPE
             // Added Spacing Check: x - lastBeastX > 50 (2000 pixels)
-            if (beastsPlaced < 5 && (x - lastBeastX > 50) && Math.random() < 0.05) {
+            if (beastsPlaced < 5 && (x - lastBeastX > 50) && secureRandom() < 0.05) {
                 // FLOATING ISLAND (Underground bunkers moved to Pass 3 to avoid overwrite issues)
-                if (Math.random() < 0.5 && currentHeight > 6) {
+                if (secureRandom() < 0.5 && currentHeight > 6) {
                     let islandY = currentHeight - 4;
                     if (islandY > 2) {
                         newTiles[islandY][x] = { type: 1 }; // Anchor
@@ -92,7 +98,7 @@ function generateLevel() {
 
     // Create Shafts and Tunnels
     for (let x = 40; x < LEVEL_WIDTH - 60; x += 40) { // Every 40 tiles roughly
-        if (Math.random() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
+        if (secureRandom() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
             let startY = surfaceMap[x];
             let bottomY = LEVEL_HEIGHT - 5;
 
@@ -102,11 +108,11 @@ function generateLevel() {
             }
 
             // 2. Horizontal Tunnels branching off
-            let numTunnels = Math.floor(Math.random() * 3) + 2; // 2 to 4 tunnels
+            let numTunnels = Math.floor(secureRandom() * 3) + 2; // 2 to 4 tunnels
             for (let i = 0; i < numTunnels; i++) {
-                let tunnelY = startY + 10 + Math.floor(Math.random() * (bottomY - startY - 15));
-                let tunnelLen = 10 + Math.floor(Math.random() * 15);
-                let dir = Math.random() > 0.5 ? 1 : -1;
+                let tunnelY = startY + 10 + Math.floor(secureRandom() * (bottomY - startY - 15));
+                let tunnelLen = 10 + Math.floor(secureRandom() * 15);
+                let dir = secureRandom() > 0.5 ? 1 : -1;
 
                 for (let j = 0; j < tunnelLen; j++) {
                     let tx = x + (j * dir);
@@ -118,13 +124,13 @@ function generateLevel() {
                     }
 
                     // Populate Tunnel
-                    if (Math.random() < 0.05 && j > 5) {
+                    if (secureRandom() < 0.05 && j > 5) {
                          // Enemy
                          newEntities.push(new Enemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
                     }
 
                     // Hostage Check (Hanging from ceiling of tunnel)
-                    if (beastsPlaced < 5 && (tx - lastBeastX > 50 || lastBeastX - tx > 50) && Math.random() < 0.02) {
+                    if (beastsPlaced < 5 && (tx - lastBeastX > 50 || lastBeastX - tx > 50) && secureRandom() < 0.02) {
                         let beastY = tunnelY; // Top of tunnel
                         if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) { // Ensure attached to ceiling
                             newTiles[beastY-1][tx] = { type: 1 }; // Dirt anchor
@@ -158,7 +164,7 @@ function generateLevel() {
             checkpointsPlaced++;
         }
         // Floating Islands (Remaining Hostages)
-        else if (Math.random() < 0.1 && beastsPlaced < 5 && (x - lastBeastX > 50)) {
+        else if (secureRandom() < 0.1 && beastsPlaced < 5 && (x - lastBeastX > 50)) {
             let islandY = y - 7;
             if (islandY > 4) {
                 // Ensure spawn space is AIR
@@ -171,16 +177,16 @@ function generateLevel() {
             }
         }
         // Enemies
-        else if (Math.random() < 0.03) {
+        else if (secureRandom() < 0.03) {
             if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (Math.random() < 0.04) {
+        else if (secureRandom() < 0.04) {
              if (newTiles[y-1][x].type === 0) newEntities.push(new Mailman(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (Math.random() < 0.05) {
+        else if (secureRandom() < 0.05) {
              if (newTiles[y-1][x].type === 0) newEntities.push(new Enemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (Math.random() < 0.04) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        else if (secureRandom() < 0.04) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
