@@ -1,191 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>League of Animal Justice Avenger Force: Operation Dumpster Fire</title>
-    <style>
-        body {
-            background-color: #111;
-            color: #eee;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            user-select: none;
-            background: radial-gradient(circle at center, #222 0%, #000 100%);
-        }
-        h1 {
-            margin: 5px;
-            color: #00ff41;
-            text-transform: uppercase;
-            font-style: italic;
-            text-shadow: 0 0 10px #00ff41, 3px 3px #ff00de;
-            letter-spacing: 2px;
-            font-size: 30px;
-            text-align: center;
-            z-index: 20;
-        }
-        #gameContainer {
-            position: relative;
-            border: 4px solid #444;
-            box-shadow: 0 0 50px rgba(0, 255, 65, 0.1);
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            width: 900px;
-            height: 500px;
-        }
-        canvas { display: block; width: 100%; height: 100%; }
-        
-        #gameUI {
-            display: none;
-            position: absolute;
-            top: 15px; left: 20px; right: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            font-weight: bold;
-            pointer-events: none;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            z-index: 5;
-        }
-        .stat-box {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            padding: 8px 15px;
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px;
-            margin-bottom: 5px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            text-shadow: 1px 1px 0 #000;
-            color: #fff;
-        }
-        #bossHealthContainer {
-            display: none;
-            position: absolute;
-            bottom: 30px; left: 50%;
-            transform: translateX(-50%);
-            width: 600px; height: 20px;
-            border: 2px solid #fff;
-            background: #222;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 0 15px rgba(255, 0, 222, 0.5);
-            z-index: 5;
-        }
-        #bossHealthBar {
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, #ff00de, #ff69b4);
-            transition: width 0.2s;
-        }
-        
-        .overlay-screen {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(5px);
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            z-index: 10;
-        }
-        
-        #menuOverlay {
-            background: rgba(10, 10, 20, 0.95);
-            justify-content: flex-end;
-            padding-bottom: 30px;
-            z-index: 15;
-            display: none;
-        }
-
-        #rosterOverlay {
-            background: rgba(0, 0, 0, 0);
-            backdrop-filter: none;
-            justify-content: flex-end;
-            padding-bottom: 30px;
-            z-index: 15;
-            display: flex;
-        }
-
-        button {
-            background: linear-gradient(45deg, #ff00de, #a020f0);
-            border: 2px solid #fff;
-            color: white;
-            padding: 15px 40px;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            box-shadow: 0 0 15px rgba(255, 0, 222, 0.6);
-            border-radius: 5px;
-            transition: transform 0.1s, box-shadow 0.1s;
-            margin-top: 20px;
-            pointer-events: auto;
-        }
-        button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.8); }
-        button:active { transform: scale(0.95); }
-
-        .controls {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #888;
-            font-family: monospace;
-            text-shadow: 0 0 5px #000;
-        }
-    </style>
-</head>
-<body>
-
-    <h1>League of Animal Justice Avenger Force</h1>
-    
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="900" height="500"></canvas>
-        
-        <!-- HUD -->
-        <div id="gameUI">
-            <div class="stat-box">HERO: <span id="charName" style="color:#00ff41">IRON MUTT</span></div>
-            <div class="stat-box">HP: <span id="healthDisplay" style="color:#ff00de">❤❤❤</span></div>
-            <div class="stat-box">LIVES: <span id="livesDisplay" style="color:yellow">3</span></div>
-            <div class="stat-box">RESCUES: <span id="rescueDisplay">0</span></div>
-            <div class="stat-box">SCORE: <span id="scoreDisplay">0</span></div>
-        </div>
-        
-        <div id="bossHealthContainer">
-            <div id="bossHealthBar"></div>
-        </div>
-
-        <!-- MAIN MENU -->
-        <div id="menuOverlay" class="overlay-screen">
-            <!-- Canvas will draw the grid behind this -->
-            <button onclick="window.startGame()">DEPLOY SQUAD</button>
-            <button onclick="window.viewRoster()">VIEW TEAM</button>
-        </div>
-
-        <!-- ROSTER MENU -->
-        <div id="rosterOverlay" class="overlay-screen">
-            <button onclick="window.returnToMenu()">BACK</button>
-        </div>
-
-        <!-- GAME OVER / WIN -->
-        <div id="gameOverOverlay" class="overlay-screen">
-            <h2 id="ovTitle" style="font-size: 50px; color: #00ff41; margin-bottom: 10px;">MISSION FAILED</h2>
-            <p id="ovMsg" style="margin-bottom: 30px; font-size: 20px;">The HOA has won.</p>
-            <button onclick="window.returnToBase()">RETURN TO BASE</button>
-        </div>
-    </div>
-
-    <div class="controls">
-        ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack
-    </div>
-
-<script src="physics.js"></script>
-<script>
 window.onerror = function(message, source, lineno, colno, error) {
     console.error("Global Error:", message, "at", lineno, ":", colno);
     alert("Game Error: " + message);
@@ -216,14 +28,14 @@ const FRICTION = 0.85;
 const ACCELERATION = 0.8;
 const JUMP_FORCE = -13;
 const TERMINAL_VELOCITY = 15;
-const LEVEL_WIDTH = 400; 
-const LEVEL_HEIGHT = 60; 
+const LEVEL_WIDTH = 400;
+const LEVEL_HEIGHT = 60;
 
 // --- ASSETS ---
 const C = {
     dirtBase: "#5d4037", dirtLight: "#8d6e63", grassTop: "#4caf50",
     stoneBase: "#546e7a", stoneLight: "#78909c",
-    skyTop: "#1e3c72", skyBot: "#2a5298", 
+    skyTop: "#1e3c72", skyBot: "#2a5298",
     checkpoint: "#00ff41", leash: "#555", tank: "#e74c3c", ladder: "#d35400"
 };
 
@@ -234,7 +46,7 @@ const CHARACTERS = [
     { id: 'cat', name: 'BAT CAT', type: 'cat', cSkin: '#222', cDark: '#000', cSuit: '#111', pType: 'boomerang', pColor: '#ff69b4' },
     { id: 'corgi', name: 'THOR-GI', type: 'dog_pointy', cSkin: '#E3C099', cDark: '#FFF', cSuit: '#333', pType: 'boomerang', pColor: '#00FFFF' },
     { id: 'hulk', name: 'HULK-POODLE', type: 'poodle', cSkin: '#00FF00', cDark: '#006400', cSuit: '#800080', pType: 'melee_smash', pColor: '#00FF00' },
-    { id: 'spider', name: 'SPIDER-PIG', type: 'pig', cSkin: '#FFC0CB', cDark: '#FF69B4', cSuit: '#FF0000', pType: 'gun', pColor: '#FFF' }, 
+    { id: 'spider', name: 'SPIDER-PIG', type: 'pig', cSkin: '#FFC0CB', cDark: '#FF69B4', cSuit: '#FF0000', pType: 'gun', pColor: '#FFF' },
     { id: 'wolvie', name: 'WOLVER-WEENIE', type: 'dog_long', cSkin: '#8B4513', cDark: '#000', cSuit: '#FFFF00', pType: 'melee_slash', pColor: '#C0C0C0' },
     { id: 'dead', name: 'DEAD-POODLE', type: 'poodle', cSkin: '#FF0000', cDark: '#000', cSuit: '#333', pType: 'gun', pColor: '#FF0000' },
     { id: 'cap', name: 'CAPTAIN EAGLE', type: 'bird', cSkin: '#FFF', cDark: '#A52A2A', cSuit: '#0000FF', pType: 'boomerang', pColor: '#FFF' },
@@ -270,7 +82,7 @@ window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 // --- GLOBAL VARS ---
-let globalUnlocked = 1; 
+let globalUnlocked = 1;
 let shootCooldown = 0;
 let specialCooldown = 0;
 let lastTime = 0;
@@ -287,7 +99,7 @@ let gameState = {
     checkpointsHit: 0,
     rescues: 0,
     lives: 3,
-    unlockedCount: 1, 
+    unlockedCount: 1,
     spawnPoint: { x: 100, y: 0 },
     bossActive: false,
     hitStop: 0
@@ -651,7 +463,7 @@ class PropaneTank {
         if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type===1||tiles[r][c].type===2)) {
             if(this.vy>0) { this.y=(r*TILE_SIZE)-this.h; this.vy=0; }
         }
-    } 
+    }
     takeDamage() {
         this.hp = 0; shakeCamera(20); spawnExplosion(this.x+15, this.y+20, "orange", 3);
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
@@ -925,7 +737,7 @@ class DebrisProjectile {
             player.takeDamage(); this.life = 0;
         }
     }
-    takeDamage() { this.life = 0; } 
+    takeDamage() { this.life = 0; }
     draw(ctx, camX, camY) {
         ctx.fillStyle = "#7f8c8d";
         ctx.beginPath(); ctx.arc(this.x - camX + 10, this.y - camY + 10, 8, 0, Math.PI*2); ctx.fill();
@@ -942,9 +754,9 @@ class Dumpster {
         let r = Math.floor((this.y + this.h) / TILE_SIZE); let c = Math.floor((this.x + this.w/2) / TILE_SIZE);
         if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             shakeCamera(15); spawnExplosion(this.x + 30, this.y + 50, "grey", 2);
-            destroyRadius(c, r, 2); 
+            destroyRadius(c, r, 2);
             entities.forEach(e => { if(e !== this && Math.abs(e.x - this.x) < 80 && Math.abs(e.y - this.y) < 80) if(e.takeDamage) e.takeDamage(100); });
-            this.active = false; this.hp = 0; 
+            this.active = false; this.hp = 0;
         }
     }
     takeDamage() {}
@@ -966,8 +778,8 @@ class TrappedBeast {
         let rnd = Math.floor(secureRandom() * CHARACTERS.length);
         this.heroData = CHARACTERS[rnd];
     }
-    update() { 
-        this.frame++; 
+    update() {
+        this.frame++;
         if (this.anchorR >= 0 && this.anchorR < LEVEL_HEIGHT && this.anchorC >= 0 && this.anchorC < LEVEL_WIDTH) {
             if (tiles[this.anchorR] && tiles[this.anchorR][this.anchorC] && tiles[this.anchorR][this.anchorC].type === 0) this.liberate();
         }
@@ -977,11 +789,11 @@ class TrappedBeast {
         spawnDamageNumber(this.x, this.y, "SAVED!", "gold", 30);
         player.setCharacter(this.heroData.id);
         spawnExplosion(this.x + 15, this.y + 15, "gold", 2);
-        
+
         if (globalUnlocked < CHARACTERS.length) {
             globalUnlocked++;
         }
-        
+
         if (player.health < 3) player.health = 3;
         updateUI();
     }
@@ -991,7 +803,7 @@ class TrappedBeast {
         cy += Math.sin((this.frame + this.bobOffset) * 0.1) * 3;
         let ax = (this.anchorC * TILE_SIZE) - camX + 20; let ay = (this.anchorR * TILE_SIZE) - camY + 20;
         ctx.strokeStyle = C.leash; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(cx + 15, cy + 5); ctx.stroke();
-        ctx.save(); ctx.translate(cx + 15, cy + 15); ctx.scale(0.8, 0.8); 
+        ctx.save(); ctx.translate(cx + 15, cy + 15); ctx.scale(0.8, 0.8);
         drawAnatomicalHero(ctx, this.heroData, this.frame); ctx.restore();
         ctx.fillStyle = "#fff"; ctx.font = "10px monospace"; ctx.fillText("HELP", cx+2, cy+35);
     }
@@ -1001,7 +813,7 @@ class MeleeHitbox {
     constructor(x, y, w, h, owner, power=1) {
         this.x = x; this.y = y; this.w = w; this.h = h;
         this.life = 15; this.power = power;
-        this.hp = 1; 
+        this.hp = 1;
         spawnExplosion(x + w/2, y + h/2, "#fff", 0.5);
     }
     update() {
@@ -1028,14 +840,14 @@ class MeleeHitbox {
 
 class Bullet {
     constructor(x, y, dir, isSpecial, charData, isDown = false, isSecondary = false) {
-        this.x = x; this.y = y; 
-        this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5; 
+        this.x = x; this.y = y;
+        this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5;
         this.color = charData.pColor;
         this.type = charData.pType;
-        this.returnState = 0; 
-        
+        this.returnState = 0;
+
         // DEFAULT VELOCITIES
-        this.vx = dir * 15; 
+        this.vx = dir * 15;
         this.vy = (secureRandom() - 0.5) * 2;
 
         // DOWNWARD SHOT OVERRIDE
@@ -1044,7 +856,7 @@ class Bullet {
             this.vy = 15;
             this.w = 8; this.h = 20; // Thin vertical projectile
         }
-        
+
         // SECONDARY THROW OVERRIDE (Melee chars)
         if (isSecondary) {
              this.vx = dir * 12;
@@ -1068,16 +880,16 @@ class Bullet {
         if (this.type === 'grenade' || this.type === 'rocket') {
             this.vy += 0.3; // Gravity
             this.x += this.vx; this.y += this.vy;
-        } 
+        }
         else if (this.type === 'boomerang' && this.vx !== 0) { // Only boomerang behavior if moving horizontally (not down-shot)
-            if (this.returnState === 0) { 
-                this.x += this.vx; this.vx *= 0.95; 
+            if (this.returnState === 0) {
+                this.x += this.vx; this.vx *= 0.95;
                 if (Math.abs(this.vx) < 1) { this.returnState = 1; }
-            } else { 
+            } else {
                 let dx = player.x - this.x; let dy = player.y - this.y;
                 let angle = Math.atan2(dy, dx);
                 this.x += Math.cos(angle) * 15; this.y += Math.sin(angle) * 15;
-                if (Math.abs(dx) < 20 && Math.abs(dy) < 20) this.life = 0; 
+                if (Math.abs(dx) < 20 && Math.abs(dy) < 20) this.life = 0;
             }
         }
         else if (this.type === 'magic' && this.vx !== 0) {
@@ -1094,13 +906,13 @@ class Bullet {
         if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             let t = tiles[r][c];
             if (t.type === 1 || t.type === 2) {
-                if(this.type === 'boomerang' && this.vx !== 0) { 
-                    this.returnState = 1; 
+                if(this.type === 'boomerang' && this.vx !== 0) {
+                    this.returnState = 1;
                     if (t.type === 1) {
                         spawnExplosion(this.x, this.y, C.dirtLight, 1);
                         tiles[r][c] = { type: 0 };
                     }
-                } 
+                }
                 else {
                     spawnExplosion(this.x, this.y, C.dirtLight, 1);
                     this.life = 0;
@@ -1122,7 +934,7 @@ class Bullet {
             }
         }
     }
-    
+
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
@@ -1163,11 +975,11 @@ class Enemy {
         // GRAVITY
         this.vy += GRAVITY;
         this.y += this.vy;
-        
+
         let grounded = false;
         let c = Math.floor((this.x + this.w/2) / TILE_SIZE);
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
-        
+
         if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             if (this.vy > 0) {
                 this.y = (r * TILE_SIZE) - this.h;
@@ -1175,26 +987,26 @@ class Enemy {
                 grounded = true;
             }
         }
-        
+
         // Move only if grounded (dumb patrol logic)
         if (grounded) {
-            this.x += this.vx; 
+            this.x += this.vx;
             if (Math.abs(this.x - this.startX) > this.patrolDist) this.vx *= -1;
-            
+
             // Wall Check
             let tileAhead = Math.floor((this.x + (this.vx > 0 ? this.w : 0) + this.vx) / TILE_SIZE);
             let rHead = Math.floor((this.y + this.h/2) / TILE_SIZE);
             if (rHead>=0 && rHead<LEVEL_HEIGHT && tileAhead>=0 && tileAhead<LEVEL_WIDTH && tiles[rHead] && tiles[rHead][tileAhead] && tiles[rHead][tileAhead].type !== 0 && tiles[rHead][tileAhead].type !== 5) {
                 this.vx *= -1;
             }
-            
+
             // Cliff Check (Turn around unless falling)
             let tileBelowAhead = Math.floor((this.y + this.h + 5) / TILE_SIZE);
             if (tileBelowAhead>=0 && tileBelowAhead<LEVEL_HEIGHT && tileAhead>=0 && tileAhead<LEVEL_WIDTH && tiles[tileBelowAhead] && (!tiles[tileBelowAhead][tileAhead] || tiles[tileBelowAhead][tileAhead].type === 0)) {
                 this.vx *= -1;
             }
         }
-        
+
         if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) player.takeDamage();
         if (this.y > (LEVEL_HEIGHT * TILE_SIZE)) this.hp = 0;
     }
@@ -1271,9 +1083,9 @@ class Enemy {
 
 class Player {
     constructor() { this.reset(); this.charData = CHARACTERS[0]; }
-    setCharacter(typeId) { 
+    setCharacter(typeId) {
         this.charData = CHARACTERS.find(c => c.id === typeId) || CHARACTERS[0];
-        if (player) updateUI(); 
+        if (player) updateUI();
     }
     reset() {
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y;
@@ -1287,26 +1099,26 @@ class Player {
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
-        
+
         // Pick from unlocked characters
         let unlockedChars = CHARACTERS.slice(0, globalUnlocked);
         let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
         this.setCharacter(unlockedChars[newCharIndex].id);
-        
-        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40; 
+
+        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
         spawnExplosion(this.x, this.y, "#00ff41", 2);
     }
-    
+
     // --- NEW HELPER METHOD FOR WALL DETECTION ---
     checkWall(dir) {
         if (!tiles) return false;
         let sensorSize = 2; // Check 2 pixels away
         let checkX = dir > 0 ? this.x + this.w + sensorSize : this.x - sensorSize;
-        
+
         // Check top, middle, and bottom points to ensure we are really next to a wall
         let points = [this.y, this.y + this.h/2, this.y + this.h - 1];
-        
+
         for (let py of points) {
             let r = Math.floor(py / TILE_SIZE);
             let c = Math.floor(checkX / TILE_SIZE);
@@ -1330,7 +1142,7 @@ class Player {
         let input = 0;
         if (keys['arrowleft'] || keys['a']) input = -1;
         if (keys['arrowright'] || keys['d']) input = 1;
-        
+
         // SECONDARY ATTACK
         if ((keys['c'] || keys['v']) && this.secondaryCooldown <= 0) {
             this.performSecondary();
@@ -1347,29 +1159,29 @@ class Player {
         if (this.checkWall(1)) wallDir = 1;
 
         let isWallSliding = false;
-        
+
         // Must be airborne, pressing against a wall, and moving downwards
         if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
             isWallSliding = true;
-            
+
             // Wall Slide Physics (Slow fall)
             if (this.vy > 2) this.vy = 2;
-            
+
             // Wall Jump Logic
             // We check jump key here directly to override normal jump behavior
             if ((keys['arrowup'] || keys['w']) && !this.wallJumpLocked) {
                 this.vy = JUMP_FORCE;
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
-                
+
                 // Visuals
                 spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, C.dirtLight, 0.5);
-                
+
                 // Force exit slide state immediately
-                isWallSliding = false; 
+                isWallSliding = false;
             }
         }
-        
+
         // Reset jump lock when key released
         if (!(keys['arrowup'] || keys['w'])) this.wallJumpLocked = false;
 
@@ -1392,14 +1204,14 @@ class Player {
             if (keys[' ']) { this.vy = JUMP_FORCE; }
         } else {
             // Only apply normal physics if NOT wall jumping this frame
-            if (!this.wallJumpLocked) { 
+            if (!this.wallJumpLocked) {
                 if (input !== 0) {
-                    this.vx += input * ACCELERATION; this.facing = input; 
-                    this.animFrame += isSprinting ? 2 : 1; 
+                    this.vx += input * ACCELERATION; this.facing = input;
+                    this.animFrame += isSprinting ? 2 : 1;
                     let dustFreq = isSprinting ? 5 : 10;
                     if(this.grounded && this.animFrame % dustFreq === 0) particles.push(new Particle(this.x + 15, this.y + 30, "#d2b48c"));
                 } else { this.vx *= FRICTION; this.animFrame = 0; }
-                
+
                 if(Math.abs(this.vx) > this.speed) this.vx = Math.sign(this.vx) * this.speed;
             }
 
@@ -1407,11 +1219,11 @@ class Player {
             if ((keys['arrowup'] || keys['w']) && this.grounded && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
             }
-            
-            this.vy += GRAVITY; 
+
+            this.vy += GRAVITY;
             if(this.vy > TERMINAL_VELOCITY) this.vy = TERMINAL_VELOCITY;
         }
-        
+
         // Dust particles for wall slide
         if (isWallSliding && this.animFrame % 5 === 0) {
              particles.push(new Particle(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h, "#fff"));
@@ -1427,7 +1239,7 @@ class Player {
         if (!tiles) return;
         // STANDARD AABB COLLISION (Simplified for stability)
         // No "skin" offsets needed because character size (24x30) is smaller than tile (40x40)
-        
+
         let l = Math.floor(this.x / TILE_SIZE);
         let r = Math.floor((this.x + this.w - 0.01) / TILE_SIZE);
         let t = Math.floor(this.y / TILE_SIZE);
@@ -1437,7 +1249,7 @@ class Player {
             for(let col = l; col <= r; col++) {
                 if(row>=0 && row<LEVEL_HEIGHT && col>=0 && col<LEVEL_WIDTH && tiles[row] && tiles[row][col] && tiles[row][col].type !== 0) {
                     let type = tiles[row][col].type;
-                    
+
                     if(type === 6) continue; // Ignore ladders for solid collision
                     if(type === 4) { this.takeDamage(); return; }
                     if(type === 9) { winGame(); return; }
@@ -1486,7 +1298,7 @@ class Player {
         if(this.health <= 0) this.respawn();
         updateUI();
     }
-    
+
     performSecondary() {
         let type = this.charData.pType;
         let isMelee = (type === 'melee_slash' || type === 'melee_smash');
@@ -1507,11 +1319,11 @@ class Player {
     shoot(isSpecial, isDown) {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
-        
+
         let type = this.charData.pType;
-        
+
         if (isSpecial) {
-             if(this.charData.id === 'raccoon') { entities.push(new Dumpster(this.x, this.y - 100)); } 
+             if(this.charData.id === 'raccoon') { entities.push(new Dumpster(this.x, this.y - 100)); }
              else { entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, true, this.charData)); this.vx -= this.facing * 15; }
              this.attackAnim = { type: 'punch', timer: 15, max: 15 };
         } else {
@@ -1534,7 +1346,7 @@ class Player {
                 let range = type === 'melee_smash' ? 80 : 50; let power = type === 'melee_smash' ? 3 : 2;
                 entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-range), this.y, range, 40, this, power));
                 this.attackAnim = { type: 'slash', timer: 15, max: 15 };
-            } 
+            }
             else if (type === 'spread') {
                 for(let i=0; i<3; i++) {
                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
@@ -1551,11 +1363,11 @@ class Player {
     }
     draw(ctx, camX, camY) {
         if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
-        let cx = this.x - camX + this.w/2; 
+        let cx = this.x - camX + this.w/2;
         let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));
-        
-        ctx.save(); 
-        ctx.translate(cx, cy); 
+
+        ctx.save();
+        ctx.translate(cx, cy);
         ctx.scale(this.facing * this.stretchX, this.stretchY);
         // Shadow
         ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 25, 20, 5, 0, 0, Math.PI*2); ctx.fill();
@@ -1568,14 +1380,14 @@ class Player {
 function generateLevel() {
     let newTiles = [];
     let newEntities = [];
-    
+
     // 1. Init Empty Grid
     for (let r = 0; r < LEVEL_HEIGHT; r++) {
         newTiles[r] = new Array(LEVEL_WIDTH).fill(null).map(() => ({ type: 0 }));
     }
 
     // 2. Terrain Walker
-    let currentHeight = 10; 
+    let currentHeight = 10;
     let checkpointInterval = Math.floor(LEVEL_WIDTH / 6);
     let nextCheckpoint = checkpointInterval;
     let checkpointsPlaced = 0;
@@ -1584,10 +1396,10 @@ function generateLevel() {
     let surfaceMap = []; // Keep track of surface Y for each X
 
     for (let x = 0; x < LEVEL_WIDTH; x++) {
-        
+
         if (x > LEVEL_WIDTH - 40) {
             currentHeight = 12; // Boss Arena
-        } 
+        }
         else if (x > 15) {
             if (secureRandom() < 0.2) {
                 currentHeight += secureRandom() > 0.5 ? -1 : 1;
@@ -1597,8 +1409,8 @@ function generateLevel() {
 
             // Pit Chance
             if (secureRandom() < 0.05 && x > 20) {
-                for(let y=0; y<LEVEL_HEIGHT; y++) { 
-                    if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 }; 
+                for(let y=0; y<LEVEL_HEIGHT; y++) {
+                    if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 };
                 }
                 if(LEVEL_HEIGHT-1 < LEVEL_HEIGHT) newTiles[LEVEL_HEIGHT-1][x] = { type: 4, color: "#999" };
                 surfaceMap[x] = LEVEL_HEIGHT + 10;
@@ -1610,7 +1422,7 @@ function generateLevel() {
             if (beastsPlaced < 5 && (x - lastBeastX > 50) && secureRandom() < 0.05) {
                 // FLOATING ISLAND (Underground bunkers moved to Pass 3 to avoid overwrite issues)
                 if (secureRandom() < 0.5 && currentHeight > 6) {
-                    let islandY = currentHeight - 4; 
+                    let islandY = currentHeight - 4;
                     if (islandY > 2) {
                         newTiles[islandY][x] = { type: 1 }; // Anchor
                         newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY + 1) * TILE_SIZE, islandY, x));
@@ -1639,13 +1451,13 @@ function generateLevel() {
 
     // 3. PASS 2: UNDERGROUND TUNNEL NETWORK
     // We create frequent vertical shafts connected to horizontal tunnels
-    
+
     // Create Shafts and Tunnels
     for (let x = 40; x < LEVEL_WIDTH - 60; x += 40) { // Every 40 tiles roughly
         if (secureRandom() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
             let startY = surfaceMap[x];
             let bottomY = LEVEL_HEIGHT - 5;
-            
+
             // 1. Vertical Ladder Shaft (Surface to Bottom)
             for (let y = startY; y < bottomY; y++) {
                 if (y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 6 }; // Ladder
@@ -1691,7 +1503,7 @@ function generateLevel() {
     // 4. PASS 3: SURFACE OBJECTS & FLOATING ISLANDS
     // let checkpointsPlaced = 0; // Removed redeclaration
     // let nextCheckpoint = Math.floor(LEVEL_WIDTH / 6); // Removed redeclaration
-    
+
     // Reset iterator for surface pass
     checkpointsPlaced = 0;
     nextCheckpoint = Math.floor(LEVEL_WIDTH / 6);
@@ -1702,7 +1514,7 @@ function generateLevel() {
 
         // Checkpoints
         if (x >= nextCheckpoint && checkpointsPlaced < 5) {
-            newTiles[y][x] = { type: 2 }; 
+            newTiles[y][x] = { type: 2 };
             newTiles[y-1][x] = { type: 5, active: false, id: checkpointsPlaced };
             nextCheckpoint += Math.floor(LEVEL_WIDTH / 6);
             checkpointsPlaced++;
@@ -1781,13 +1593,13 @@ function endGame() {
 function loop(timestamp) {
     if (!lastTime) lastTime = timestamp;
     const deltaTime = timestamp - lastTime;
-    
+
     if (deltaTime < INTERVAL) {
         requestAnimationFrame(loop);
         return;
     }
     lastTime = timestamp - (deltaTime % INTERVAL);
-    
+
     try {
         // MENU MODE
         if(gameState.screen === 'MENU') {
@@ -1804,11 +1616,7 @@ function loop(timestamp) {
         }
 
         // GAME MODE
-        // If not running, we MUST keep looping or we die forever
-        if (!gameState.running) {
-             requestAnimationFrame(loop);
-             return;
-        }
+        if (!gameState.running) return;
 
         if(gameState.hitStop > 0) {
             gameState.hitStop--;
@@ -1940,10 +1748,10 @@ function drawRoster() {
     var grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grd.addColorStop(0, "#111"); grd.addColorStop(1, "#333");
     ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width,canvas.height);
-    
+
     let startX = 50; let startY = 100;
     let padding = 80;
-    
+
     ctx.font = "20px 'Courier New'";
     ctx.fillStyle = "#00ff41";
     ctx.textAlign = "center";
@@ -1957,16 +1765,16 @@ function drawRoster() {
 
         ctx.fillStyle = "rgba(255,255,255,0.1)";
         ctx.fillRect(cx-30, cy-30, 60, 60);
-        
+
         if (i < globalUnlocked) {
             ctx.save();
             ctx.translate(cx, cy);
             ctx.scale(0.8, 0.8);
-            let frame = Date.now() / 100; 
+            let frame = Date.now() / 100;
             drawAnatomicalHero(ctx, CHARACTERS[i], frame);
             ctx.restore();
-            
-            ctx.fillStyle = "#aaa"; ctx.font = "8px Arial"; 
+
+            ctx.fillStyle = "#aaa"; ctx.font = "8px Arial";
             ctx.fillText(CHARACTERS[i].name.split(" ")[0], cx, cy+40);
         } else {
             ctx.fillStyle = "#222";
@@ -1978,12 +1786,12 @@ function drawRoster() {
 
 // MAIN INIT FUNCTION
 function init() {
-    lastTime = 0; 
-    
+    lastTime = 0;
+
     // Set to MENU initially
     gameState.screen = 'MENU';
     gameState.running = false;
-    
+
     // Show Menu UI, Hide Game UI
     document.getElementById('menuOverlay').style.display = 'flex';
     document.getElementById('rosterOverlay').style.display = 'none';
@@ -2056,6 +1864,3 @@ init();
 requestAnimationFrame(loop);
 
 })();
-</script>
-</body>
-</html>
