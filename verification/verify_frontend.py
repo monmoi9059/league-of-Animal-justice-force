@@ -37,7 +37,7 @@ def verify_frontend():
         # 4. Start Game (Verify Grey Screen Fix)
         print("Clicking DEPLOY SQUAD...")
         page.click("text=DEPLOY SQUAD")
-        time.sleep(3) # Wait for generation and loop start
+        page.wait_for_selector("#gameUI")
 
         if not page.locator("#gameUI").is_visible():
             print("ERROR: Game UI not visible.")
