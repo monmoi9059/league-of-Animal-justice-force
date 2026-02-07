@@ -104,6 +104,15 @@
             display: flex;
         }
 
+        #rosterOverlay {
+            background: rgba(0, 0, 0, 0);
+            backdrop-filter: none;
+            justify-content: flex-end;
+            padding-bottom: 30px;
+            z-index: 15;
+            display: flex;
+        }
+
         button {
             background: linear-gradient(45deg, #ff00de, #a020f0);
             border: 2px solid #fff;
@@ -155,6 +164,12 @@
         <div id="menuOverlay" class="overlay-screen">
             <!-- Canvas will draw the grid behind this -->
             <button onclick="window.startGame()">DEPLOY SQUAD</button>
+            <button onclick="window.viewRoster()">VIEW TEAM</button>
+        </div>
+
+        <!-- ROSTER MENU -->
+        <div id="rosterOverlay" class="overlay-screen">
+            <button onclick="window.returnToMenu()">BACK</button>
         </div>
 
         <!-- GAME OVER / WIN -->
@@ -1762,6 +1777,13 @@ function loop(timestamp) {
         requestAnimationFrame(loop);
         return;
     }
+
+    // ROSTER MODE
+    if(gameState.screen === 'ROSTER') {
+        drawRoster();
+        requestAnimationFrame(loop);
+        return;
+    }
     
     // GAME MODE
     if (!gameState.running) return;
@@ -1883,6 +1905,13 @@ function drawMenu() {
     var grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grd.addColorStop(0, "#111"); grd.addColorStop(1, "#333");
     ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+function drawRoster() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grd.addColorStop(0, "#111"); grd.addColorStop(1, "#333");
+    ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width,canvas.height);
     
     let startX = 50; let startY = 100;
     let padding = 80;
@@ -1929,6 +1958,7 @@ function init() {
     
     // Show Menu UI, Hide Game UI
     document.getElementById('menuOverlay').style.display = 'flex';
+    document.getElementById('rosterOverlay').style.display = 'none';
     document.getElementById('gameUI').style.display = 'none';
     document.getElementById('bossHealthContainer').style.display = 'none';
     document.getElementById('gameOverOverlay').style.display = 'none';
@@ -1972,6 +2002,18 @@ window.returnToBase = function() {
 // Restart level (keep unlocks)
 window.resetGame = function() {
     window.startGame();
+};
+
+window.viewRoster = function() {
+    gameState.screen = 'ROSTER';
+    document.getElementById('menuOverlay').style.display = 'none';
+    document.getElementById('rosterOverlay').style.display = 'flex';
+};
+
+window.returnToMenu = function() {
+    gameState.screen = 'MENU';
+    document.getElementById('rosterOverlay').style.display = 'none';
+    document.getElementById('menuOverlay').style.display = 'flex';
 };
 
 // Start App
