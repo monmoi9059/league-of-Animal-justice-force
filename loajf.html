@@ -169,6 +169,7 @@
         ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack
     </div>
 
+<script src="physics.js"></script>
 <script>
 (function() {
 // --- CONSTANTS ---
@@ -285,9 +286,6 @@ function destroyRadius(cx, cy, r) {
             }
         }
     }
-}
-function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
-    return x2 < x1 + w1 && x2 + w2 > x1 && y2 < y1 + h1 && y2 + h2 > y1;
 }
 function shakeCamera(amount) {
     gameState.shake = amount;
