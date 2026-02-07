@@ -171,6 +171,11 @@
 
 <script>
 (function() {
+function secureRandom() {
+    const array = new Uint32Array(1);
+    (window.crypto || crypto).getRandomValues(array);
+    return array[0] / 4294967296;
+}
 // --- CONSTANTS ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -596,12 +601,12 @@ function drawAnatomicalHero(ctx, char, frame, attackAnim = null) {
 
 // --- CLASSES ---
 class Particle {
-    constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.life=1.0; this.vx = (Math.random()-0.5)*8; this.vy = (Math.random()-0.5)*8; this.size = Math.random()*6+3; }
+    constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.life=1.0; this.vx = (secureRandom()-0.5)*8; this.vy = (secureRandom()-0.5)*8; this.size = secureRandom()*6+3; }
     update() { this.x+=this.vx; this.y+=this.vy; this.vy+=0.4; this.life-=0.05; }
     draw(ctx) { ctx.save(); ctx.fillStyle=this.color; ctx.globalAlpha=Math.max(0,this.life); ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); ctx.restore(); }
 }
 class RockChunk {
-    constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.vx=(Math.random()-0.5)*8; this.vy=-Math.random()*5-2; this.life=120; this.angle=Math.random(); this.rotSpeed=(Math.random()-0.5)*0.5; this.size=Math.random()*8+4; }
+    constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.vx=(secureRandom()-0.5)*8; this.vy=-secureRandom()*5-2; this.life=120; this.angle=secureRandom(); this.rotSpeed=(secureRandom()-0.5)*0.5; this.size=secureRandom()*8+4; }
     update() {
         this.x+=this.vx; this.y+=this.vy; this.vy+=0.5; this.angle+=this.rotSpeed; this.life--;
         let r=Math.floor(this.y/TILE_SIZE); let c=Math.floor(this.x/TILE_SIZE);
@@ -734,7 +739,7 @@ class Package {
 }
 
 class FlyingEnemy {
-    constructor(x, y) { this.x = x; this.y = y; this.w = 40; this.h = 40; this.hp = 2; this.startX = x; this.startY = y; this.frame = Math.random() * 100; }
+    constructor(x, y) { this.x = x; this.y = y; this.w = 40; this.h = 40; this.hp = 2; this.startX = x; this.startY = y; this.frame = secureRandom() * 100; }
     update() {
         this.frame++; this.y = this.startY + Math.sin(this.frame * 0.05) * 40;
         if (Math.abs(player.x - this.x) < 400) this.x += (player.x > this.x ? 1 : -1) * 1.5;
@@ -827,7 +832,7 @@ class Boss {
         let cy = this.y - camY;
 
         let shake = 0;
-        if (this.hp < this.maxHp * 0.5) shake = (Math.random()-0.5)*4;
+        if (this.hp < this.maxHp * 0.5) shake = (secureRandom()-0.5)*4;
 
         ctx.save();
         ctx.translate(cx + this.w/2 + shake, cy + this.h/2 + shake);
@@ -929,8 +934,8 @@ class TrappedBeast {
     constructor(x, y, anchorR, anchorC) {
         this.x = x; this.y = y; this.w = 30; this.h = 30;
         this.anchorR = anchorR; this.anchorC = anchorC;
-        this.hp = 999; this.frame = 0; this.bobOffset = Math.random() * 10;
-        let rnd = Math.floor(Math.random() * CHARACTERS.length);
+        this.hp = 999; this.frame = 0; this.bobOffset = secureRandom() * 10;
+        let rnd = Math.floor(secureRandom() * CHARACTERS.length);
         this.heroData = CHARACTERS[rnd];
     }
     update() { 
@@ -1003,7 +1008,7 @@ class Bullet {
         
         // DEFAULT VELOCITIES
         this.vx = dir * 15; 
-        this.vy = (Math.random() - 0.5) * 2;
+        this.vy = (secureRandom() - 0.5) * 2;
 
         // DOWNWARD SHOT OVERRIDE
         if (isDown) {
@@ -1022,7 +1027,7 @@ class Bullet {
 
         // TYPE SPECIFIC ADJUSTMENTS (Overrides defaults unless specific action like Down/Secondary)
         if (!isDown && !isSecondary) {
-            if (this.type === 'spread') { this.w = 8; this.h = 8; this.vx = dir * 15 + (Math.random()-0.5)*5; this.vy = (Math.random()-0.5)*10; }
+            if (this.type === 'spread') { this.w = 8; this.h = 8; this.vx = dir * 15 + (secureRandom()-0.5)*5; this.vy = (secureRandom()-0.5)*10; }
             if (this.type === 'rocket' || this.type === 'grenade') { this.w = 12; this.h = 12; this.vy = -5; }
             if (this.type === 'boomerang') { this.w = 20; this.h = 20; this.life = 100; }
             if (this.type === 'bolt') { this.w = 25; this.h = 10; }
@@ -1257,7 +1262,7 @@ class Player {
         
         // Pick from unlocked characters
         let unlockedChars = CHARACTERS.slice(0, globalUnlocked);
-        let newCharIndex = Math.floor(Math.random() * unlockedChars.length);
+        let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
         this.setCharacter(unlockedChars[newCharIndex].id);
         
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40; 
@@ -1503,7 +1508,7 @@ class Player {
             else if (type === 'spread') {
                 for(let i=0; i<3; i++) {
                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
-                    b.vy = (Math.random() - 0.5) * 5; entities.push(b);
+                    b.vy = (secureRandom() - 0.5) * 5; entities.push(b);
                 }
                 this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
             }
@@ -1554,14 +1559,14 @@ function generateLevel() {
             currentHeight = 12; // Boss Arena
         } 
         else if (x > 15) {
-            if (Math.random() < 0.2) {
-                currentHeight += Math.random() > 0.5 ? -1 : 1;
+            if (secureRandom() < 0.2) {
+                currentHeight += secureRandom() > 0.5 ? -1 : 1;
             }
             if (currentHeight < 6) currentHeight = 6;
             if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
 
             // Pit Chance
-            if (Math.random() < 0.05 && x > 20) {
+            if (secureRandom() < 0.05 && x > 20) {
                 for(let y=0; y<LEVEL_HEIGHT; y++) { 
                     if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 }; 
                 }
@@ -1572,9 +1577,9 @@ function generateLevel() {
 
             // DECIDE RESCUE TYPE
             // Added Spacing Check: x - lastBeastX > 50 (2000 pixels)
-            if (beastsPlaced < 5 && (x - lastBeastX > 50) && Math.random() < 0.05) {
+            if (beastsPlaced < 5 && (x - lastBeastX > 50) && secureRandom() < 0.05) {
                 // FLOATING ISLAND (Underground bunkers moved to Pass 3 to avoid overwrite issues)
-                if (Math.random() < 0.5 && currentHeight > 6) {
+                if (secureRandom() < 0.5 && currentHeight > 6) {
                     let islandY = currentHeight - 4; 
                     if (islandY > 2) {
                         newTiles[islandY][x] = { type: 1 }; // Anchor
@@ -1607,7 +1612,7 @@ function generateLevel() {
     
     // Create Shafts and Tunnels
     for (let x = 40; x < LEVEL_WIDTH - 60; x += 40) { // Every 40 tiles roughly
-        if (Math.random() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
+        if (secureRandom() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
             let startY = surfaceMap[x];
             let bottomY = LEVEL_HEIGHT - 5;
             
@@ -1617,11 +1622,11 @@ function generateLevel() {
             }
 
             // 2. Horizontal Tunnels branching off
-            let numTunnels = Math.floor(Math.random() * 3) + 2; // 2 to 4 tunnels
+            let numTunnels = Math.floor(secureRandom() * 3) + 2; // 2 to 4 tunnels
             for (let i = 0; i < numTunnels; i++) {
-                let tunnelY = startY + 10 + Math.floor(Math.random() * (bottomY - startY - 15));
-                let tunnelLen = 10 + Math.floor(Math.random() * 15);
-                let dir = Math.random() > 0.5 ? 1 : -1;
+                let tunnelY = startY + 10 + Math.floor(secureRandom() * (bottomY - startY - 15));
+                let tunnelLen = 10 + Math.floor(secureRandom() * 15);
+                let dir = secureRandom() > 0.5 ? 1 : -1;
 
                 for (let j = 0; j < tunnelLen; j++) {
                     let tx = x + (j * dir);
@@ -1633,13 +1638,13 @@ function generateLevel() {
                     }
 
                     // Populate Tunnel
-                    if (Math.random() < 0.05 && j > 5) {
+                    if (secureRandom() < 0.05 && j > 5) {
                          // Enemy
                          newEntities.push(new Enemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
                     }
 
                     // Hostage Check (Hanging from ceiling of tunnel)
-                    if (beastsPlaced < 5 && (tx - lastBeastX > 50 || lastBeastX - tx > 50) && Math.random() < 0.02) {
+                    if (beastsPlaced < 5 && (tx - lastBeastX > 50 || lastBeastX - tx > 50) && secureRandom() < 0.02) {
                         let beastY = tunnelY; // Top of tunnel
                         if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) { // Ensure attached to ceiling
                             newTiles[beastY-1][tx] = { type: 1 }; // Dirt anchor
@@ -1673,7 +1678,7 @@ function generateLevel() {
             checkpointsPlaced++;
         }
         // Floating Islands (Remaining Hostages)
-        else if (Math.random() < 0.1 && beastsPlaced < 5 && (x - lastBeastX > 50)) {
+        else if (secureRandom() < 0.1 && beastsPlaced < 5 && (x - lastBeastX > 50)) {
             let islandY = y - 7;
             if (islandY > 4) {
                 // Ensure spawn space is AIR
@@ -1686,16 +1691,16 @@ function generateLevel() {
             }
         }
         // Enemies
-        else if (Math.random() < 0.03) {
+        else if (secureRandom() < 0.03) {
             if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (Math.random() < 0.04) {
+        else if (secureRandom() < 0.04) {
              if (newTiles[y-1][x].type === 0) newEntities.push(new Mailman(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (Math.random() < 0.05) {
+        else if (secureRandom() < 0.05) {
              if (newTiles[y-1][x].type === 0) newEntities.push(new Enemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (Math.random() < 0.04) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        else if (secureRandom() < 0.04) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
@@ -1796,8 +1801,8 @@ function loop(timestamp) {
     let targetY = player.y - canvas.height * 0.5; if (targetY < 0) targetY = 0;
     gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
 
-    let sx = (Math.random()-0.5) * gameState.shake;
-    let sy = (Math.random()-0.5) * gameState.shake;
+    let sx = (secureRandom()-0.5) * gameState.shake;
+    let sy = (secureRandom()-0.5) * gameState.shake;
     gameState.shake *= 0.9;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1950,7 +1955,7 @@ window.startGame = function() {
     
     // Select random unlocked hero
     player = new Player();
-    let rnd = Math.floor(Math.random() * globalUnlocked);
+    let rnd = Math.floor(secureRandom() * globalUnlocked);
     player.setCharacter(CHARACTERS[rnd].id);
 
     // Switch UI
