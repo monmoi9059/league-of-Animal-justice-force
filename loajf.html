@@ -1401,7 +1401,7 @@ class Player {
             
             // Wall Jump Logic
             // We check jump key here directly to override normal jump behavior
-            if ((keys['arrowup'] || keys['w']) && !this.wallJumpLocked) {
+            if (keys[' '] && !this.wallJumpLocked) {
                 this.vy = JUMP_FORCE;
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
@@ -1415,7 +1415,7 @@ class Player {
         }
         
         // Reset jump lock when key released
-        if (!(keys['arrowup'] || keys['w'])) this.wallJumpLocked = false;
+        if (!keys[' ']) this.wallJumpLocked = false;
 
         if (onLadder) {
             this.vy = 0;
@@ -1448,7 +1448,7 @@ class Player {
             }
 
             // Normal Jump
-            if ((keys['arrowup'] || keys['w']) && this.grounded && !isWallSliding) {
+            if (keys[' '] && this.grounded && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
             }
             
