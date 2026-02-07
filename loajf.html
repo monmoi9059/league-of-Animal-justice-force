@@ -801,7 +801,7 @@ class Boss {
             gameState.bossActive = true; document.getElementById('bossHealthContainer').style.display = 'block';
         }
         if (!gameState.bossActive) return;
-        this.y += this.dirY * 2; if (this.y > (LEVEL_HEIGHT * TILE_SIZE) - 200 || this.y < 100) this.dirY *= -1;
+        this.y += this.dirY * 2; if (this.y > (12 * TILE_SIZE) - this.h - 10 || this.y < 50) this.dirY *= -1;
         this.timer++;
         if (this.timer > 100) {
             let angle = Math.atan2(player.y - this.y, player.x - this.x); let speed = 8;
