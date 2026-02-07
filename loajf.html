@@ -188,9 +188,13 @@
 <script>
 (function() {
 function secureRandom() {
-    const array = new Uint32Array(1);
-    (window.crypto || crypto).getRandomValues(array);
-    return array[0] / 4294967296;
+    try {
+        const array = new Uint32Array(1);
+        (window.crypto || crypto).getRandomValues(array);
+        return array[0] / 4294967296;
+    } catch (e) {
+        return Math.random();
+    }
 }
 // --- CONSTANTS ---
 const canvas = document.getElementById('gameCanvas');
@@ -1285,6 +1289,7 @@ class Player {
     
     // --- NEW HELPER METHOD FOR WALL DETECTION ---
     checkWall(dir) {
+        if (!tiles) return false;
         let sensorSize = 2; // Check 2 pixels away
         let checkX = dir > 0 ? this.x + this.w + sensorSize : this.x - sensorSize;
         
@@ -1408,6 +1413,7 @@ class Player {
         if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
     }
     checkCollisions(isX) {
+        if (!tiles) return;
         // STANDARD AABB COLLISION (Simplified for stability)
         // No "skin" offsets needed because character size (24x30) is smaller than tile (40x40)
         
@@ -1771,130 +1777,137 @@ function loop(timestamp) {
     }
     lastTime = timestamp - (deltaTime % INTERVAL);
     
-    // MENU MODE
-    if(gameState.screen === 'MENU') {
-        drawMenu();
-        requestAnimationFrame(loop);
-        return;
-    }
+    try {
+        // MENU MODE
+        if(gameState.screen === 'MENU') {
+            drawMenu();
+            requestAnimationFrame(loop);
+            return;
+        }
 
-    // ROSTER MODE
-    if(gameState.screen === 'ROSTER') {
-        drawRoster();
-        requestAnimationFrame(loop);
-        return;
-    }
-    
-    // GAME MODE
-    if (!gameState.running) return;
+        // ROSTER MODE
+        if(gameState.screen === 'ROSTER') {
+            drawRoster();
+            requestAnimationFrame(loop);
+            return;
+        }
 
-    if(gameState.hitStop > 0) {
-        gameState.hitStop--;
-        requestAnimationFrame(loop);
-        return;
-    }
-    
-    gameState.frame++;
-    player.update();
-    
-    if(shootCooldown > 0) shootCooldown--;
-    if(specialCooldown > 0) specialCooldown--;
+        // GAME MODE
+        if (!gameState.running) return;
 
-    if((keys['z'] || keys['j']) && shootCooldown <= 0) {
-        let isDown = keys['arrowdown'] || keys['s'];
-        player.shoot(false, isDown);
-        shootCooldown = 15; 
-    }
-    if((keys['x'] || keys['k']) && specialCooldown <= 0) { player.shoot(true, false); specialCooldown = 120; }
+        if(gameState.hitStop > 0) {
+            gameState.hitStop--;
+            requestAnimationFrame(loop);
+            return;
+        }
 
-    entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
-    entities.forEach(e => e.update());
-    
-    particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
-    damageNumbers = damageNumbers.filter(d => d.life > 0);
-    damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
-    debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
+        gameState.frame++;
+        if(player) player.update();
 
-    let targetX = player.x - canvas.width * 0.3; if(targetX < 0) targetX = 0;
-    if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
-    gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
-    let targetY = player.y - canvas.height * 0.5; if (targetY < 0) targetY = 0;
-    gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
+        if(shootCooldown > 0) shootCooldown--;
+        if(specialCooldown > 0) specialCooldown--;
 
-    let sx = (secureRandom()-0.5) * gameState.shake;
-    let sy = (secureRandom()-0.5) * gameState.shake;
-    gameState.shake *= 0.9;
+        if((keys['z'] || keys['j']) && shootCooldown <= 0) {
+            let isDown = keys['arrowdown'] || keys['s'];
+            if(player) player.shoot(false, isDown);
+            shootCooldown = 15;
+        }
+        if((keys['x'] || keys['k']) && specialCooldown <= 0 && player) { player.shoot(true, false); specialCooldown = 120; }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
-    
-    ctx.save();
-    ctx.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
+        entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
+        entities.forEach(e => e.update());
 
-    let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (canvas.width / TILE_SIZE) + 4;
-    let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (canvas.height / TILE_SIZE) + 4;
-    
-    for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
-        for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) {
-            if(tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
-                let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
-                
-                // LADDER DRAW
-                if(t.type === 6) {
-                    ctx.fillStyle = C.ladder;
-                    ctx.fillRect(tx + 10, ty, 5, TILE_SIZE); // Left rail
-                    ctx.fillRect(tx + 25, ty, 5, TILE_SIZE); // Right rail
-                    for(let i=0; i<4; i++) ctx.fillRect(tx+10, ty + (i*10) + 2, 20, 4); // Rungs
-                }
-                else if(t.type === 5) {
-                    ctx.fillStyle = t.active ? "#00ff41" : "#555";
-                    ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
-                    ctx.fillRect(tx+15, ty+10, 5, 30);
-                    ctx.beginPath(); ctx.moveTo(tx+20, ty+10); ctx.lineTo(tx+35, ty+15); ctx.lineTo(tx+20, ty+20); ctx.fill();
-                    ctx.shadowBlur = 0; ctx.fillStyle = "#333"; ctx.fillRect(tx+5, ty+35, 30, 5);
-                }
-                else if(t.type === 4) {
-                    let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
-                    grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
-                    ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
-                } 
-                else if (t.type === 1) {
-                    ctx.fillStyle = C.dirtBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-                    ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
-                    if(r > 0 && tiles[r-1][c].type === 0) { ctx.fillStyle = C.grassTop; ctx.fillRect(tx, ty, TILE_SIZE, 8); }
-                } 
-                else if (t.type === 2) {
-                    ctx.fillStyle = C.stoneBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-                    ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 2; ctx.beginPath(); 
-                    ctx.moveTo(tx, ty+20); ctx.lineTo(tx+TILE_SIZE, ty+20); 
-                    ctx.stroke();
-                }
-                else if (t.type === 9) {
-                    ctx.fillStyle = "gold"; ctx.shadowBlur=30; ctx.shadowColor="gold";
-                    ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); ctx.shadowBlur=0;
-                    ctx.fillStyle = "#000"; ctx.font = "10px Arial"; ctx.fillText("VAN", tx+5, ty+25);
+        particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
+        damageNumbers = damageNumbers.filter(d => d.life > 0);
+        damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
+        debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
+
+        if (player) {
+            let targetX = player.x - canvas.width * 0.3; if(targetX < 0) targetX = 0;
+            if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
+            gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
+            let targetY = player.y - canvas.height * 0.5; if (targetY < 0) targetY = 0;
+            gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
+        }
+
+        let sx = (secureRandom()-0.5) * gameState.shake;
+        let sy = (secureRandom()-0.5) * gameState.shake;
+        gameState.shake *= 0.9;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
+
+        ctx.save();
+        ctx.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
+
+        let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (canvas.width / TILE_SIZE) + 4;
+        let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (canvas.height / TILE_SIZE) + 4;
+
+        for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
+            for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) {
+                if(tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+                    let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
+
+                    // LADDER DRAW
+                    if(t.type === 6) {
+                        ctx.fillStyle = C.ladder;
+                        ctx.fillRect(tx + 10, ty, 5, TILE_SIZE); // Left rail
+                        ctx.fillRect(tx + 25, ty, 5, TILE_SIZE); // Right rail
+                        for(let i=0; i<4; i++) ctx.fillRect(tx+10, ty + (i*10) + 2, 20, 4); // Rungs
+                    }
+                    else if(t.type === 5) {
+                        ctx.fillStyle = t.active ? "#00ff41" : "#555";
+                        ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
+                        ctx.fillRect(tx+15, ty+10, 5, 30);
+                        ctx.beginPath(); ctx.moveTo(tx+20, ty+10); ctx.lineTo(tx+35, ty+15); ctx.lineTo(tx+20, ty+20); ctx.fill();
+                        ctx.shadowBlur = 0; ctx.fillStyle = "#333"; ctx.fillRect(tx+5, ty+35, 30, 5);
+                    }
+                    else if(t.type === 4) {
+                        let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
+                        grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
+                        ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
+                    }
+                    else if (t.type === 1) {
+                        ctx.fillStyle = C.dirtBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
+                        if(r > 0 && tiles[r-1][c].type === 0) { ctx.fillStyle = C.grassTop; ctx.fillRect(tx, ty, TILE_SIZE, 8); }
+                    }
+                    else if (t.type === 2) {
+                        ctx.fillStyle = C.stoneBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                        ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 2; ctx.beginPath();
+                        ctx.moveTo(tx, ty+20); ctx.lineTo(tx+TILE_SIZE, ty+20);
+                        ctx.stroke();
+                    }
+                    else if (t.type === 9) {
+                        ctx.fillStyle = "gold"; ctx.shadowBlur=30; ctx.shadowColor="gold";
+                        ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); ctx.shadowBlur=0;
+                        ctx.fillStyle = "#000"; ctx.font = "10px Arial"; ctx.fillText("VAN", tx+5, ty+25);
+                    }
                 }
             }
         }
+
+        debris.forEach(d => d.draw(ctx));
+        entities.forEach(e => e.draw(ctx, 0, 0));
+        if(player) player.draw(ctx, 0, 0);
+        particles.forEach(p => p.draw(ctx));
+
+        ctx.font = "900 20px 'Segoe UI'";
+        ctx.lineWidth = 3;
+        damageNumbers.forEach(d => {
+            ctx.fillStyle = d.color; ctx.strokeStyle = "black";
+            ctx.strokeText(d.text, d.x, d.y); ctx.fillText(d.text, d.x, d.y);
+        });
+
+        ctx.restore();
+
+        var grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 200, canvas.width/2, canvas.height/2, 600);
+        grd.addColorStop(0, "transparent"); grd.addColorStop(1, "rgba(0,0,0,0.6)");
+        ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width, canvas.height);
+
+    } catch(e) {
+        console.error("Game Loop Error:", e);
     }
-
-    debris.forEach(d => d.draw(ctx));
-    entities.forEach(e => e.draw(ctx, 0, 0)); 
-    player.draw(ctx, 0, 0);
-    particles.forEach(p => p.draw(ctx));
-    
-    ctx.font = "900 20px 'Segoe UI'";
-    ctx.lineWidth = 3;
-    damageNumbers.forEach(d => {
-        ctx.fillStyle = d.color; ctx.strokeStyle = "black";
-        ctx.strokeText(d.text, d.x, d.y); ctx.fillText(d.text, d.x, d.y);
-    });
-
-    ctx.restore();
-    
-    var grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 200, canvas.width/2, canvas.height/2, 600);
-    grd.addColorStop(0, "transparent"); grd.addColorStop(1, "rgba(0,0,0,0.6)");
-    ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width, canvas.height);
 
     requestAnimationFrame(loop);
 }
@@ -1962,8 +1975,6 @@ function init() {
     document.getElementById('gameUI').style.display = 'none';
     document.getElementById('bossHealthContainer').style.display = 'none';
     document.getElementById('gameOverOverlay').style.display = 'none';
-
-    requestAnimationFrame(loop);
 }
 
 // Start actual gameplay
@@ -2018,6 +2029,7 @@ window.returnToMenu = function() {
 
 // Start App
 init();
+requestAnimationFrame(loop);
 
 })();
 </script>
