@@ -1805,38 +1805,34 @@ function loop(timestamp) {
         }
 
         // GAME MODE
-        // If not running, we MUST keep looping or we die forever
-        if (!gameState.running) {
-             requestAnimationFrame(loop);
-             return;
+        // We ALWAYS draw, but only update if running and not in hitstop
+
+        if (gameState.running) {
+            if(gameState.hitStop > 0) {
+                gameState.hitStop--;
+            } else {
+                gameState.frame++;
+                if(player) player.update();
+
+                if(shootCooldown > 0) shootCooldown--;
+                if(specialCooldown > 0) specialCooldown--;
+
+                if((keys['z'] || keys['j']) && shootCooldown <= 0) {
+                    let isDown = keys['arrowdown'] || keys['s'];
+                    if(player) player.shoot(false, isDown);
+                    shootCooldown = 15;
+                }
+                if((keys['x'] || keys['k']) && specialCooldown <= 0 && player) { player.shoot(true, false); specialCooldown = 120; }
+
+                entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
+                entities.forEach(e => e.update());
+
+                particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
+                damageNumbers = damageNumbers.filter(d => d.life > 0);
+                damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
+                debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
+            }
         }
-
-        if(gameState.hitStop > 0) {
-            gameState.hitStop--;
-            requestAnimationFrame(loop);
-            return;
-        }
-
-        gameState.frame++;
-        if(player) player.update();
-
-        if(shootCooldown > 0) shootCooldown--;
-        if(specialCooldown > 0) specialCooldown--;
-
-        if((keys['z'] || keys['j']) && shootCooldown <= 0) {
-            let isDown = keys['arrowdown'] || keys['s'];
-            if(player) player.shoot(false, isDown);
-            shootCooldown = 15;
-        }
-        if((keys['x'] || keys['k']) && specialCooldown <= 0 && player) { player.shoot(true, false); specialCooldown = 120; }
-
-        entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
-        entities.forEach(e => e.update());
-
-        particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
-        damageNumbers = damageNumbers.filter(d => d.life > 0);
-        damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
-        debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
 
         if (player) {
             let targetX = player.x - canvas.width * 0.3; if(targetX < 0) targetX = 0;
