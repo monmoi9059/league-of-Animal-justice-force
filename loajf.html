@@ -138,6 +138,36 @@
             font-family: monospace;
             text-shadow: 0 0 5px #000;
         }
+
+        #errorOverlay {
+            display: none;
+            position: absolute;
+            top: 60px; left: 10px; right: 10px; bottom: 10px;
+            background: rgba(50, 0, 0, 0.9);
+            color: #ffcccc;
+            font-family: monospace;
+            padding: 20px;
+            z-index: 9999;
+            overflow: auto;
+            border: 2px solid red;
+            pointer-events: none;
+        }
+
+        #debugHUD {
+            display: block;
+            position: absolute;
+            top: 10px; right: 10px;
+            background: rgba(0, 0, 50, 0.8);
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 10px;
+            padding: 5px;
+            z-index: 9998;
+            border: 1px solid #00ff00;
+            pointer-events: none;
+            white-space: pre;
+            width: 200px;
+        }
     </style>
 </head>
 <body>
@@ -146,6 +176,8 @@
     
     <div id="gameContainer">
         <canvas id="gameCanvas" width="900" height="500"></canvas>
+        <div id="errorOverlay"></div>
+        <div id="debugHUD">Initializing...</div>
         
         <!-- HUD -->
         <div id="gameUI">
@@ -184,11 +216,22 @@
         ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack
     </div>
 
-<script src="physics.js"></script>
+<!-- INLINED PHYSICS.JS -->
+<script>
+// Global Scope Function
+function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
+    return x2 < x1 + w1 && x2 + w2 > x1 && y2 < y1 + h1 && y2 + h2 > y1;
+}
+</script>
+
 <script>
 window.onerror = function(message, source, lineno, colno, error) {
     console.error("Global Error:", message, "at", lineno, ":", colno);
-    alert("Game Error: " + message);
+    const overlay = document.getElementById('errorOverlay');
+    if (overlay) {
+        overlay.style.display = 'block';
+        overlay.innerHTML += `<div><strong>Error:</strong> ${message} <br><small>${source}:${lineno}</small></div><hr>`;
+    }
 };
 </script>
 <script>
@@ -210,6 +253,7 @@ function secureRandom() {
 // --- CONSTANTS ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const debugHUD = document.getElementById('debugHUD');
 const TILE_SIZE = 40;
 const GRAVITY = 0.6;
 const FRICTION = 0.85;
@@ -1779,7 +1823,6 @@ function endGame() {
 // FRAMERATE CAP
 
 function loop(timestamp) {
-    // console.log("LOOP() CALLED", timestamp); // Too verbose
     if (!lastTime) lastTime = timestamp;
     const deltaTime = timestamp - lastTime;
     
@@ -1789,25 +1832,26 @@ function loop(timestamp) {
     }
     lastTime = timestamp - (deltaTime % INTERVAL);
     
+    // DEBUG UPDATE
     try {
-        // MENU MODE
-        if(gameState.screen === 'MENU') {
-            drawMenu();
-            requestAnimationFrame(loop);
-            return;
+        if (debugHUD) {
+            debugHUD.textContent =
+                `State: ${gameState.screen}\n` +
+                `Run: ${gameState.running}\n` +
+                `Frame: ${gameState.frame}\n` +
+                `Ents: ${entities.length}\n` +
+                `Tiles: ${tiles.length}\n` +
+                `Player: ${player ? Math.round(player.x) + ',' + Math.round(player.y) : 'N/A'}\n` +
+                `RectInt: ${typeof rectIntersect}\n` +
+                `FPS: ${Math.round(1000/deltaTime)}`;
         }
+    } catch(e) {}
 
-        // ROSTER MODE
-        if(gameState.screen === 'ROSTER') {
-            drawRoster();
-            requestAnimationFrame(loop);
-            return;
-        }
-
-        // GAME MODE
-        // We ALWAYS draw, but only update if running and not in hitstop
-
-        if (gameState.running) {
+    // 1. UPDATE LOOP (Logic)
+    try {
+        if(gameState.screen === 'MENU' || gameState.screen === 'ROSTER') {
+            // No logic update needed for menus in this simple game
+        } else if (gameState.running) {
             if(gameState.hitStop > 0) {
                 gameState.hitStop--;
             } else {
@@ -1832,94 +1876,114 @@ function loop(timestamp) {
                 damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
                 debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
             }
+
+            if (player) {
+                let targetX = player.x - canvas.width * 0.3; if(targetX < 0) targetX = 0;
+                if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
+                gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
+                let targetY = player.y - canvas.height * 0.5; if (targetY < 0) targetY = 0;
+                gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
+            }
+
+            let sx = (secureRandom()-0.5) * gameState.shake;
+            let sy = (secureRandom()-0.5) * gameState.shake;
+            gameState.shake *= 0.9;
         }
+    } catch(e) {
+        console.error("Game Loop Update Error:", e);
+        // Explicitly call onerror to show in overlay
+        window.onerror(e.message, "loajf.html (Update Loop)", 0, 0, e);
+    }
 
-        if (player) {
-            let targetX = player.x - canvas.width * 0.3; if(targetX < 0) targetX = 0;
-            if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
-            gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
-            let targetY = player.y - canvas.height * 0.5; if (targetY < 0) targetY = 0;
-            gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
-        }
+    // 2. DRAW LOOP (Rendering)
+    try {
+        if(gameState.screen === 'MENU') {
+            drawMenu();
+        } else if(gameState.screen === 'ROSTER') {
+            drawRoster();
+        } else {
+            // GAME DRAW
+            let sx = (secureRandom()-0.5) * gameState.shake;
+            let sy = (secureRandom()-0.5) * gameState.shake;
 
-        let sx = (secureRandom()-0.5) * gameState.shake;
-        let sy = (secureRandom()-0.5) * gameState.shake;
-        gameState.shake *= 0.9;
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
 
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
+            ctx.save();
+            ctx.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
 
-        ctx.save();
-        ctx.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
+            let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (canvas.width / TILE_SIZE) + 4;
+            let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (canvas.height / TILE_SIZE) + 4;
 
-        let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (canvas.width / TILE_SIZE) + 4;
-        let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (canvas.height / TILE_SIZE) + 4;
+            for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
+                for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) {
+                    if(tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+                        let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
 
-        for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
-            for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) {
-                if(tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
-                    let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
-
-                    // LADDER DRAW
-                    if(t.type === 6) {
-                        ctx.fillStyle = C.ladder;
-                        ctx.fillRect(tx + 10, ty, 5, TILE_SIZE); // Left rail
-                        ctx.fillRect(tx + 25, ty, 5, TILE_SIZE); // Right rail
-                        for(let i=0; i<4; i++) ctx.fillRect(tx+10, ty + (i*10) + 2, 20, 4); // Rungs
-                    }
-                    else if(t.type === 5) {
-                        ctx.fillStyle = t.active ? "#00ff41" : "#555";
-                        ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
-                        ctx.fillRect(tx+15, ty+10, 5, 30);
-                        ctx.beginPath(); ctx.moveTo(tx+20, ty+10); ctx.lineTo(tx+35, ty+15); ctx.lineTo(tx+20, ty+20); ctx.fill();
-                        ctx.shadowBlur = 0; ctx.fillStyle = "#333"; ctx.fillRect(tx+5, ty+35, 30, 5);
-                    }
-                    else if(t.type === 4) {
-                        let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
-                        grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
-                        ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
-                    }
-                    else if (t.type === 1) {
-                        ctx.fillStyle = C.dirtBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-                        ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
-                        if(r > 0 && tiles[r-1][c].type === 0) { ctx.fillStyle = C.grassTop; ctx.fillRect(tx, ty, TILE_SIZE, 8); }
-                    }
-                    else if (t.type === 2) {
-                        ctx.fillStyle = C.stoneBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-                        ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 2; ctx.beginPath();
-                        ctx.moveTo(tx, ty+20); ctx.lineTo(tx+TILE_SIZE, ty+20);
-                        ctx.stroke();
-                    }
-                    else if (t.type === 9) {
-                        ctx.fillStyle = "gold"; ctx.shadowBlur=30; ctx.shadowColor="gold";
-                        ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); ctx.shadowBlur=0;
-                        ctx.fillStyle = "#000"; ctx.font = "10px Arial"; ctx.fillText("VAN", tx+5, ty+25);
+                        if(t.type === 6) {
+                            ctx.fillStyle = C.ladder;
+                            ctx.fillRect(tx + 10, ty, 5, TILE_SIZE);
+                            ctx.fillRect(tx + 25, ty, 5, TILE_SIZE);
+                            for(let i=0; i<4; i++) ctx.fillRect(tx+10, ty + (i*10) + 2, 20, 4);
+                        }
+                        else if(t.type === 5) {
+                            ctx.fillStyle = t.active ? "#00ff41" : "#555";
+                            ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
+                            ctx.fillRect(tx+15, ty+10, 5, 30);
+                            ctx.beginPath(); ctx.moveTo(tx+20, ty+10); ctx.lineTo(tx+35, ty+15); ctx.lineTo(tx+20, ty+20); ctx.fill();
+                            ctx.shadowBlur = 0; ctx.fillStyle = "#333"; ctx.fillRect(tx+5, ty+35, 30, 5);
+                        }
+                        else if(t.type === 4) {
+                            let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
+                            grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
+                            ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
+                        }
+                        else if (t.type === 1) {
+                            ctx.fillStyle = C.dirtBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                            ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
+                            if(r > 0 && tiles[r-1][c].type === 0) { ctx.fillStyle = C.grassTop; ctx.fillRect(tx, ty, TILE_SIZE, 8); }
+                        }
+                        else if (t.type === 2) {
+                            ctx.fillStyle = C.stoneBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                            ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 2; ctx.beginPath();
+                            ctx.moveTo(tx, ty+20); ctx.lineTo(tx+TILE_SIZE, ty+20);
+                            ctx.stroke();
+                        }
+                        else if (t.type === 9) {
+                            ctx.fillStyle = "gold"; ctx.shadowBlur=30; ctx.shadowColor="gold";
+                            ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); ctx.shadowBlur=0;
+                            ctx.fillStyle = "#000"; ctx.font = "10px Arial"; ctx.fillText("VAN", tx+5, ty+25);
+                        }
                     }
                 }
             }
+
+            debris.forEach(d => d.draw(ctx));
+            entities.forEach(e => e.draw(ctx, 0, 0));
+            if(player) player.draw(ctx, 0, 0);
+            particles.forEach(p => p.draw(ctx));
+
+            ctx.font = "900 20px 'Segoe UI'";
+            ctx.lineWidth = 3;
+            damageNumbers.forEach(d => {
+                ctx.fillStyle = d.color; ctx.strokeStyle = "black";
+                ctx.strokeText(d.text, d.x, d.y); ctx.fillText(d.text, d.x, d.y);
+            });
+
+            ctx.restore();
+
+            var grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 200, canvas.width/2, canvas.height/2, 600);
+            grd.addColorStop(0, "transparent"); grd.addColorStop(1, "rgba(0,0,0,0.6)");
+            ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width, canvas.height);
         }
 
-        debris.forEach(d => d.draw(ctx));
-        entities.forEach(e => e.draw(ctx, 0, 0));
-        if(player) player.draw(ctx, 0, 0);
-        particles.forEach(p => p.draw(ctx));
-
-        ctx.font = "900 20px 'Segoe UI'";
-        ctx.lineWidth = 3;
-        damageNumbers.forEach(d => {
-            ctx.fillStyle = d.color; ctx.strokeStyle = "black";
-            ctx.strokeText(d.text, d.x, d.y); ctx.fillText(d.text, d.x, d.y);
-        });
-
-        ctx.restore();
-
-        var grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 200, canvas.width/2, canvas.height/2, 600);
-        grd.addColorStop(0, "transparent"); grd.addColorStop(1, "rgba(0,0,0,0.6)");
-        ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width, canvas.height);
-
     } catch(e) {
-        console.error("Game Loop Error:", e);
+        console.error("Game Loop Draw Error:", e);
+        // Visual crash indicator
+        ctx.fillStyle = "#ff00ff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        window.onerror(e.message, "loajf.html (Draw Loop)", 0, 0, e);
     }
 
     requestAnimationFrame(loop);
@@ -1997,6 +2061,8 @@ function init() {
 window.startGame = function() {
     console.log("STARTGAME() CALLED");
     try {
+        if (typeof rectIntersect !== 'function') throw new Error("CRITICAL: rectIntersect function missing!");
+
         tiles = generateLevel();
         console.log("LEVEL GENERATED. TILES:", tiles.length);
         particles = [];
@@ -2024,8 +2090,9 @@ window.startGame = function() {
         lastTime = 0;
     } catch (e) {
         console.error("Error starting game:", e);
-        alert("Failed to start game: " + e.message);
-        // Attempt to return to menu state safely
+        // Force error overlay
+        window.onerror(e.message, "loajf.html (startGame)", 0, 0, e);
+        // Fallback
         gameState.screen = 'MENU';
         document.getElementById('menuOverlay').style.display = 'flex';
         document.getElementById('gameUI').style.display = 'none';
