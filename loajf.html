@@ -1779,6 +1779,7 @@ function endGame() {
 // FRAMERATE CAP
 
 function loop(timestamp) {
+    // console.log("LOOP() CALLED", timestamp); // Too verbose
     if (!lastTime) lastTime = timestamp;
     const deltaTime = timestamp - lastTime;
     
@@ -1849,6 +1850,7 @@ function loop(timestamp) {
         let sy = (secureRandom()-0.5) * gameState.shake;
         gameState.shake *= 0.9;
 
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
 
@@ -1929,6 +1931,7 @@ function loop(timestamp) {
 
 // VISUALS: MENU
 function drawMenu() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
     ctx.clearRect(0,0,canvas.width,canvas.height);
     var grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grd.addColorStop(0, "#111"); grd.addColorStop(1, "#333");
@@ -1936,6 +1939,7 @@ function drawMenu() {
 }
 
 function drawRoster() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
     ctx.clearRect(0,0,canvas.width,canvas.height);
     var grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grd.addColorStop(0, "#111"); grd.addColorStop(1, "#333");
@@ -1978,6 +1982,7 @@ function drawRoster() {
 
 // MAIN INIT FUNCTION
 function init() {
+    console.log("INIT() CALLED");
     lastTime = 0; 
     
     // Set to MENU initially
@@ -1994,8 +1999,10 @@ function init() {
 
 // Start actual gameplay
 window.startGame = function() {
+    console.log("STARTGAME() CALLED");
     try {
         tiles = generateLevel();
+        console.log("LEVEL GENERATED. TILES:", tiles.length);
         particles = [];
         damageNumbers = [];
         debris = [];
