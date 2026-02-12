@@ -1940,6 +1940,32 @@ function generateLevel() {
     gameState.levelData.biome = biome;
     gameState.levelData.difficulty = difficulty;
 
+    // Helper: Spawn Enemy Squad
+    function spawnSquad(x, y) {
+        let type = secureRandom();
+        // Squad Composition based on Difficulty
+        if (difficulty >= 3 && type < 0.2) {
+             // Specialist Squad: 1 Shield + 2 Grunts
+             newEntities.push(new ShieldBearer(x * TILE_SIZE, y * TILE_SIZE));
+             newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+             newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+        } else if (difficulty >= 5 && type < 0.3) {
+             // Heavy Squad: 1 Heavy + 1 Shield
+             newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE));
+             newEntities.push(new ShieldBearer((x+2) * TILE_SIZE, y * TILE_SIZE));
+        } else if (type < 0.4) {
+             // Suicide Squad: 3 Kamikazes
+             newEntities.push(new KamikazeEnemy(x * TILE_SIZE, y * TILE_SIZE));
+             newEntities.push(new KamikazeEnemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             newEntities.push(new KamikazeEnemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+        } else {
+             // Standard Patrol: 2-3 Grunts
+             newEntities.push(new Enemy(x * TILE_SIZE, y * TILE_SIZE));
+             newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+        }
+    }
+
     // 1. Init Empty Grid
     for (let r = 0; r < LEVEL_HEIGHT; r++) {
         newTiles[r] = new Array(LEVEL_WIDTH).fill(null).map(() => ({ type: 0 }));
@@ -1952,6 +1978,7 @@ function generateLevel() {
     let checkpointsPlaced = 0;
     let beastsPlaced = 0;
     let lastBeastX = -60;
+    let lastEncounterX = 0;
     let surfaceMap = [];
 
     for (let x = 0; x < LEVEL_WIDTH; x++) {
@@ -2000,8 +2027,9 @@ function generateLevel() {
                 continue;
             }
 
-            // DECIDE RESCUE TYPE
-            if (beastsPlaced < 5 && (x - lastBeastX > 50) && secureRandom() < 0.05) {
+            // DECIDE RESCUE TYPE (Broforce: Often on high ground/cages)
+            // Increase frequency (beastsPlaced < 8) and reduce distance check (30)
+            if (beastsPlaced < 8 && (x - lastBeastX > 30) && secureRandom() < 0.08) {
                 if (secureRandom() < 0.5 && currentHeight > 6) {
                     let islandY = currentHeight - 4; 
                     if (islandY > 2) {
@@ -2009,6 +2037,14 @@ function generateLevel() {
                         newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY + 1) * TILE_SIZE, islandY, x));
                         beastsPlaced++;
                         lastBeastX = x;
+
+                        // Guard Squad on the island or below?
+                        // Let's spawn a specialist ON the island
+                        if (difficulty >= 3) newEntities.push(new ShieldBearer((x+1) * TILE_SIZE, (islandY) * TILE_SIZE));
+                        else newEntities.push(new Enemy((x+1) * TILE_SIZE, (islandY) * TILE_SIZE));
+
+                        // And a squad below to intercept player
+                        spawnSquad(x, currentHeight-1);
                     }
                 }
             }
@@ -2056,28 +2092,23 @@ function generateLevel() {
                         }
                     }
 
-                    // Enemies in tunnels
-                    if (secureRandom() < 0.05 && j > 5) {
+                    // Enemies in tunnels (Ambush style)
+                    if (secureRandom() < 0.1 && j > 5 && (j % 5 === 0)) {
                         let rand = secureRandom();
                         if (difficulty >= 3 && rand < 0.3) newEntities.push(new KamikazeEnemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
                         else newEntities.push(new Enemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
                     }
 
-                    // Falling Block Trap
-                    if (secureRandom() < 0.03 && j > 2) {
-                        if (tunnelY > 0 && newTiles[tunnelY-1][tx].type !== 0) {
-                            newEntities.push(new FallingBlock(tx * TILE_SIZE, tunnelY * TILE_SIZE));
-                        }
-                    }
-
-                    // Hostage Check
-                    if (beastsPlaced < 5 && (tx - lastBeastX > 50 || lastBeastX - tx > 50) && secureRandom() < 0.02) {
+                    // Hostage Check (Hidden in caves)
+                    if (beastsPlaced < 8 && (tx - lastBeastX > 30 || lastBeastX - tx > 30) && secureRandom() < 0.05) {
                         let beastY = tunnelY;
                         if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) {
                             newTiles[beastY-1][tx] = { type: 1 };
                             newEntities.push(new TrappedBeast(tx * TILE_SIZE, (beastY + 1) * TILE_SIZE, beastY-1, tx));
                             beastsPlaced++;
                             lastBeastX = tx;
+                            // Cave Guard
+                            newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
                         }
                     }
                 }
@@ -2088,6 +2119,7 @@ function generateLevel() {
     // 4. PASS 3: SURFACE OBJECTS & FLOATING ISLANDS
     checkpointsPlaced = 0;
     nextCheckpoint = Math.floor(LEVEL_WIDTH / 6);
+    lastEncounterX = 20;
 
     for (let x = 20; x < LEVEL_WIDTH - 40; x++) {
         let y = surfaceMap[x];
@@ -2102,38 +2134,31 @@ function generateLevel() {
             newTiles[y-1][x] = { type: 5, active: false, id: checkpointsPlaced };
             nextCheckpoint += Math.floor(LEVEL_WIDTH / (difficulty >= 5 ? 4 : 6));
             checkpointsPlaced++;
+
+            // Checkpoints are safe zones, no enemies *directly* on them usually
             // Spawn Mech nearby occasionally
             if (difficulty >= 2 && secureRandom() < 0.3) {
                  newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
             }
         }
-        else if (secureRandom() < 0.1 && beastsPlaced < 5 && (x - lastBeastX > 50)) {
-            let islandY = y - 7;
-            if (islandY > 4) {
-                if (newTiles[islandY+1][x].type === 0) {
-                    newTiles[islandY][x] = { type: 1 };
-                    newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY+1) * TILE_SIZE, islandY, x));
-                    beastsPlaced++;
-                    lastBeastX = x;
-                }
-            }
-        }
-        // Enemies & Hazards
         else if (secureRandom() < 0.03 + (difficulty*0.01)) {
             if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (secureRandom() < 0.04) {
-             if (newTiles[y-1][x].type === 0) newEntities.push(new Mailman(x * TILE_SIZE, (y-1) * TILE_SIZE));
+
+        // ENEMY ENCOUNTERS (Clusters)
+        // Spawn a squad every ~15-25 tiles, with some randomness
+        if (x - lastEncounterX > (15 - difficulty)) { // More frequent in hard levels
+             if (secureRandom() < 0.4) {
+                 spawnSquad(x, y-1);
+                 lastEncounterX = x;
+             }
         }
-        else if (secureRandom() < 0.06 + (difficulty*0.01)) {
-             let r = secureRandom();
-             if (difficulty >= 2 && r < 0.2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
-             else if (difficulty >= 3 && r < 0.4) newEntities.push(new ShieldBearer(x * TILE_SIZE, (y-1) * TILE_SIZE));
-             else if (difficulty >= 4 && r < 0.6) newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE - 10));
-             else if (r < 0.8) newEntities.push(new KamikazeEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
-             else newEntities.push(new Enemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
+
+        // Occasional Sniper on high ground or random flyer
+        if (secureRandom() < 0.02) {
+             if (difficulty >= 2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        else if (secureRandom() < 0.04) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        if (secureRandom() < 0.02) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
@@ -2163,17 +2188,9 @@ function generateLevel() {
              newEntities.push(new Boss(bossX * TILE_SIZE, bossY * TILE_SIZE));
          }
 
-         // Spawn Defenders
-         let numDefenders = 3 + Math.floor(difficulty * 0.5);
-         for(let i=0; i<numDefenders; i++) {
-             let dx = bossX + Math.floor((secureRandom()-0.5) * 30); // Nearby
-             if (dx < 5) dx = 5; if (dx > LEVEL_WIDTH-5) dx = LEVEL_WIDTH-5;
-             let dy = surfaceMap[dx] ? surfaceMap[dx] - 2 : 10;
-
-             if (difficulty >= 5 && secureRandom() < 0.5) newEntities.push(new HeavyGunner(dx * TILE_SIZE, dy * TILE_SIZE));
-             else if (difficulty >= 3) newEntities.push(new ShieldBearer(dx * TILE_SIZE, dy * TILE_SIZE));
-             else newEntities.push(new Enemy(dx * TILE_SIZE, dy * TILE_SIZE));
-         }
+         // Boss Entourage
+         spawnSquad(bossX - 5, bossY);
+         spawnSquad(bossX + 5, bossY);
 
     } else {
          // Level 20+: Special Room
