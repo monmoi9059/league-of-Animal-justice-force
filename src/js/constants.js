@@ -1,20 +1,20 @@
 // --- CONSTANTS ---
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const debugHUD = document.getElementById('debugHUD');
-const TILE_SIZE = 40;
-const GRAVITY = 0.6;
-const FRICTION = 0.85;
-const ACCELERATION = 0.8;
-const JUMP_FORCE = -13;
-const TERMINAL_VELOCITY = 15;
-const LEVEL_WIDTH = 400;
-const LEVEL_HEIGHT = 60;
-const FPS = 60;
-const INTERVAL = 1000 / FPS;
+window.canvas = document.getElementById('gameCanvas');
+window.ctx = canvas.getContext('2d');
+window.debugHUD = document.getElementById('debugHUD');
+window.TILE_SIZE = 40;
+window.GRAVITY = 0.6;
+window.FRICTION = 0.85;
+window.ACCELERATION = 0.8;
+window.JUMP_FORCE = -13;
+window.TERMINAL_VELOCITY = 15;
+window.LEVEL_WIDTH = 400;
+window.LEVEL_HEIGHT = 60;
+window.FPS = 60;
+window.INTERVAL = 1000 / FPS;
 
 // --- ASSETS ---
-const C = {
+window.C = {
     dirtBase: "#5d4037", dirtLight: "#8d6e63", grassTop: "#4caf50",
     stoneBase: "#546e7a", stoneLight: "#78909c",
     skyTop: "#1e3c72", skyBot: "#2a5298",
@@ -22,7 +22,7 @@ const C = {
 };
 
 // --- ROSTER ---
-const CHARACTERS = [
+window.CHARACTERS = [
     { id: 'pug', name: 'IRON MUTT', type: 'dog_flat', cSkin: '#f3cf98', cDark: '#3b302a', cSuit: '#b0c4de', pType: 'laser', pColor: '#a020f0' },
     { id: 'raccoon', name: 'CPT TRASH', type: 'raccoon', cSkin: '#888', cDark: '#444', cSuit: '#555', pType: 'boomerang', pColor: '#aaa' },
     { id: 'cat', name: 'BAT CAT', type: 'cat', cSkin: '#222', cDark: '#000', cSuit: '#111', pType: 'boomerang', pColor: '#ff69b4' },

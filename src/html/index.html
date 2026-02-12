@@ -21,6 +21,7 @@
             <div class="stat-box">LIVES: <span id="livesDisplay" style="color:yellow">3</span></div>
             <div class="stat-box">RESCUES: <span id="rescueDisplay">0</span></div>
             <div class="stat-box">SCORE: <span id="scoreDisplay">0</span></div>
+            <div class="stat-box">LEVEL: <span id="levelDisplay">1</span></div>
         </div>
 
         <div id="bossHealthContainer">
@@ -37,6 +38,17 @@
         <!-- ROSTER MENU -->
         <div id="rosterOverlay" class="overlay-screen">
             <button onclick="window.returnToMenu()">BACK</button>
+        </div>
+
+        <!-- LEVEL COMPLETE -->
+        <div id="levelCompleteOverlay" class="overlay-screen">
+            <h2 style="color: gold; font-size: 40px; margin-bottom: 20px;">AREA SECURED</h2>
+            <div style="font-size: 20px; color: #fff; line-height: 1.6;">
+                <p>KILLS: <span id="lcKills" style="color: red">0</span></p>
+                <p>RESCUES: <span id="lcRescues" style="color: #00ff41">0</span></p>
+                <p>TIME BONUS: <span id="lcTime" style="color: yellow">0</span></p>
+            </div>
+            <button onclick="window.nextLevel()">NEXT MISSION</button>
         </div>
 
         <!-- GAME OVER / WIN -->

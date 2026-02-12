@@ -1,10 +1,5 @@
-// --- GLOBAL VARS ---
-let globalUnlocked = 1;
-let shootCooldown = 0;
-let specialCooldown = 0;
-let lastTime = 0;
 
-let gameState = {
+window.gameState = {
     screen: 'MENU',
     running: false,
     score: 0,
@@ -17,12 +12,21 @@ let gameState = {
     unlockedCount: 1,
     spawnPoint: { x: 100, y: 0 },
     bossActive: false,
-    hitStop: 0
+    hitStop: 0,
+    currentLevel: 1, // Added
+    levelData: {
+        biome: 'forest',
+        difficulty: 1,
+        width: 400,
+        height: 60
+    },
+    slowMo: 1.0, // For time dilation
+    levelCompleteStats: { kills: 0, rescues: 0, time: 0 }
 };
 
-let tiles = [];
-let entities = [];
-let particles = [];
-let damageNumbers = [];
-let debris = [];
-let player;
+window.tiles = [];
+window.entities = [];
+window.particles = [];
+window.damageNumbers = [];
+window.debris = [];
+window.player = null;

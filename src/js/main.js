@@ -7,6 +7,7 @@ function updateUI() {
     document.getElementById('scoreDisplay').innerText = gameState.score;
     document.getElementById('rescueDisplay').innerText = gameState.rescues;
     document.getElementById('livesDisplay').innerText = gameState.lives;
+    document.getElementById('levelDisplay').innerText = gameState.currentLevel;
     let charName = player.charData ? player.charData.name : "UNKNOWN";
     document.getElementById('charName').innerText = charName;
     if(player.charData) document.getElementById('charName').style.color = player.charData.cSkin;
@@ -14,10 +15,17 @@ function updateUI() {
 
 function winGame() {
     gameState.running = false;
-    document.getElementById('ovTitle').innerText = "MISSION COMPLETE";
-    document.getElementById('ovTitle').style.color = "gold";
-    document.getElementById('ovMsg').innerText = "The Minivan has arrived!";
-    document.getElementById('gameOverOverlay').style.display = 'flex';
+    // Calculate Stats
+    gameState.levelCompleteStats.kills = 0; // Todo: Track kills properly in state?
+    // Simplified: Score / 100 roughly
+    let kills = Math.floor((gameState.score - (gameState.rescues * 500)) / 100);
+    if (kills < 0) kills = 0;
+
+    document.getElementById('lcKills').innerText = kills;
+    document.getElementById('lcRescues').innerText = gameState.rescues;
+    document.getElementById('lcTime').innerText = Math.floor((10000 - gameState.frame)/60); // Bonus
+
+    document.getElementById('levelCompleteOverlay').style.display = 'flex';
 }
 
 function endGame() {
@@ -34,11 +42,14 @@ function loop(timestamp) {
     if (!lastTime) lastTime = timestamp;
     const deltaTime = timestamp - lastTime;
 
-    if (deltaTime < INTERVAL) {
+    // Slow Motion Logic
+    let interval = INTERVAL / gameState.slowMo;
+
+    if (deltaTime < interval) {
         requestAnimationFrame(loop);
         return;
     }
-    lastTime = timestamp - (deltaTime % INTERVAL);
+    lastTime = timestamp - (deltaTime % interval);
 
     // DEBUG UPDATE
     try {
@@ -46,11 +57,9 @@ function loop(timestamp) {
             debugHUD.textContent =
                 `State: ${gameState.screen}\n` +
                 `Run: ${gameState.running}\n` +
-                `Frame: ${gameState.frame}\n` +
+                `Level: ${gameState.currentLevel}\n` +
+                `Biome: ${gameState.levelData.biome}\n` +
                 `Ents: ${entities.length}\n` +
-                `Tiles: ${tiles.length}\n` +
-                `Player: ${player ? Math.round(player.x) + ',' + Math.round(player.y) : 'N/A'}\n` +
-                `RectInt: ${typeof rectIntersect}\n` +
                 `FPS: ${Math.round(1000/deltaTime)}`;
         }
     } catch(e) {}
@@ -116,6 +125,8 @@ function loop(timestamp) {
 
             ctx.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background based on Biome
             drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
 
             ctx.save();
@@ -143,17 +154,44 @@ function loop(timestamp) {
                             ctx.shadowBlur = 0; ctx.fillStyle = "#333"; ctx.fillRect(tx+5, ty+35, 30, 5);
                         }
                         else if(t.type === 4) {
-                            let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
-                            grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
-                            ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
+                            // Spikes / Lava
+                            if(t.color === '#e74c3c') { // Lava
+                                ctx.fillStyle = t.color;
+                                ctx.fillRect(tx, ty + 10, TILE_SIZE, TILE_SIZE - 10);
+                                ctx.fillStyle = "orange";
+                                ctx.beginPath(); ctx.arc(tx + secureRandom()*40, ty+10, 5, 0, Math.PI*2); ctx.fill();
+                            } else {
+                                let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
+                                grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
+                                ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
+                            }
                         }
                         else if (t.type === 1) {
-                            ctx.fillStyle = C.dirtBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-                            ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
-                            if(r > 0 && tiles[r-1][c].type === 0) { ctx.fillStyle = C.grassTop; ctx.fillRect(tx, ty, TILE_SIZE, 8); }
+                            // Dirt / Ground
+                            let color = C.dirtBase;
+                            if (gameState.levelData.biome === 'city') color = "#333";
+                            if (gameState.levelData.biome === 'volcano') color = "#422";
+
+                            ctx.fillStyle = color; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+
+                            if (gameState.levelData.biome === 'city') {
+                                ctx.fillStyle = "#444"; ctx.fillRect(tx, ty+35, 40, 5); // Piping
+                            } else {
+                                ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
+                            }
+
+                            if(r > 0 && tiles[r-1][c].type === 0) {
+                                if (gameState.levelData.biome === 'city') ctx.fillStyle = "#555"; // Concrete top
+                                else if (gameState.levelData.biome === 'volcano') ctx.fillStyle = "#722"; // Charred top
+                                else ctx.fillStyle = C.grassTop;
+                                ctx.fillRect(tx, ty, TILE_SIZE, 8);
+                            }
                         }
                         else if (t.type === 2) {
-                            ctx.fillStyle = C.stoneBase; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                            // Stone / Indestructible
+                            let color = C.stoneBase;
+                            if (gameState.levelData.biome === 'city') color = "#222";
+                            ctx.fillStyle = color; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
                             ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 2; ctx.beginPath();
                             ctx.moveTo(tx, ty+20); ctx.lineTo(tx+TILE_SIZE, ty+20);
                             ctx.stroke();
@@ -205,6 +243,7 @@ function init() {
     // Set to MENU initially
     gameState.screen = 'MENU';
     gameState.running = false;
+    gameState.currentLevel = 1;
 
     // Show Menu UI, Hide Game UI
     document.getElementById('menuOverlay').style.display = 'flex';
@@ -212,6 +251,7 @@ function init() {
     document.getElementById('gameUI').style.display = 'none';
     document.getElementById('bossHealthContainer').style.display = 'none';
     document.getElementById('gameOverOverlay').style.display = 'none';
+    document.getElementById('levelCompleteOverlay').style.display = 'none';
 }
 
 // Start actual gameplay
@@ -227,9 +267,14 @@ window.startGame = function() {
         debris = [];
         gameState.spawnPoint = { x: 100, y: 0 };
         gameState.checkpointsHit = 0;
-        gameState.score = 0;
-        gameState.rescues = 0;
-        gameState.lives = 3;
+        // Keep score/rescues if next level, else reset
+        if (gameState.screen === 'MENU') {
+            gameState.score = 0;
+            gameState.rescues = 0;
+            gameState.lives = 3;
+            gameState.currentLevel = 1;
+        }
+
         gameState.bossActive = false;
         gameState.screen = 'GAME';
         gameState.running = true;
@@ -242,6 +287,8 @@ window.startGame = function() {
         // Switch UI
         document.getElementById('menuOverlay').style.display = 'none';
         document.getElementById('gameUI').style.display = 'flex';
+        document.getElementById('levelCompleteOverlay').style.display = 'none';
+        updateUI();
 
         // Reset Time so we don't jump
         lastTime = 0;
@@ -255,6 +302,13 @@ window.startGame = function() {
         document.getElementById('gameUI').style.display = 'none';
     }
 }
+
+// Next Level Logic
+window.nextLevel = function() {
+    gameState.currentLevel++;
+    gameState.score += 1000;
+    window.startGame();
+};
 
 // Return to menu
 window.returnToBase = function() {
