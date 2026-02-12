@@ -758,6 +758,7 @@ class FallingBlock {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
         this.vx = 0; this.vy = 0;
         this.active = false;
+        this.hp = 100;
     }
     update() {
         // Trigger fall if player is near/under? Or just physics object?
@@ -873,6 +874,7 @@ class Helicopter {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
         this.isIntro = (x < 1000); // Hacky check if it's at start of level
+        this.hp = 1000;
     }
     update() {
         this.timer++;
@@ -918,6 +920,7 @@ class Helicopter {
 class Dumpster {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 60; this.h = 40;
+        this.hp = 100;
     }
     update() {
         // Gravity
@@ -940,6 +943,7 @@ class TrappedBeast {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
+        this.hp = 100; // Required to persist in entity list
     }
     update() {
         if (!this.freed && checkRectOverlap(this, player)) {
@@ -970,6 +974,7 @@ class Mailman {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 30; this.h = 60;
         this.vx = 2;
+        this.hp = 100;
     }
     update() {
         this.x += this.vx;
@@ -2398,23 +2403,37 @@ function generateLevel() {
             }
 
             // DECIDE RESCUE TYPE (Broforce: Often on high ground/cages)
-            // Increase frequency (beastsPlaced < 8) and reduce distance check (30)
-            if (beastsPlaced < 8 && (x - lastBeastX > 30) && secureRandom() < 0.08) {
-                if (secureRandom() < 0.5 && currentHeight > 6) {
+            // Increase frequency significantly (beastsPlaced < 20) and reduce distance check (15)
+            // Added Ground Spawns so they are impossible to miss
+            if (beastsPlaced < 20 && (x - lastBeastX > 15) && secureRandom() < 0.12) {
+                let rand = secureRandom();
+                // 40% Chance for Floating Island (High Ground)
+                if (rand < 0.4 && currentHeight > 6) {
                     let islandY = currentHeight - 4;
                     if (islandY > 2) {
                         newTiles[islandY][x] = { type: 1 }; // Anchor
-                        newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY + 1) * TILE_SIZE, islandY, x));
+                        newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY + 1) * TILE_SIZE));
                         beastsPlaced++;
                         lastBeastX = x;
 
                         // Guard Squad on the island or below?
-                        // Let's spawn a specialist ON the island
                         if (difficulty >= 3) newEntities.push(new ShieldBearer((x+1) * TILE_SIZE, (islandY) * TILE_SIZE));
                         else newEntities.push(new Enemy((x+1) * TILE_SIZE, (islandY) * TILE_SIZE));
 
                         // And a squad below to intercept player
                         spawnSquad(x, currentHeight-1);
+                    }
+                }
+                // 60% Chance for Ground Spawn (Easy to find)
+                else {
+                    // Place directly on ground
+                    let groundY = currentHeight - 1;
+                    if (groundY > 0) {
+                         newEntities.push(new TrappedBeast(x * TILE_SIZE, groundY * TILE_SIZE));
+                         beastsPlaced++;
+                         lastBeastX = x;
+                         // Guard Squad
+                         spawnSquad(x + 2, groundY);
                     }
                 }
             }
@@ -2470,11 +2489,11 @@ function generateLevel() {
                     }
 
                     // Hostage Check (Hidden in caves)
-                    if (beastsPlaced < 8 && (tx - lastBeastX > 30 || lastBeastX - tx > 30) && secureRandom() < 0.05) {
+                    if (beastsPlaced < 20 && (tx - lastBeastX > 15 || lastBeastX - tx > 15) && secureRandom() < 0.05) {
                         let beastY = tunnelY;
                         if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) {
                             newTiles[beastY-1][tx] = { type: 1 };
-                            newEntities.push(new TrappedBeast(tx * TILE_SIZE, (beastY + 1) * TILE_SIZE, beastY-1, tx));
+                            newEntities.push(new TrappedBeast(tx * TILE_SIZE, (beastY + 1) * TILE_SIZE));
                             beastsPlaced++;
                             lastBeastX = tx;
                             // Cave Guard
