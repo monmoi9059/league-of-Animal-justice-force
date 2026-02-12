@@ -18,7 +18,7 @@ class Player {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
 
         // Pick from unlocked characters
-        let unlockedChars = CHARACTERS.slice(0, globalUnlocked);
+        let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
         let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
         this.setCharacter(unlockedChars[newCharIndex].id);
 

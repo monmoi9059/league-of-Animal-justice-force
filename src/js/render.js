@@ -327,7 +327,7 @@ function drawRoster() {
     ctx.font = "20px 'Courier New'";
     ctx.fillStyle = "#00ff41";
     ctx.textAlign = "center";
-    ctx.fillText("ROSTER STATUS: " + globalUnlocked + " / " + CHARACTERS.length + " HEROES UNLOCKED", canvas.width/2, 50);
+    ctx.fillText("ROSTER STATUS: " + gameState.globalUnlocked + " / " + CHARACTERS.length + " HEROES UNLOCKED", canvas.width/2, 50);
 
     for(let i=0; i<CHARACTERS.length; i++) {
         let row = Math.floor(i / 10);
@@ -338,7 +338,7 @@ function drawRoster() {
         ctx.fillStyle = "rgba(255,255,255,0.1)";
         ctx.fillRect(cx-30, cy-30, 60, 60);
 
-        if (i < globalUnlocked) {
+        if (i < gameState.globalUnlocked) {
             ctx.save();
             ctx.translate(cx, cy);
             ctx.scale(0.8, 0.8);

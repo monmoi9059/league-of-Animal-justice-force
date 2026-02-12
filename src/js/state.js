@@ -10,6 +10,7 @@ window.gameState = {
     rescues: 0,
     lives: 3,
     unlockedCount: 1,
+    globalUnlocked: 1, // Alias for legacy code
     spawnPoint: { x: 100, y: 0 },
     bossActive: false,
     hitStop: 0,

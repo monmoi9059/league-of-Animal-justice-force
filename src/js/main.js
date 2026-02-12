@@ -281,7 +281,7 @@ window.startGame = function() {
 
         // Select random unlocked hero
         player = new Player();
-        let rnd = Math.floor(secureRandom() * globalUnlocked);
+        let rnd = Math.floor(secureRandom() * gameState.globalUnlocked);
         player.setCharacter(CHARACTERS[rnd].id);
 
         // Switch UI
