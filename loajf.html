@@ -945,7 +945,8 @@ class TrappedBeast {
         if (!this.freed && checkRectOverlap(this, player)) {
             this.freed = true;
             spawnExplosion(this.x, this.y, "green", 2);
-            // Give powerup?
+            gameState.rescues++;
+            unlockCharacter();
         }
     }
     draw(ctx, camX, camY) {
@@ -2334,8 +2335,8 @@ function generateLevel() {
                             newEntities.push(new TrappedBeast(tx * TILE_SIZE, (beastY + 1) * TILE_SIZE, beastY-1, tx));
                             beastsPlaced++;
                             lastBeastX = tx;
-                            // Cave Guard
-                            newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
+                            // Cave Guard Squad
+                            spawnSquad(tx+2, beastY+1);
                         }
                     }
                 }
@@ -2435,14 +2436,26 @@ function generateLevel() {
          spawnSquad(bossX + 5, bossY);
     } else {
         // Non-Boss Level: Spawn Captain to trigger extraction
-        let endX = (LEVEL_WIDTH - 20) * TILE_SIZE;
-        let endY = 8 * TILE_SIZE;
-        // Try to find ground
-        let tileX = Math.floor(endX/TILE_SIZE);
-        if (surfaceMap[tileX]) endY = (surfaceMap[tileX] - 2) * TILE_SIZE;
+        let tileX = LEVEL_WIDTH - 20;
+        // Ensure there is ground for the captain
+        let groundY = surfaceMap[tileX] || 10;
+
+        // Force ground if missing
+        if (groundY >= LEVEL_HEIGHT) {
+            groundY = LEVEL_HEIGHT - 5;
+            // Build a platform
+            for(let w=0; w<5; w++) {
+                if(tileX+w < LEVEL_WIDTH) newTiles[groundY][tileX+w] = { type: 2 };
+            }
+        }
+
+        let endX = tileX * TILE_SIZE;
+        let endY = (groundY - 2) * TILE_SIZE;
 
         newEntities.push(new CaptainEnemy(endX, endY));
-        spawnSquad(tileX - 2, Math.floor(endY/TILE_SIZE));
+        // Spawn guards at same location
+        spawnSquad(tileX - 2, groundY - 1);
+        spawnSquad(tileX + 2, groundY - 1);
     }
 
     entities = newEntities;
@@ -2832,10 +2845,38 @@ function updateUI() {
     if(player.charData) document.getElementById('charName').style.color = player.charData.cSkin;
 }
 
+function unlockCharacter() {
+    // Unlock new character
+    if (gameState.globalUnlocked < CHARACTERS.length) {
+        gameState.globalUnlocked++;
+    }
+    gameState.lives++; // Gain a life for rescue
+
+    // Switch Player Character Immediately (Broforce Style)
+    // Use the *latest* unlocked character or random unlocked?
+    // Broforce gives you the character you just rescued (or random from pool).
+    // Let's go with random unlocked to keep variety or simply the next one if linear.
+    // Let's use logic: We just unlocked index `gameState.globalUnlocked - 1`.
+
+    // Actually, to make it fun, let's switch to a RANDOM character from the UNLOCKED pool
+    // This simulates the "get a new hero" feel.
+
+    let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
+    let newChar = unlockedChars[Math.floor(secureRandom() * unlockedChars.length)];
+
+    player.setCharacter(newChar.id);
+    player.health = 3; // Refill health
+    spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "cyan");
+    updateUI();
+}
+
 // Expose for debugging/verification
 window.createExplosion = createExplosion;
 window.PropaneTank = PropaneTank;
 window.Bullet = Bullet;
+window.TrappedBeast = TrappedBeast;
+window.CaptainEnemy = CaptainEnemy;
+window.Helicopter = Helicopter;
 
 function winGame() {
     gameState.running = false;
