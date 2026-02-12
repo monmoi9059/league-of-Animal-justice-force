@@ -47,6 +47,7 @@ class FallingBlock {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
         this.vx = 0; this.vy = 0;
         this.active = false;
+        this.hp = 100;
     }
     update() {
         // Trigger fall if player is near/under? Or just physics object?
@@ -162,6 +163,7 @@ class Helicopter {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
         this.isIntro = (x < 1000); // Hacky check if it's at start of level
+        this.hp = 1000;
     }
     update() {
         this.timer++;
@@ -207,6 +209,7 @@ class Helicopter {
 class Dumpster {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 60; this.h = 40;
+        this.hp = 100;
     }
     update() {
         // Gravity
@@ -229,6 +232,7 @@ class TrappedBeast {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
+        this.hp = 100; // Required to persist in entity list
     }
     update() {
         if (!this.freed && checkRectOverlap(this, player)) {
@@ -236,6 +240,27 @@ class TrappedBeast {
             spawnExplosion(this.x, this.y, "green", 2);
             unlockCharacter();
             gameState.rescues++;
+
+            // Switch Character Logic
+            if (player) {
+                // Pick random unlocked character
+                let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
+                let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
+                let newCharId = unlockedChars[newCharIndex].id;
+
+                // Ensure switch if possible (optional, but good for UX)
+                if (unlockedChars.length > 1 && newCharId === player.charData.id) {
+                     newCharIndex = (newCharIndex + 1) % unlockedChars.length;
+                     newCharId = unlockedChars[newCharIndex].id;
+                }
+
+                player.setCharacter(newCharId);
+                player.health = 3; // Reset health
+                updateUI(); // Reflect health change
+
+                spawnExplosion(player.x, player.y, "white", 2);
+                spawnDamageNumber(player.x, player.y - 60, "SWITCH!", "cyan");
+            }
         }
     }
     draw(ctx, camX, camY) {
@@ -259,6 +284,7 @@ class Mailman {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 30; this.h = 60;
         this.vx = 2;
+        this.hp = 100;
     }
     update() {
         this.x += this.vx;

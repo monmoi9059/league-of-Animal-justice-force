@@ -1,5 +1,5 @@
 class Bullet {
-    constructor(x, y, dir, isSpecial, charData, isDown = false, isSecondary = false) {
+    constructor(x, y, dir, isSpecial, charData, isDown = false, isSecondary = false, isUp = false) {
         this.x = x; this.y = y;
         this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5;
         this.color = charData.pColor;
@@ -18,6 +18,13 @@ class Bullet {
             this.w = 8; this.h = 20; // Thin vertical projectile
         }
 
+        // UPWARD SHOT OVERRIDE
+        if (isUp) {
+            this.vx = 0;
+            this.vy = -15;
+            this.w = 8; this.h = 20; // Thin vertical projectile
+        }
+
         // SECONDARY THROW OVERRIDE (Melee chars)
         if (isSecondary) {
              this.vx = dir * 12;
@@ -27,18 +34,28 @@ class Bullet {
         }
 
         // TYPE SPECIFIC ADJUSTMENTS (Overrides defaults unless specific action like Down/Secondary)
-        if (!isDown && !isSecondary) {
+        if (!isDown && !isSecondary && !isUp) {
             if (this.type === 'spread') { this.w = 8; this.h = 8; this.vx = dir * 15 + (secureRandom()-0.5)*5; this.vy = (secureRandom()-0.5)*10; }
             if (this.type === 'rocket' || this.type === 'grenade') { this.w = 12; this.h = 12; this.vy = -5; }
             if (this.type === 'boomerang') { this.w = 20; this.h = 20; this.life = 100; }
             if (this.type === 'bolt') { this.w = 25; this.h = 10; }
             if (this.type === 'laser') { this.w = 40; this.h = 5; this.vx = dir * 25; }
             if (this.type === 'magic') { this.w = 10; this.h = 10; this.baseY = y; this.timer = 0; }
+
+            // NEW WEAPONS
+            if (this.type === 'fireball') { this.w = 20; this.h = 20; this.vx = dir * 12; }
+            if (this.type === 'ice_beam') { this.w = 30; this.h = 6; this.vx = dir * 20; }
+            if (this.type === 'sonic_wave') { this.w = 10; this.h = 40; this.vx = dir * 8; this.life = 120; }
+            if (this.type === 'lightning') { this.w = 50; this.h = 4; this.vx = dir * 40; } // Very fast
+            if (this.type === 'shuriken') { this.w = 15; this.h = 15; this.vx = dir * 18; this.rotation = 0; }
+            if (this.type === 'water_gun') { this.w = 12; this.h = 12; this.vx = dir * 14; this.vy = (secureRandom()-0.5)*5; }
+            if (this.type === 'acid_spit') { this.w = 10; this.h = 10; this.vx = dir * 10; this.vy = -8; } // Arc
+            if (this.type === 'card_throw') { this.w = 12; this.h = 4; this.vx = dir * 22; }
         }
     }
     update() {
         // MOVEMENT LOGIC
-        if (this.type === 'grenade' || this.type === 'rocket') {
+        if (this.type === 'grenade' || this.type === 'rocket' || this.type === 'acid_spit') {
             this.vy += 0.3; // Gravity
             this.x += this.vx; this.y += this.vy;
         }
@@ -56,6 +73,14 @@ class Bullet {
         else if (this.type === 'magic' && this.vx !== 0) {
             this.timer++; this.x += this.vx; this.y = this.baseY + Math.sin(this.timer * 0.2) * 20;
         }
+        else if (this.type === 'shuriken') {
+            this.x += this.vx; this.y += this.vy;
+            this.rotation += 0.5;
+        }
+        else if (this.type === 'sonic_wave') {
+             this.x += this.vx; this.w += 0.5; this.h += 1; // Grow
+             this.y -= 0.5; // Center growth approx
+        }
         else { // Standard Linear (includes Down Shot)
             this.x += this.vx; this.y += this.vy;
         }
@@ -64,9 +89,15 @@ class Bullet {
 
         // COLLISIONS
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
+        let hitWall = false;
+
         if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             let t = tiles[r][c];
-            if (t.type === 1 || t.type === 2) {
+            // Sonic wave passes through walls but eventually dies? Or just passes?
+            if (this.type === 'sonic_wave') {
+                 // Pass through, but maybe small visual effect?
+            }
+            else if (t.type === 1 || t.type === 2) {
                 if(this.type === 'boomerang' && this.vx !== 0) {
                     this.returnState = 1;
                     if (t.type === 1) {
@@ -79,7 +110,7 @@ class Bullet {
                     this.life = 0;
                     if (t.type === 1) { tiles[r][c] = { type: 0 }; }
                     // Reduced destroy radius from 2 to 1 for smaller destruction
-                    if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.vy > 0) destroyRadius(c, r, 1);
+                    if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.type === 'fireball' || this.vy > 0) destroyRadius(c, r, 1);
                 }
             }
         }
@@ -128,11 +159,41 @@ class Bullet {
              ctx.fillStyle = "#27ae60";
              ctx.fillRect(cx+this.w/2-2, cy-2, 4, 4); // Pin
         }
-        else if (this.type === 'bolt' || this.type === 'laser') {
+        else if (this.type === 'bolt' || this.type === 'laser' || this.type === 'ice_beam' || this.type === 'lightning') {
              ctx.fillStyle = this.color;
              ctx.shadowBlur = 10; ctx.shadowColor = this.color;
              drawRoundedRect(ctx, cx, cy, this.w, this.h, 2);
              ctx.shadowBlur = 0;
+        }
+        else if (this.type === 'fireball') {
+             ctx.fillStyle = "#FF4500";
+             ctx.beginPath(); ctx.arc(cx+this.w/2, cy+this.h/2, 10, 0, Math.PI*2); ctx.fill();
+             ctx.fillStyle = "#FFFF00";
+             ctx.beginPath(); ctx.arc(cx+this.w/2, cy+this.h/2, 6, 0, Math.PI*2); ctx.fill();
+        }
+        else if (this.type === 'shuriken') {
+             ctx.save();
+             ctx.translate(cx + this.w/2, cy + this.h/2);
+             ctx.rotate(this.rotation || 0);
+             ctx.fillStyle = "#C0C0C0";
+             ctx.beginPath();
+             for(let i=0; i<4; i++) {
+                 ctx.rotate(Math.PI/2);
+                 ctx.moveTo(0,0); ctx.lineTo(8, 0); ctx.lineTo(2, 2); ctx.lineTo(0, 0);
+             }
+             ctx.fill();
+             ctx.restore();
+        }
+        else if (this.type === 'sonic_wave') {
+             ctx.strokeStyle = this.color; ctx.lineWidth = 2;
+             ctx.beginPath(); ctx.arc(cx, cy+this.h/2, this.h, -Math.PI/4, Math.PI/4); ctx.stroke();
+             ctx.beginPath(); ctx.arc(cx-10, cy+this.h/2, this.h-10, -Math.PI/4, Math.PI/4); ctx.stroke();
+        }
+        else if (this.type === 'card_throw') {
+             ctx.fillStyle = "#fff";
+             ctx.fillRect(cx, cy, this.w, this.h);
+             ctx.fillStyle = "red";
+             ctx.beginPath(); ctx.arc(cx+this.w/2, cy+this.h/2, 2, 0, Math.PI*2); ctx.fill();
         }
         else {
             // Standard
