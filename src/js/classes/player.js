@@ -13,6 +13,7 @@ class Player {
         this.lastY = this.y;
         this.secondaryCooldown = 0;
         this.attackAnim = { type: null, timer: 0, max: 0 };
+        this.wallJumpLocked = false;
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
@@ -27,7 +28,7 @@ class Player {
         spawnExplosion(this.x, this.y, "#00ff41", 2);
     }
 
-    // --- NEW HELPER METHOD FOR WALL DETECTION ---
+    // --- WALL DETECTION ---
     checkWall(dir) {
         if (!tiles) return false;
         let sensorSize = 2; // Check 2 pixels away
@@ -61,7 +62,11 @@ class Player {
             }
             // Optional: Slight heal or invincibility?
             // Let's just make it cool for now.
-            return; // Skip physics/movement if flexing? Maybe gravity should still apply?
+            // Gravity still applies
+            this.vy += GRAVITY;
+            this.y += this.vy;
+            this.checkCollisions(false);
+            return;
         }
 
         // LADDER CHECK
@@ -90,7 +95,7 @@ class Player {
 
         let isWallSliding = false;
 
-        // Must be airborne, pressing against a wall, and moving downwards
+        // Must be airborne, pressing against a wall, moving downwards, and pressing INTO the wall
         if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
             isWallSliding = true;
 
@@ -103,6 +108,7 @@ class Player {
                 this.vy = JUMP_FORCE;
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
+                this.facing = -wallDir; // Face away
 
                 // Visuals
                 spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, C.dirtLight, 0.5);
@@ -155,8 +161,18 @@ class Player {
         }
 
         // Dust particles for wall slide
-        if (isWallSliding && this.animFrame % 5 === 0) {
+        if (isWallSliding && gameState.frame % 5 === 0) {
              particles.push(new Particle(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h, "#fff"));
+        }
+
+        // Apply Shoot Input (Separate from movement)
+        if((keys['z'] || keys['j']) && shootCooldown <= 0) {
+            let isDown = keys['arrowdown'] || keys['s'];
+            this.shoot(false, isDown);
+            shootCooldown = 15;
+        }
+        if((keys['x'] || keys['k']) && specialCooldown <= 0) {
+            this.shoot(true, false); specialCooldown = 120;
         }
 
         this.x += this.vx; this.checkCollisions(true);
@@ -165,10 +181,9 @@ class Player {
         if(this.invincible > 0) this.invincible--;
         if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
     }
+
     checkCollisions(isX) {
         if (!tiles) return;
-        // STANDARD AABB COLLISION (Simplified for stability)
-        // No "skin" offsets needed because character size (24x30) is smaller than tile (40x40)
 
         let l = Math.floor(this.x / TILE_SIZE);
         let r = Math.floor((this.x + this.w - 0.01) / TILE_SIZE);

@@ -280,7 +280,7 @@ window.startGame = function() {
         particles = [];
         damageNumbers = [];
         debris = [];
-        gameState.spawnPoint = { x: 100, y: 0 };
+        // gameState.spawnPoint = { x: 100, y: 0 }; // Replaced by Heli logic below
         gameState.checkpointsHit = 0;
         // Keep score/rescues if next level, else reset
         if (gameState.screen === 'MENU') {
@@ -298,6 +298,34 @@ window.startGame = function() {
         player = new Player();
         let rnd = Math.floor(secureRandom() * gameState.globalUnlocked);
         player.setCharacter(CHARACTERS[rnd].id);
+
+        // --- HELICOPTER INTRO ---
+        // Spawn Heli at start
+        let startX = 2 * TILE_SIZE;
+        let startY = 2 * TILE_SIZE;
+        // Ensure start area is clear of walls (handled by level gen, but let's be safe)
+
+        // Visual Heli (Just a prop or the existing class?)
+        // Existing class has update logic that might fly away or extract.
+        // We can use the existing Helicopter class but maybe trick it or just spawn it for visuals.
+        // Actually, let's just spawn player high up and simulate the drop.
+        // Or spawn a "IntroHelicopter" that flies away.
+
+        // Spawn standard Helicopter but at start
+        let introHeli = new Helicopter(startX, startY);
+        // We need to modify Helicopter to NOT extract player immediately if spawned at start?
+        // Helicopter class logic: checkRectOverlap(this, player) -> levelComplete.
+        // We should make a separate IntroHelicopter or just place player slightly below it so they fall.
+
+        entities.push(introHeli);
+
+        // Player starts falling from heli
+        player.x = startX + 20;
+        player.y = startY + 60;
+        player.vy = 5; // Initial drop velocity
+        gameState.spawnPoint = { x: player.x, y: player.y }; // Update spawn point
+
+        spawnExplosion(player.x, player.y, "#fff", 1); // "Dust off" effect
 
         // Switch UI
         document.getElementById('menuOverlay').style.display = 'none';

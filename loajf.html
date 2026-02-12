@@ -818,6 +818,7 @@ class Helicopter {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
+        this.isIntro = (x < 1000); // Hacky check if it's at start of level
     }
     update() {
         this.timer++;
@@ -825,8 +826,16 @@ class Helicopter {
         this.y += Math.sin(this.timer * 0.1) * 2;
 
         // Extraction
-        if (checkRectOverlap(this, player)) {
+        // Only extract if it's NOT the intro heli
+        if (!this.isIntro && checkRectOverlap(this, player)) {
             gameState.levelComplete = true;
+        }
+
+        // If intro heli, fly away after a bit
+        if (this.isIntro && this.timer > 100) {
+            this.y -= 2;
+            this.x -= 2;
+            if(this.y < -200) this.x = -9999;
         }
     }
     draw(ctx, camX, camY) {
@@ -1596,6 +1605,7 @@ class Player {
         this.lastY = this.y;
         this.secondaryCooldown = 0;
         this.attackAnim = { type: null, timer: 0, max: 0 };
+        this.wallJumpLocked = false;
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
@@ -1610,7 +1620,7 @@ class Player {
         spawnExplosion(this.x, this.y, "#00ff41", 2);
     }
     
-    // --- NEW HELPER METHOD FOR WALL DETECTION ---
+    // --- WALL DETECTION ---
     checkWall(dir) {
         if (!tiles) return false;
         let sensorSize = 2; // Check 2 pixels away
@@ -1644,7 +1654,11 @@ class Player {
             }
             // Optional: Slight heal or invincibility?
             // Let's just make it cool for now.
-            return; // Skip physics/movement if flexing? Maybe gravity should still apply?
+            // Gravity still applies
+            this.vy += GRAVITY;
+            this.y += this.vy;
+            this.checkCollisions(false);
+            return;
         }
 
         // LADDER CHECK
@@ -1673,7 +1687,7 @@ class Player {
 
         let isWallSliding = false;
         
-        // Must be airborne, pressing against a wall, and moving downwards
+        // Must be airborne, pressing against a wall, moving downwards, and pressing INTO the wall
         if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
             isWallSliding = true;
             
@@ -1686,6 +1700,7 @@ class Player {
                 this.vy = JUMP_FORCE;
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
+                this.facing = -wallDir; // Face away
                 
                 // Visuals
                 spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, C.dirtLight, 0.5);
@@ -1738,8 +1753,18 @@ class Player {
         }
         
         // Dust particles for wall slide
-        if (isWallSliding && this.animFrame % 5 === 0) {
+        if (isWallSliding && gameState.frame % 5 === 0) {
              particles.push(new Particle(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h, "#fff"));
+        }
+
+        // Apply Shoot Input (Separate from movement)
+        if((keys['z'] || keys['j']) && shootCooldown <= 0) {
+            let isDown = keys['arrowdown'] || keys['s'];
+            this.shoot(false, isDown);
+            shootCooldown = 15;
+        }
+        if((keys['x'] || keys['k']) && specialCooldown <= 0) {
+            this.shoot(true, false); specialCooldown = 120;
         }
 
         this.x += this.vx; this.checkCollisions(true);
@@ -1748,10 +1773,9 @@ class Player {
         if(this.invincible > 0) this.invincible--;
         if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
     }
+
     checkCollisions(isX) {
         if (!tiles) return;
-        // STANDARD AABB COLLISION (Simplified for stability)
-        // No "skin" offsets needed because character size (24x30) is smaller than tile (40x40)
         
         let l = Math.floor(this.x / TILE_SIZE);
         let r = Math.floor((this.x + this.w - 0.01) / TILE_SIZE);
@@ -2851,7 +2875,7 @@ window.startGame = function() {
         particles = [];
         damageNumbers = [];
         debris = [];
-        gameState.spawnPoint = { x: 100, y: 0 };
+        // gameState.spawnPoint = { x: 100, y: 0 }; // Replaced by Heli logic below
         gameState.checkpointsHit = 0;
         // Keep score/rescues if next level, else reset
         if (gameState.screen === 'MENU') {
@@ -2869,6 +2893,34 @@ window.startGame = function() {
         player = new Player();
         let rnd = Math.floor(secureRandom() * gameState.globalUnlocked);
         player.setCharacter(CHARACTERS[rnd].id);
+
+        // --- HELICOPTER INTRO ---
+        // Spawn Heli at start
+        let startX = 2 * TILE_SIZE;
+        let startY = 2 * TILE_SIZE;
+        // Ensure start area is clear of walls (handled by level gen, but let's be safe)
+
+        // Visual Heli (Just a prop or the existing class?)
+        // Existing class has update logic that might fly away or extract.
+        // We can use the existing Helicopter class but maybe trick it or just spawn it for visuals.
+        // Actually, let's just spawn player high up and simulate the drop.
+        // Or spawn a "IntroHelicopter" that flies away.
+
+        // Spawn standard Helicopter but at start
+        let introHeli = new Helicopter(startX, startY);
+        // We need to modify Helicopter to NOT extract player immediately if spawned at start?
+        // Helicopter class logic: checkRectOverlap(this, player) -> levelComplete.
+        // We should make a separate IntroHelicopter or just place player slightly below it so they fall.
+
+        entities.push(introHeli);
+
+        // Player starts falling from heli
+        player.x = startX + 20;
+        player.y = startY + 60;
+        player.vy = 5; // Initial drop velocity
+        gameState.spawnPoint = { x: player.x, y: player.y }; // Update spawn point
+
+        spawnExplosion(player.x, player.y, "#fff", 1); // "Dust off" effect
 
         // Switch UI
         document.getElementById('menuOverlay').style.display = 'none';

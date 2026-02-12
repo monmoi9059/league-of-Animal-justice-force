@@ -162,6 +162,7 @@ class Helicopter {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
+        this.isIntro = (x < 1000); // Hacky check if it's at start of level
     }
     update() {
         this.timer++;
@@ -169,8 +170,16 @@ class Helicopter {
         this.y += Math.sin(this.timer * 0.1) * 2;
 
         // Extraction
-        if (checkRectOverlap(this, player)) {
+        // Only extract if it's NOT the intro heli
+        if (!this.isIntro && checkRectOverlap(this, player)) {
             gameState.levelComplete = true;
+        }
+
+        // If intro heli, fly away after a bit
+        if (this.isIntro && this.timer > 100) {
+            this.y -= 2;
+            this.x -= 2;
+            if(this.y < -200) this.x = -9999;
         }
     }
     draw(ctx, camX, camY) {
