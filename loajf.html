@@ -2282,13 +2282,13 @@ class Player {
     draw(ctx, camX, camY) {
         if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
         let cx = this.x - camX + this.w/2;
-        let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));
+        let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY)) - 22;
 
         ctx.save();
         ctx.translate(cx, cy);
         ctx.scale(this.facing * this.stretchX, this.stretchY);
         // Shadow
-        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 25, 20, 5, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 37, 20, 5, 0, 0, Math.PI*2); ctx.fill();
         drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim);
         ctx.restore();
     }
