@@ -413,6 +413,40 @@ function destroyRadius(cx, cy, r) {
         }
     }
 }
+
+function createExplosion(x, y, radiusTiles, damage) {
+    // 1. Visuals
+    spawnExplosion(x, y, "orange", radiusTiles * 2);
+    shakeCamera(radiusTiles * 5);
+
+    // 2. Terrain Destruction
+    let c = Math.floor(x / TILE_SIZE);
+    let r = Math.floor(y / TILE_SIZE);
+    destroyRadius(c, r, radiusTiles);
+
+    // 3. Entity Damage (Chain Reaction)
+    let radiusPx = radiusTiles * TILE_SIZE * 1.5; // Slightly larger hitbox than terrain
+
+    // Check all entities
+    entities.forEach(e => {
+        if (e.hp !== undefined && e.hp > 0 && Math.abs(e.x - x) < radiusPx && Math.abs(e.y - y) < radiusPx) {
+            // Check distance
+            let dist = Math.hypot(e.x + e.w/2 - x, e.y + e.h/2 - y);
+            if (dist < radiusPx) {
+                if(e.takeDamage) e.takeDamage(damage, x);
+            }
+        }
+    });
+
+    // Check Player
+    if (player && Math.abs(player.x - x) < radiusPx && Math.abs(player.y - y) < radiusPx) {
+        let dist = Math.hypot(player.x + player.w/2 - x, player.y + player.h/2 - y);
+        if (dist < radiusPx) {
+            player.takeDamage(1);
+        }
+    }
+}
+
 function shakeCamera(amount) {
     gameState.shake = amount;
     if(amount > 10) gameState.hitStop = 3;
@@ -700,9 +734,8 @@ class PropaneTank {
         this.vx = (this.x - sourceX) > 0 ? 5 : -5;
         this.vy = -5;
         if(this.hp <= 0) {
-            spawnExplosion(this.x + this.w/2, this.y + this.h/2, "orange", 4);
-            // Chain reaction logic handled by explosion
             this.x = -9999;
+            createExplosion(this.x + this.w/2, this.y + this.h/2, 3, 5); // 3 tile radius, 5 dmg
         }
     }
     draw(ctx, camX, camY) {
@@ -1137,8 +1170,8 @@ class KamikazeEnemy extends Enemy {
         this.x += this.vx;
     }
     explode() {
-        spawnExplosion(this.x + 20, this.y + 30, "orange", 3);
         this.x = -9999;
+        createExplosion(this.x + 20, this.y + 30, 2, 2);
     }
     takeDamage(amt, sourceX) {
         super.takeDamage(amt, sourceX);
@@ -2114,6 +2147,42 @@ function generateLevel() {
         }
     }
 
+    function buildOutpost(x, y) {
+        let width = 6 + Math.floor(secureRandom() * 4);
+        let height = 5 + Math.floor(secureRandom() * 4);
+
+        // Structure
+        for(let r=y-height; r<y; r++) {
+            for(let c=x; c<x+width; c++) {
+                if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH) {
+                    // Floors
+                    if (r === y - height || r === y - Math.floor(height/2)) {
+                         newTiles[r][c] = { type: 1 }; // Dirt/Wood floor
+                    }
+                    // Walls
+                    else if (c === x || c === x + width - 1) {
+                         newTiles[r][c] = { type: 1 };
+                    }
+                    // Empty space inside
+                    else {
+                        newTiles[r][c] = { type: 0 };
+                    }
+                }
+            }
+        }
+        // Ladder
+        let ladderX = x + Math.floor(width/2);
+        for(let r=y-height; r<y; r++) {
+            if(r>=0) newTiles[r][ladderX] = { type: 6 };
+        }
+
+        // Populate
+        newEntities.push(new PropaneTank((x+1)*TILE_SIZE, (y-1)*TILE_SIZE));
+        newEntities.push(new PropaneTank((x+width-2)*TILE_SIZE, (y-1)*TILE_SIZE));
+        spawnSquad(x + Math.floor(width/2), y - 1);
+        spawnSquad(x + Math.floor(width/2), y - Math.floor(height/2) - 1);
+    }
+
     // 1. Init Empty Grid
     for (let r = 0; r < LEVEL_HEIGHT; r++) {
         newTiles[r] = new Array(LEVEL_WIDTH).fill(null).map(() => ({ type: 0 }));
@@ -2150,6 +2219,16 @@ function generateLevel() {
             }
             if (currentHeight < 6) currentHeight = 6;
             if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
+
+            // Randomly build Outpost (Broforce style buildings)
+            if (secureRandom() < 0.05 && x < LEVEL_WIDTH - 50) {
+                 buildOutpost(x, currentHeight);
+                 // Fill surfaceMap for skipped section to prevent crashes in Pass 3
+                 for(let i=0; i<=10; i++) surfaceMap[x+i] = currentHeight;
+                 // Skip ahead a bit
+                 x += 10;
+                 continue; // Skip terrain gen for this chunk
+            }
 
             // Pit Chance (More pits in later levels)
             let pitChance = 0.02 + (difficulty * 0.01);
@@ -2289,8 +2368,10 @@ function generateLevel() {
                  newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
             }
         }
-        else if (secureRandom() < 0.03 + (difficulty*0.01)) {
-            if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
+        else if (secureRandom() < 0.08 + (difficulty*0.02)) { // Increased barrel density
+            if (y > 0 && newTiles[y-1] && newTiles[y-1][x] && newTiles[y-1][x].type === 0) {
+                 newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
+            }
         }
 
         // ENEMY ENCOUNTERS (Clusters)
@@ -2750,6 +2831,11 @@ function updateUI() {
     document.getElementById('charName').innerText = charName;
     if(player.charData) document.getElementById('charName').style.color = player.charData.cSkin;
 }
+
+// Expose for debugging/verification
+window.createExplosion = createExplosion;
+window.PropaneTank = PropaneTank;
+window.Bullet = Bullet;
 
 function winGame() {
     gameState.running = false;
