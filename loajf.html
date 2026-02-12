@@ -951,6 +951,27 @@ class TrappedBeast {
             spawnExplosion(this.x, this.y, "green", 2);
             unlockCharacter();
             gameState.rescues++;
+
+            // Switch Character Logic
+            if (player) {
+                // Pick random unlocked character
+                let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
+                let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
+                let newCharId = unlockedChars[newCharIndex].id;
+
+                // Ensure switch if possible (optional, but good for UX)
+                if (unlockedChars.length > 1 && newCharId === player.charData.id) {
+                     newCharIndex = (newCharIndex + 1) % unlockedChars.length;
+                     newCharId = unlockedChars[newCharIndex].id;
+                }
+
+                player.setCharacter(newCharId);
+                player.health = 3; // Reset health
+                updateUI(); // Reflect health change
+
+                spawnExplosion(player.x, player.y, "white", 2);
+                spawnDamageNumber(player.x, player.y - 60, "SWITCH!", "cyan");
+            }
         }
     }
     draw(ctx, camX, camY) {
