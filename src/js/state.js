@@ -31,3 +31,8 @@ window.particles = [];
 window.damageNumbers = [];
 window.debris = [];
 window.player = null;
+
+// Global Cooldowns
+window.shootCooldown = 0;
+window.specialCooldown = 0;
+window.lastTime = 0;
