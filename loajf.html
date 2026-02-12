@@ -278,6 +278,7 @@ window.FRICTION = 0.85;
 window.ACCELERATION = 0.8;
 window.JUMP_FORCE = -13;
 window.TERMINAL_VELOCITY = 15;
+window.MAX_LEVEL_WIDTH = 400;
 window.LEVEL_WIDTH = 400;
 window.LEVEL_HEIGHT = 60;
 window.FPS = 60;
@@ -1978,9 +1979,19 @@ function generateLevel() {
     if (difficulty >= 3) biome = 'city';
     if (difficulty >= 5) biome = 'volcano';
 
+    // Scaling Level Width
+    // Start at 150, cap at 400 around level 20
+    let targetWidth = 150 + (difficulty * 12);
+    if (targetWidth > window.MAX_LEVEL_WIDTH) targetWidth = window.MAX_LEVEL_WIDTH;
+    // Special case: Level 20+ always max width (Boss Arena logic relies on it)
+    if (difficulty >= 20) targetWidth = window.MAX_LEVEL_WIDTH;
+
+    window.LEVEL_WIDTH = Math.floor(targetWidth);
+
     // Update global level data for rendering
     gameState.levelData.biome = biome;
     gameState.levelData.difficulty = difficulty;
+    gameState.levelData.width = window.LEVEL_WIDTH;
 
     // Helper: Spawn Enemy Squad
     function spawnSquad(x, y) {
@@ -2070,8 +2081,8 @@ function generateLevel() {
             }
 
             // DECIDE RESCUE TYPE (Broforce: Often on high ground/cages)
-            // Increase frequency (beastsPlaced < 8) and reduce distance check (30)
-            if (beastsPlaced < 8 && (x - lastBeastX > 30) && secureRandom() < 0.08) {
+            // Increase frequency (beastsPlaced < 8) and reduce distance check (20)
+            if (beastsPlaced < 8 && (x - lastBeastX > 20) && secureRandom() < 0.15) {
                 if (secureRandom() < 0.5 && currentHeight > 6) {
                     let islandY = currentHeight - 4; 
                     if (islandY > 2) {
@@ -2142,7 +2153,7 @@ function generateLevel() {
                     }
 
                     // Hostage Check (Hidden in caves)
-                    if (beastsPlaced < 8 && (tx - lastBeastX > 30 || lastBeastX - tx > 30) && secureRandom() < 0.05) {
+                    if (beastsPlaced < 8 && (tx - lastBeastX > 20 || lastBeastX - tx > 20) && secureRandom() < 0.10) {
                         let beastY = tunnelY;
                         if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) {
                             newTiles[beastY-1][tx] = { type: 1 };
@@ -2210,7 +2221,17 @@ function generateLevel() {
     }
 
     // Boss Spawning Logic
-    if (difficulty < 20) {
+    if (difficulty >= 20) {
+         // Level 20+: Special Room
+         // Boss is in the arena at the end
+         newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
+
+         // Traps/Turrets in arena?
+         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
+         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
+    }
+    // Only spawn bosses every 5 levels (e.g., 5, 10, 15) if < 20
+    else if (difficulty % 5 === 0) {
          // Spawn Boss in normal terrain (Last 30% of map)
          let spawnRangeStart = Math.floor(LEVEL_WIDTH * 0.7);
          let bossX = spawnRangeStart + Math.floor(secureRandom() * (LEVEL_WIDTH - spawnRangeStart - 5));
@@ -2233,15 +2254,6 @@ function generateLevel() {
          // Boss Entourage
          spawnSquad(bossX - 5, bossY);
          spawnSquad(bossX + 5, bossY);
-
-    } else {
-         // Level 20+: Special Room
-         // Boss is in the arena at the end
-         newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
-
-         // Traps/Turrets in arena?
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
     }
 
     entities = newEntities;
