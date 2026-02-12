@@ -837,6 +837,7 @@ class Helicopter {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
+        this.hp = 9999; // Prevent cleanup
         this.isIntro = (x < 1000); // Hacky check if it's at start of level
     }
     update() {
@@ -882,6 +883,7 @@ class Helicopter {
 class Dumpster {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 60; this.h = 40;
+        this.hp = 100; // Prevent cleanup
     }
     update() {
         // Gravity
@@ -904,6 +906,7 @@ class TrappedBeast {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
+        this.hp = 100; // Prevent cleanup
     }
     update() {
         if (!this.freed && checkRectOverlap(this, player)) {
@@ -933,6 +936,7 @@ class Mailman {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 30; this.h = 60;
         this.vx = 2;
+        this.hp = 100; // Prevent cleanup
     }
     update() {
         this.x += this.vx;
@@ -1323,6 +1327,77 @@ class ShieldBearer extends Enemy {
         // Helmet
         ctx.fillStyle = "#2c3e50";
         ctx.beginPath(); ctx.arc(cx+20, cy-5, 12, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+class CaptainEnemy extends Enemy {
+    constructor(x, y) {
+        super(x, y);
+        this.hp = 15 + (gameState.currentLevel * 2);
+        this.w = 50; this.h = 70;
+        this.color = "#9b59b6"; // Purple
+    }
+    update() {
+        this.vy += GRAVITY;
+        this.y += this.vy;
+
+        let r = Math.floor((this.y + this.h) / TILE_SIZE);
+        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+            this.y = r * TILE_SIZE - this.h;
+            this.vy = 0;
+        }
+
+        let dist = Math.abs(player.x - this.x);
+        if (dist < 600) {
+            this.facing = player.x < this.x ? -1 : 1;
+
+            // Shoot logic
+            this.shootTimer++;
+            if (this.shootTimer > 90) { // Burst fire
+                 this.shootBurst();
+                 this.shootTimer = 0;
+            }
+        }
+    }
+    shootBurst() {
+        for(let i=0; i<3; i++) {
+            setTimeout(() => {
+                if(this.hp <= 0) return;
+                let angle = Math.atan2(player.y - this.y, player.x - this.x);
+                let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false);
+                b.vx = Math.cos(angle) * 12;
+                b.vy = Math.sin(angle) * 12;
+                b.color = "gold";
+                entities.push(b);
+            }, i * 100);
+        }
+    }
+    takeDamage(amt, sourceX) {
+        this.hp -= amt;
+        spawnDamageNumber(this.x, this.y, amt * 10, "gold");
+        if (this.hp <= 0) {
+             let deathX = this.x;
+             let deathY = this.y;
+             spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
+             this.x = -9999;
+             // Spawn Extraction Heli slightly above
+             entities.push(new Helicopter(deathX, deathY - 50));
+        }
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(cx, cy, this.w, this.h);
+        // Uniform
+        ctx.fillStyle = "gold";
+        ctx.fillRect(cx + (this.facing===1?20:-10), cy + 10, 40, 5); // Shoulder pad
+        // Hat
+        ctx.fillStyle = "#2c3e50";
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+this.w, cy); ctx.lineTo(cx+this.w-5, cy-15); ctx.lineTo(cx+5, cy-15); ctx.fill();
+        ctx.fillStyle = "gold";
+        ctx.beginPath(); ctx.arc(cx+this.w/2, cy-10, 3, 0, Math.PI*2); ctx.fill();
     }
 }
 
@@ -2025,16 +2100,17 @@ function generateLevel() {
              // Heavy Squad: 1 Heavy + 1 Shield
              newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE));
              newEntities.push(new ShieldBearer((x+2) * TILE_SIZE, y * TILE_SIZE));
-        } else if (type < 0.4) {
+        } else if (type < 0.15 + (difficulty * 0.05)) { // Reduced chance at low levels
              // Suicide Squad: 3 Kamikazes
              newEntities.push(new KamikazeEnemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x+1) * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x-1) * TILE_SIZE, y * TILE_SIZE));
         } else {
-             // Standard Patrol: 2-3 Grunts
+             // Standard Patrol: 2-4 Grunts (Increased pack size)
              newEntities.push(new Enemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-             if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+             if (secureRandom() < 0.7) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+             if (secureRandom() < 0.3) newEntities.push(new Enemy((x+2) * TILE_SIZE, y * TILE_SIZE));
         }
     }
 
@@ -2219,8 +2295,11 @@ function generateLevel() {
 
         // ENEMY ENCOUNTERS (Clusters)
         // Spawn a squad every ~15-25 tiles, with some randomness
-        if (x - lastEncounterX > (15 - difficulty)) { // More frequent in hard levels
-             if (secureRandom() < 0.4) {
+        let threshold = 14 - (difficulty * 0.5);
+        if (threshold < 6) threshold = 6;
+
+        if (x - lastEncounterX > threshold) {
+             if (secureRandom() < 0.65) { // Increased spawn rate
                  spawnSquad(x, y-1);
                  lastEncounterX = x;
              }
@@ -2273,6 +2352,16 @@ function generateLevel() {
          // Boss Entourage
          spawnSquad(bossX - 5, bossY);
          spawnSquad(bossX + 5, bossY);
+    } else {
+        // Non-Boss Level: Spawn Captain to trigger extraction
+        let endX = (LEVEL_WIDTH - 20) * TILE_SIZE;
+        let endY = 8 * TILE_SIZE;
+        // Try to find ground
+        let tileX = Math.floor(endX/TILE_SIZE);
+        if (surfaceMap[tileX]) endY = (surfaceMap[tileX] - 2) * TILE_SIZE;
+
+        newEntities.push(new CaptainEnemy(endX, endY));
+        spawnSquad(tileX - 2, Math.floor(endY/TILE_SIZE));
     }
 
     entities = newEntities;
@@ -2742,6 +2831,12 @@ function loop(timestamp) {
                 damageNumbers = damageNumbers.filter(d => d.life > 0);
                 damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
                 debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
+
+                // Check for Level Completion
+                if (gameState.levelComplete) {
+                    winGame();
+                    gameState.levelComplete = false;
+                }
             }
 
             if (player) {
