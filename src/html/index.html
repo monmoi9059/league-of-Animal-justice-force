@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>League of Animal Justice Avenger Force: Operation Dumpster Fire</title>
     <!-- CSS_INJECTION_POINT -->
 </head>
 <body>
 
-    <h1>League of Animal Justice Avenger Force</h1>
-
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="900" height="500"></canvas>
+        <!-- Canvas size will be set by JS -->
+        <canvas id="gameCanvas"></canvas>
         <div id="errorOverlay"></div>
         <div id="debugHUD">Initializing...</div>
 
@@ -30,14 +30,17 @@
 
         <!-- MAIN MENU -->
         <div id="menuOverlay" class="overlay-screen">
-            <!-- Canvas will draw the grid behind this -->
+             <!-- Title in Menu -->
+             <h1 style="font-size: 32px; color: #00ff41; margin-bottom: 40px; text-align: center; max-width: 80%;">
+                LEAGUE OF ANIMAL JUSTICE<br>AVENGER FORCE
+            </h1>
             <button onclick="window.startGame()">DEPLOY SQUAD</button>
             <button onclick="window.viewRoster()">VIEW TEAM</button>
         </div>
 
         <!-- ROSTER MENU -->
         <div id="rosterOverlay" class="overlay-screen">
-            <button onclick="window.returnToMenu()">BACK</button>
+            <button onclick="window.returnToMenu()" style="position: absolute; bottom: 30px;">BACK</button>
         </div>
 
         <!-- LEVEL COMPLETE -->
@@ -57,10 +60,10 @@
             <p id="ovMsg" style="margin-bottom: 30px; font-size: 20px;">The HOA has won.</p>
             <button onclick="window.returnToBase()">RETURN TO BASE</button>
         </div>
-    </div>
 
-    <div class="controls">
-        ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack | F: Flex
+        <div class="controls">
+            ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack | F: Flex
+        </div>
     </div>
 
     <!-- JS_INJECTION_POINT -->

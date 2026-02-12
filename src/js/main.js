@@ -235,10 +235,25 @@ function loop(timestamp) {
     requestAnimationFrame(loop);
 }
 
+// RESIZE HANDLING
+function handleResize() {
+    if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Redraw menu if active, as it's static
+        if (gameState.screen === 'MENU') drawMenu();
+        if (gameState.screen === 'ROSTER') drawRoster();
+    }
+}
+
 // MAIN INIT FUNCTION
 function init() {
     console.log("INIT() CALLED");
     lastTime = 0;
+
+    // Resize setup
+    window.addEventListener('resize', handleResize);
+    handleResize();
 
     // Set to MENU initially
     gameState.screen = 'MENU';
