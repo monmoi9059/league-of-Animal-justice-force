@@ -1,0 +1,275 @@
+
+class PropaneTank {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
+        this.hp = 10;
+        this.vx = 0; this.vy = 0;
+        this.type = 'prop';
+    }
+    update() {
+        this.vy += GRAVITY;
+        this.y += this.vy;
+
+        // Simple floor collision
+        let r = Math.floor((this.y + this.h) / TILE_SIZE);
+        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+             this.y = r * TILE_SIZE - this.h;
+             this.vy = 0;
+             this.vx *= 0.8;
+        }
+        this.x += this.vx;
+    }
+    takeDamage(amt, sourceX) {
+        this.hp -= amt;
+        this.vx = (this.x - sourceX) > 0 ? 5 : -5;
+        this.vy = -5;
+        if(this.hp <= 0) {
+            spawnExplosion(this.x + this.w/2, this.y + this.h/2, "orange", 4);
+            // Chain reaction logic handled by explosion
+            this.x = -9999;
+        }
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+        ctx.fillStyle = "#e74c3c"; // Red tank
+        drawRoundedRect(ctx, cx + 5, cy + 5, this.w - 10, this.h - 5, 5);
+        ctx.fillStyle = "#bdc3c7"; // Valve
+        ctx.fillRect(cx + 12, cy, 16, 5);
+        ctx.fillStyle = "white";
+        ctx.font = "10px Arial";
+        ctx.fillText("GAS", cx+10, cy+25);
+    }
+}
+
+class FallingBlock {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
+        this.vx = 0; this.vy = 0;
+        this.active = false;
+    }
+    update() {
+        // Trigger fall if player is near/under? Or just physics object?
+        // Let's make it a physics object that falls if unsupported
+        this.vy += GRAVITY;
+        this.y += this.vy;
+
+        let r = Math.floor((this.y + this.h) / TILE_SIZE);
+        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+             this.y = r * TILE_SIZE - this.h;
+             this.vy = 0;
+        }
+
+        // Damage player if falls on head?
+        if (Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) {
+            if (checkRectOverlap(this, player)) {
+                player.takeDamage(10);
+            }
+        }
+    }
+    draw(ctx, camX, camY) {
+        ctx.fillStyle = "#7f8c8d";
+        ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        ctx.strokeStyle = "#2c3e50";
+        ctx.strokeRect(this.x - camX, this.y - camY, this.w, this.h);
+    }
+}
+
+class BridgeBlock {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
+        this.hp = 20;
+    }
+    update() {}
+    takeDamage(amt) {
+        this.hp -= amt;
+        if (this.hp <= 0) {
+            this.x = -9999;
+            spawnExplosion(this.x, this.y, "grey", 1);
+        }
+    }
+    draw(ctx, camX, camY) {
+        ctx.fillStyle = "#8e44ad"; // Purple bridge?
+        ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        ctx.beginPath();
+        ctx.moveTo(this.x - camX, this.y - camY);
+        ctx.lineTo(this.x - camX + this.w, this.y - camY + this.h);
+        ctx.stroke();
+    }
+}
+
+class MechSuit {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 60; this.h = 80;
+        this.occupied = false;
+        this.hp = 500;
+    }
+    update() {
+        if (!this.occupied) {
+            // Apply gravity
+            this.y += 5; // Simple gravity
+             let r = Math.floor((this.y + this.h) / TILE_SIZE);
+             let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+                 this.y = r * TILE_SIZE - this.h;
+             }
+
+            // Interaction
+            if (Math.abs(player.x - this.x) < 50 && Math.abs(player.y - this.y) < 50 && keys['e']) {
+                this.enter();
+            }
+        }
+    }
+    enter() {
+        this.occupied = true;
+        player.inMech = true;
+        player.mech = this;
+        // Visual effect
+        spawnExplosion(this.x + 30, this.y + 40, "cyan", 2);
+    }
+    eject() {
+        this.occupied = false;
+        player.inMech = false;
+        player.mech = null;
+        this.x = player.x;
+        this.y = player.y;
+        this.hp = 0; // Destroy after use? Or leave it? Let's destroy it to prevent spam
+        spawnExplosion(this.x + 30, this.y + 40, "cyan", 5);
+        this.x = -9999;
+    }
+    draw(ctx, camX, camY) {
+        if (this.occupied) return; // Drawn with player
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+        ctx.fillStyle = "#34495e";
+        drawRoundedRect(ctx, cx, cy, this.w, this.h, 10);
+        ctx.fillStyle = "#f1c40f"; // Glass
+        ctx.fillRect(cx + 15, cy + 10, 30, 20);
+        // Legs
+        ctx.fillStyle = "#2c3e50";
+        ctx.fillRect(cx + 10, cy + 60, 15, 20);
+        ctx.fillRect(cx + 35, cy + 60, 15, 20);
+        // Arms
+        ctx.fillRect(cx - 10, cy + 20, 10, 30);
+        ctx.fillRect(cx + 60, cy + 20, 10, 30);
+    }
+}
+
+class Helicopter {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 120; this.h = 60;
+        this.timer = 0;
+        this.isIntro = (x < 1000); // Hacky check if it's at start of level
+    }
+    update() {
+        this.timer++;
+        // Hover
+        this.y += Math.sin(this.timer * 0.1) * 2;
+
+        // Extraction
+        // Only extract if it's NOT the intro heli
+        if (!this.isIntro && checkRectOverlap(this, player)) {
+            gameState.levelComplete = true;
+        }
+
+        // If intro heli, fly away after a bit
+        if (this.isIntro && this.timer > 100) {
+            this.y -= 2;
+            this.x -= 2;
+            if(this.y < -200) this.x = -9999;
+        }
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+        ctx.fillStyle = "#27ae60"; // Green friendly heli
+        drawRoundedRect(ctx, cx, cy, 100, 50, 10);
+        // Rotor
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(cx - 20, cy - 10, 140, 5);
+        // Tail
+        ctx.fillStyle = "#27ae60";
+        ctx.fillRect(cx - 40, cy + 10, 40, 10);
+        ctx.fillRect(cx - 50, cy, 10, 30);
+
+        // Ladder
+        ctx.strokeStyle = "#fff";
+        ctx.beginPath();
+        ctx.moveTo(cx + 50, cy + 50);
+        ctx.lineTo(cx + 50, cy + 100);
+        ctx.stroke();
+    }
+}
+
+class Dumpster {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 60; this.h = 40;
+    }
+    update() {
+        // Gravity
+        this.y += 5;
+        let r = Math.floor((this.y + this.h) / TILE_SIZE);
+        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+             this.y = r * TILE_SIZE - this.h;
+        }
+    }
+    draw(ctx, camX, camY) {
+        ctx.fillStyle = "#2c3e50"; // Dark blue
+        ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        ctx.fillStyle = "#95a5a6"; // Lid
+        ctx.fillRect(this.x - camX - 2, this.y - camY - 5, this.w + 4, 5);
+    }
+}
+
+class TrappedBeast {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 40; this.h = 40;
+        this.freed = false;
+    }
+    update() {
+        if (!this.freed && checkRectOverlap(this, player)) {
+            this.freed = true;
+            spawnExplosion(this.x, this.y, "green", 2);
+            // Give powerup?
+        }
+    }
+    draw(ctx, camX, camY) {
+        if (this.freed) return;
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+        // Cage
+        ctx.strokeStyle = "#bdc3c7";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx, cy, this.w, this.h);
+        for(let i=10; i<this.w; i+=10) {
+            ctx.beginPath(); ctx.moveTo(cx+i, cy); ctx.lineTo(cx+i, cy+this.h); ctx.stroke();
+        }
+        // Beast inside
+        ctx.fillStyle = "#e67e22";
+        ctx.beginPath(); ctx.arc(cx+20, cy+20, 10, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+class Mailman {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 30; this.h = 60;
+        this.vx = 2;
+    }
+    update() {
+        this.x += this.vx;
+        // Turn around
+        let c = Math.floor((this.x + (this.vx>0?this.w:0)) / TILE_SIZE);
+        let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
+        if (tiles[r] && tiles[r][c] && tiles[r][c].solid) this.vx *= -1;
+    }
+    draw(ctx, camX, camY) {
+        ctx.fillStyle = "#3498db"; // Uniform
+        ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        ctx.fillStyle = "#ecf0f1"; // Bag
+        ctx.fillRect(this.x - camX - 5, this.y - camY + 20, 10, 20);
+    }
+}

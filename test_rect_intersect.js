@@ -1,4 +1,4 @@
-const { rectIntersect } = require('./physics.js');
+const { rectIntersect } = require('./src/js/physics.js');
 
 function runTests() {
     let passed = 0;
