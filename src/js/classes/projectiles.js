@@ -4,6 +4,7 @@ class Bullet {
         this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5;
         this.color = charData.pColor;
         this.type = charData.pType;
+        this.isEnemy = charData.isEnemy || false;
         this.returnState = 0;
 
         // DEFAULT VELOCITIES
@@ -83,16 +84,27 @@ class Bullet {
             }
         }
 
-        // ENEMY COLLISIONS
-        for(let i=0; i<entities.length; i++) {
-            let e = entities[i];
-            if((e.hp !== undefined && e.hp > 0)) {
-                if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
-                    if(e.takeDamage) e.takeDamage(this.isSpecial ? 5 : 1);
-                    if (this.type !== 'boomerang') this.life = 0;
-                    else this.returnState = 1;
+        // ENEMY COLLISIONS (Player Bullets Only)
+        if (!this.isEnemy) {
+            for(let i=0; i<entities.length; i++) {
+                let e = entities[i];
+                if((e.hp !== undefined && e.hp > 0)) {
+                    if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
+                        if(e.takeDamage) e.takeDamage(this.isSpecial ? 5 : 1);
+                        if (this.type !== 'boomerang') this.life = 0;
+                        else this.returnState = 1;
+                    }
                 }
             }
+        }
+
+        // PLAYER COLLISION (Enemy Bullets Only)
+        if (this.isEnemy && player) {
+             if(rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) {
+                  player.takeDamage(this.isSpecial ? 2 : 1);
+                  if (this.type !== 'boomerang') this.life = 0;
+                  else this.returnState = 1;
+             }
         }
     }
 

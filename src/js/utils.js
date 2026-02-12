@@ -43,3 +43,45 @@ function shakeCamera(amount) {
     gameState.shake = amount;
     if(amount > 10) gameState.hitStop = 3;
 }
+
+function createExplosion(x, y, radius, damage) {
+    // Visuals
+    spawnExplosion(x, y, "orange", radius);
+
+    // Terrain Destruction
+    let c = Math.floor(x / TILE_SIZE);
+    let r = Math.floor(y / TILE_SIZE);
+    destroyRadius(c, r, radius);
+
+    // Entity Damage (Player)
+    if (player) {
+        let dist = Math.sqrt(Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2));
+        // Radius is in tiles, so convert to pixels. Giving slight grace area.
+        if (dist < (radius * TILE_SIZE) + 20) {
+            player.takeDamage(damage);
+        }
+    }
+
+    // Entity Damage (Enemies)
+    for(let i=0; i<entities.length; i++) {
+        let e = entities[i];
+        if (e.hp > 0) {
+            let dist = Math.sqrt(Math.pow(e.x - x, 2) + Math.pow(e.y - y, 2));
+            if (dist < (radius * TILE_SIZE) + 20) {
+                 if(e.takeDamage) e.takeDamage(damage, x);
+            }
+        }
+    }
+}
+
+function unlockCharacter() {
+    if (gameState.globalUnlocked < CHARACTERS.length) {
+        gameState.globalUnlocked++;
+        gameState.unlockedCount = gameState.globalUnlocked;
+        spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "gold");
+        // Maybe visual effect?
+        spawnExplosion(player.x, player.y, "gold", 2);
+    } else {
+        spawnDamageNumber(player.x, player.y - 40, "MAX ROSTER!", "gold");
+    }
+}
