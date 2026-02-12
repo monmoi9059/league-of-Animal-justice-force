@@ -484,7 +484,8 @@ class Bullet {
         this.x = x; this.y = y;
         this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5;
 
-        if (charData) {
+        // Robust check for charData to prevent crashes
+        if (charData && typeof charData === 'object' && charData.pColor) {
             this.color = charData.pColor;
             this.type = charData.pType;
             this.isPlayerBullet = true;
@@ -722,7 +723,8 @@ class PropaneTank {
         // Simple floor collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        // Corrected collision
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
              this.vx *= 0.8;
@@ -735,7 +737,7 @@ class PropaneTank {
         this.vy = -5;
         if(this.hp <= 0) {
             this.x = -9999;
-            createExplosion(this.x + this.w/2, this.y + this.h/2, 3, 5); // 3 tile radius, 5 dmg
+            createExplosion(this.x + this.w/2, this.y + this.h/2, 3, 5);
         }
     }
     draw(ctx, camX, camY) {
@@ -758,21 +760,18 @@ class FallingBlock {
         this.active = false;
     }
     update() {
-        // Trigger fall if player is near/under? Or just physics object?
-        // Let's make it a physics object that falls if unsupported
         this.vy += GRAVITY;
         this.y += this.vy;
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
         }
 
-        // Damage player if falls on head?
-        if (Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) {
+        if (player && (Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2)) {
             if (checkRectOverlap(this, player)) {
                 player.takeDamage(10);
             }
@@ -800,7 +799,7 @@ class BridgeBlock {
         }
     }
     draw(ctx, camX, camY) {
-        ctx.fillStyle = "#8e44ad"; // Purple bridge?
+        ctx.fillStyle = "#8e44ad";
         ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
         ctx.beginPath();
         ctx.moveTo(this.x - camX, this.y - camY);
@@ -817,16 +816,14 @@ class MechSuit {
     }
     update() {
         if (!this.occupied) {
-            // Apply gravity
-            this.y += 5; // Simple gravity
+            this.y += 5;
              let r = Math.floor((this.y + this.h) / TILE_SIZE);
              let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
                  this.y = r * TILE_SIZE - this.h;
              }
 
-            // Interaction
-            if (Math.abs(player.x - this.x) < 50 && Math.abs(player.y - this.y) < 50 && keys['e']) {
+            if (player && Math.abs(player.x - this.x) < 50 && Math.abs(player.y - this.y) < 50 && keys['e']) {
                 this.enter();
             }
         }
@@ -835,7 +832,6 @@ class MechSuit {
         this.occupied = true;
         player.inMech = true;
         player.mech = this;
-        // Visual effect
         spawnExplosion(this.x + 30, this.y + 40, "cyan", 2);
     }
     eject() {
@@ -844,17 +840,17 @@ class MechSuit {
         player.mech = null;
         this.x = player.x;
         this.y = player.y;
-        this.hp = 0; // Destroy after use? Or leave it? Let's destroy it to prevent spam
+        this.hp = 0;
         spawnExplosion(this.x + 30, this.y + 40, "cyan", 5);
         this.x = -9999;
     }
     draw(ctx, camX, camY) {
-        if (this.occupied) return; // Drawn with player
+        if (this.occupied) return;
         let cx = this.x - camX;
         let cy = this.y - camY;
         ctx.fillStyle = "#34495e";
         drawRoundedRect(ctx, cx, cy, this.w, this.h, 10);
-        ctx.fillStyle = "#f1c40f"; // Glass
+        ctx.fillStyle = "#f1c40f";
         ctx.fillRect(cx + 15, cy + 10, 30, 20);
         // Legs
         ctx.fillStyle = "#2c3e50";
@@ -870,21 +866,17 @@ class Helicopter {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
-        this.hp = 9999; // Prevent cleanup
-        this.isIntro = (x < 1000); // Hacky check if it's at start of level
+        this.hp = 9999;
+        this.isIntro = (x < 1000);
     }
     update() {
         this.timer++;
-        // Hover
         this.y += Math.sin(this.timer * 0.1) * 2;
 
-        // Extraction
-        // Only extract if it's NOT the intro heli
-        if (!this.isIntro && checkRectOverlap(this, player)) {
+        if (player && !this.isIntro && checkRectOverlap(this, player)) {
             gameState.levelComplete = true;
         }
 
-        // If intro heli, fly away after a bit
         if (this.isIntro && this.timer > 100) {
             this.y -= 2;
             this.x -= 2;
@@ -894,7 +886,7 @@ class Helicopter {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = "#27ae60"; // Green friendly heli
+        ctx.fillStyle = "#27ae60";
         drawRoundedRect(ctx, cx, cy, 100, 50, 10);
         // Rotor
         ctx.fillStyle = "rgba(0,0,0,0.5)";
@@ -923,7 +915,7 @@ class Dumpster {
         this.y += 5;
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
              this.y = r * TILE_SIZE - this.h;
         }
     }
@@ -942,7 +934,7 @@ class TrappedBeast {
         this.hp = 100; // Prevent cleanup
     }
     update() {
-        if (!this.freed && checkRectOverlap(this, player)) {
+        if (!this.freed && player && checkRectOverlap(this, player)) {
             this.freed = true;
             spawnExplosion(this.x, this.y, "green", 2);
             gameState.rescues++;
@@ -977,7 +969,7 @@ class Mailman {
         // Turn around
         let c = Math.floor((this.x + (this.vx>0?this.w:0)) / TILE_SIZE);
         let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
-        if (tiles[r] && tiles[r][c] && tiles[r][c].solid) this.vx *= -1;
+        if (tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) this.vx *= -1;
     }
     draw(ctx, camX, camY) {
         ctx.fillStyle = "#3498db"; // Uniform
@@ -1000,32 +992,31 @@ class Enemy {
         this.vy = 0;
         this.hp = 3;
         this.facing = 1;
-        this.state = 'patrol'; // patrol, chase, attack
+        this.state = 'patrol';
         this.timer = 0;
         this.shootTimer = 0;
+        this.color = "#e74c3c"; // Default color asset
     }
 
     update() {
-        // Gravity
         this.vy += GRAVITY;
         this.y += this.vy;
 
-        // Collision with map
+        // Corrected Map Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        // Check for type 1 (Dirt) or 2 (Stone)
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
 
-        // AI Logic
-        let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
-
-        if (dist < 400) {
-            this.state = 'chase';
-        } else {
-            this.state = 'patrol';
+        // AI
+        if (player) {
+            let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
+            if (dist < 400) this.state = 'chase';
+            else this.state = 'patrol';
         }
 
         if (this.state === 'patrol') {
@@ -1036,16 +1027,15 @@ class Enemy {
             }
             this.timer--;
 
-            // Turn at walls/edges
+            // Turn at walls
             let nextC = Math.floor((this.x + this.w/2 + this.vx*20) / TILE_SIZE);
-            if (tiles[r] && tiles[r][nextC] && tiles[r][nextC].solid) {
+            if (tiles[r] && tiles[r][nextC] && (tiles[r][nextC].type === 1 || tiles[r][nextC].type === 2)) {
                 this.vx *= -1; this.facing *= -1;
             }
-        } else if (this.state === 'chase') {
+        } else if (this.state === 'chase' && player) {
             this.facing = player.x < this.x ? -1 : 1;
             this.vx = this.facing * 3;
 
-            // Shoot
             this.shootTimer++;
             if (this.shootTimer > 60) {
                 this.shoot();
@@ -1057,9 +1047,10 @@ class Enemy {
     }
 
     shoot() {
+        if (!player) return;
         let angle = Math.atan2(player.y - this.y, player.x - this.x);
-        // Add inaccuracy
         angle += (Math.random() - 0.5) * 0.2;
+        // Pass minimal valid args
         let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false);
         b.vx = Math.cos(angle) * 8;
         b.vy = Math.sin(angle) * 8;
@@ -1069,35 +1060,28 @@ class Enemy {
     takeDamage(amt, sourceX) {
         this.hp -= amt;
         spawnDamageNumber(this.x, this.y, amt * 10);
-        // Knockback
         this.vx = (this.x - sourceX) > 0 ? 5 : -5;
         this.vy = -3;
 
         if (this.hp <= 0) {
             spawnExplosion(this.x + this.w/2, this.y + this.h/2, "red", 1);
-            this.x = -9999; // Remove
+            this.x = -9999;
         }
     }
 
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-
         // Body
-        ctx.fillStyle = "#e74c3c";
+        ctx.fillStyle = this.color;
         ctx.fillRect(cx, cy, this.w, this.h);
-
         // Head band
         ctx.fillStyle = "#c0392b";
         ctx.fillRect(cx, cy + 10, this.w, 10);
-
         // Gun
         ctx.fillStyle = "#2c3e50";
-        if (this.facing === 1) {
-            ctx.fillRect(cx + 20, cy + 30, 30, 10);
-        } else {
-            ctx.fillRect(cx - 10, cy + 30, 30, 10);
-        }
+        if (this.facing === 1) ctx.fillRect(cx + 20, cy + 30, 30, 10);
+        else ctx.fillRect(cx - 10, cy + 30, 30, 10);
     }
 }
 
@@ -1108,12 +1092,11 @@ class FlyingEnemy extends Enemy {
         this.hp = 2;
     }
     update() {
-        // Fly logic: hover towards player
+        if (!player) return;
         let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
         if (dist < 500) {
             this.vx = (player.x - this.x) * 0.01;
             this.vy = (player.y - this.y - 100) * 0.01;
-
             this.shootTimer++;
             if (this.shootTimer > 100) {
                 this.shoot();
@@ -1123,7 +1106,6 @@ class FlyingEnemy extends Enemy {
             this.vx *= 0.9;
             this.vy *= 0.9;
         }
-
         this.x += this.vx;
         this.y += this.vy;
     }
@@ -1131,10 +1113,7 @@ class FlyingEnemy extends Enemy {
         let cx = this.x - camX;
         let cy = this.y - camY;
         ctx.fillStyle = "#8e44ad";
-        ctx.beginPath();
-        ctx.arc(cx + 20, cy + 20, 20, 0, Math.PI*2);
-        ctx.fill();
-        // Wings
+        ctx.beginPath(); ctx.arc(cx + 20, cy + 20, 20, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
         ctx.beginPath(); ctx.ellipse(cx, cy+10, 20, 10, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(cx+40, cy+10, 20, 10, 0, 0, Math.PI*2); ctx.fill();
@@ -1146,6 +1125,7 @@ class KamikazeEnemy extends Enemy {
         super(x, y);
         this.hp = 1;
         this.speed = 4;
+        this.color = "#d35400";
     }
     update() {
         this.vy += GRAVITY;
@@ -1153,19 +1133,17 @@ class KamikazeEnemy extends Enemy {
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
 
-        let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
-        if (dist < 400) {
-            this.facing = player.x < this.x ? -1 : 1;
-            this.vx = this.facing * this.speed;
-
-            // Scream?
-            if (dist < 50) {
-                this.explode();
+        if (player) {
+            let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
+            if (dist < 400) {
+                this.facing = player.x < this.x ? -1 : 1;
+                this.vx = this.facing * this.speed;
+                if (dist < 50) this.explode();
             }
         }
         this.x += this.vx;
@@ -1181,12 +1159,10 @@ class KamikazeEnemy extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = "#d35400"; // Pumpkin orange
+        ctx.fillStyle = this.color;
         ctx.fillRect(cx, cy, this.w, this.h);
-        // Bomb strapped
         ctx.fillStyle = "#2c3e50";
         ctx.fillRect(cx+5, cy+20, 30, 20);
-        // Fuse spark
         if (Math.random() < 0.5) {
              ctx.fillStyle = "yellow";
              ctx.fillRect(cx+15, cy+10, 5, 5);
@@ -1199,6 +1175,7 @@ class HeavyGunner extends Enemy {
         super(x, y);
         this.hp = 10;
         this.w = 50; this.h = 70;
+        this.color = "#27ae60";
     }
     update() {
         this.vy += GRAVITY;
@@ -1206,25 +1183,27 @@ class HeavyGunner extends Enemy {
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
 
-        let dist = Math.abs(player.x - this.x);
-        if (dist < 500) {
-            this.facing = player.x < this.x ? -1 : 1;
-            // Does not move, just shoots minigun
-            this.shootTimer++;
-            if (this.shootTimer > 10) { // Fast fire
-                 this.shoot();
-                 this.shootTimer = 0;
+        if (player) {
+            let dist = Math.abs(player.x - this.x);
+            if (dist < 500) {
+                this.facing = player.x < this.x ? -1 : 1;
+                this.shootTimer++;
+                if (this.shootTimer > 10) {
+                     this.shoot();
+                     this.shootTimer = 0;
+                }
             }
         }
     }
     shoot() {
+        if (!player) return;
         let angle = Math.atan2(player.y - this.y, player.x - this.x);
-        angle += (Math.random() - 0.5) * 0.4; // Wide spread
+        angle += (Math.random() - 0.5) * 0.4;
         let b = new Bullet(this.x + this.w/2, this.y + 30, 1, false);
         b.vx = Math.cos(angle) * 10;
         b.vy = Math.sin(angle) * 10;
@@ -1233,9 +1212,8 @@ class HeavyGunner extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = "#27ae60"; // Green armor
+        ctx.fillStyle = this.color;
         ctx.fillRect(cx, cy, this.w, this.h);
-        // Minigun
         ctx.fillStyle = "#2c3e50";
         ctx.fillRect(cx - 10, cy + 30, 70, 20);
     }
@@ -1247,6 +1225,7 @@ class SniperEnemy extends Enemy {
         this.hp = 2;
         this.range = 800;
         this.aimTimer = 0;
+        this.color = "#3498db";
     }
     update() {
         this.vy += GRAVITY;
@@ -1254,38 +1233,38 @@ class SniperEnemy extends Enemy {
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
 
-        let dist = Math.abs(player.x - this.x);
-        if (dist < this.range) {
-             this.aimTimer++;
-             if (this.aimTimer > 180) { // 3 seconds aim
-                 this.shoot();
-                 this.aimTimer = 0;
-             }
-        } else {
-            this.aimTimer = 0;
+        if (player) {
+            let dist = Math.abs(player.x - this.x);
+            if (dist < this.range) {
+                 this.aimTimer++;
+                 if (this.aimTimer > 180) {
+                     this.shoot();
+                     this.aimTimer = 0;
+                 }
+            } else {
+                this.aimTimer = 0;
+            }
         }
     }
     shoot() {
-        // High velocity, accurate
+        if (!player) return;
         let angle = Math.atan2(player.y - this.y, player.x - this.x);
-        let b = new Bullet(this.x + this.w/2, this.y + 20, 2, false); // 2 dmg
+        let b = new Bullet(this.x + this.w/2, this.y + 20, 2, false);
         b.vx = Math.cos(angle) * 20;
         b.vy = Math.sin(angle) * 20;
         entities.push(b);
-        // Laser effect?
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = "#34495e"; // Camo
+        ctx.fillStyle = this.color;
         ctx.fillRect(cx, cy, this.w, this.h);
-        // Laser sight
-        if (this.aimTimer > 100) {
+        if (this.aimTimer > 100 && player) {
             ctx.strokeStyle = "rgba(231, 76, 60, 0.5)";
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -1301,6 +1280,7 @@ class ShieldBearer extends Enemy {
         super(x, y);
         this.hp = 8;
         this.shieldUp = true;
+        this.color = "#7f8c8d";
     }
     update() {
         this.vy += GRAVITY;
@@ -1308,35 +1288,32 @@ class ShieldBearer extends Enemy {
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
 
-        // Patrol / Chase slowly
-        if (Math.abs(player.x - this.x) < 300) {
+        if (player && Math.abs(player.x - this.x) < 300) {
             this.facing = player.x < this.x ? -1 : 1;
-            this.vx = this.facing * 1; // Slow march
+            this.vx = this.facing * 1;
         }
         this.x += this.vx;
 
-        // Block Logic: Shield is up if facing player
-        this.shieldUp = (player.x < this.x && this.facing === -1) || (player.x > this.x && this.facing === 1);
+        if (player) {
+            this.shieldUp = (player.x < this.x && this.facing === -1) || (player.x > this.x && this.facing === 1);
+        }
     }
     takeDamage(amt, sourceX) {
-        // Check if hit from front
         let hitFromFront = (sourceX < this.x && this.facing === -1) || (sourceX > this.x && this.facing === 1);
-
         if (this.shieldUp && hitFromFront) {
-            spawnExplosion(this.x + 20, this.y + 20, "blue", 1); // Spark off shield
+            spawnExplosion(this.x + 20, this.y + 20, "blue", 1);
             spawnDamageNumber(this.x, this.y - 20, "BLOCKED!", "blue");
-            this.hp -= amt * 0.1; // Chip damage
+            this.hp -= amt * 0.1;
         } else {
             this.hp -= amt;
             spawnExplosion(this.x + 20, this.y + 20, "red", 2);
             spawnDamageNumber(this.x, this.y, amt * 10);
         }
-
         if (this.hp <= 0) {
              this.x = -9999;
              spawnExplosion(this.x, this.y, "red", 3);
@@ -1345,20 +1322,11 @@ class ShieldBearer extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-
-        // Body
-        ctx.fillStyle = "#7f8c8d";
+        ctx.fillStyle = this.color;
         drawRoundedRect(ctx, cx, cy, this.w, this.h, 5);
-
-        // Shield
-        ctx.fillStyle = "#3498db"; // Energy Shield
-        if (this.facing === -1) {
-            ctx.fillRect(cx - 10, cy, 10, this.h);
-        } else {
-            ctx.fillRect(cx + this.w, cy, 10, this.h);
-        }
-
-        // Helmet
+        ctx.fillStyle = "#3498db";
+        if (this.facing === -1) ctx.fillRect(cx - 10, cy, 10, this.h);
+        else ctx.fillRect(cx + this.w, cy, 10, this.h);
         ctx.fillStyle = "#2c3e50";
         ctx.beginPath(); ctx.arc(cx+20, cy-5, 12, 0, Math.PI*2); ctx.fill();
     }
@@ -1369,7 +1337,7 @@ class CaptainEnemy extends Enemy {
         super(x, y);
         this.hp = 15 + (gameState.currentLevel * 2);
         this.w = 50; this.h = 70;
-        this.color = "#9b59b6"; // Purple
+        this.color = "#9b59b6";
     }
     update() {
         this.vy += GRAVITY;
@@ -1377,27 +1345,28 @@ class CaptainEnemy extends Enemy {
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
 
-        let dist = Math.abs(player.x - this.x);
-        if (dist < 600) {
-            this.facing = player.x < this.x ? -1 : 1;
-
-            // Shoot logic
-            this.shootTimer++;
-            if (this.shootTimer > 90) { // Burst fire
-                 this.shootBurst();
-                 this.shootTimer = 0;
+        if (player) {
+            let dist = Math.abs(player.x - this.x);
+            if (dist < 600) {
+                this.facing = player.x < this.x ? -1 : 1;
+                this.shootTimer++;
+                if (this.shootTimer > 90) {
+                     this.shootBurst();
+                     this.shootTimer = 0;
+                }
             }
         }
     }
     shootBurst() {
+        if (!player) return;
         for(let i=0; i<3; i++) {
             setTimeout(() => {
-                if(this.hp <= 0) return;
+                if(this.hp <= 0 || !player) return;
                 let angle = Math.atan2(player.y - this.y, player.x - this.x);
                 let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false);
                 b.vx = Math.cos(angle) * 12;
@@ -1415,7 +1384,6 @@ class CaptainEnemy extends Enemy {
              let deathY = this.y;
              spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
              this.x = -9999;
-             // Spawn Extraction Heli slightly above
              entities.push(new Helicopter(deathX, deathY - 50));
         }
     }
@@ -1424,10 +1392,8 @@ class CaptainEnemy extends Enemy {
         let cy = this.y - camY;
         ctx.fillStyle = this.color;
         ctx.fillRect(cx, cy, this.w, this.h);
-        // Uniform
         ctx.fillStyle = "gold";
-        ctx.fillRect(cx + (this.facing===1?20:-10), cy + 10, 40, 5); // Shoulder pad
-        // Hat
+        ctx.fillRect(cx + (this.facing===1?20:-10), cy + 10, 40, 5);
         ctx.fillStyle = "#2c3e50";
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+this.w, cy); ctx.lineTo(cx+this.w-5, cy-15); ctx.lineTo(cx+5, cy-15); ctx.fill();
         ctx.fillStyle = "gold";
