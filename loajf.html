@@ -2134,7 +2134,7 @@ function generateLevel() {
              // Heavy Squad: 1 Heavy + 1 Shield
              newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE));
              newEntities.push(new ShieldBearer((x+2) * TILE_SIZE, y * TILE_SIZE));
-        } else if (type < 0.15 + (difficulty * 0.05)) { // Reduced chance at low levels
+        } else if (difficulty >= 3 && type < 0.15 + (difficulty * 0.05)) { // Only spawn Kamikazes at difficulty 3+
              // Suicide Squad: 3 Kamikazes
              newEntities.push(new KamikazeEnemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x+1) * TILE_SIZE, y * TILE_SIZE));
@@ -2391,7 +2391,7 @@ function generateLevel() {
         if (secureRandom() < 0.02) {
              if (difficulty >= 2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        if (secureRandom() < 0.02) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        if (secureRandom() < 0.01) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
