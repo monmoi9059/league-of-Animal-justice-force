@@ -43,6 +43,71 @@ class PropaneTank {
     }
 }
 
+class Landmine {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 20; this.h = 5;
+        this.hp = 1;
+        this.active = true;
+        this.timer = 0;
+    }
+    update() {
+        if (!this.active) return;
+        this.timer++;
+
+        // Gravity
+        this.y += 5;
+        let r = Math.floor((this.y + this.h) / TILE_SIZE);
+        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+             this.y = r * TILE_SIZE - this.h;
+        }
+
+        // Player Collision
+        if (checkRectOverlap(this, player)) {
+            this.explode();
+        }
+
+        // Enemy Collision (Friendly Fire!)
+        // Optimization: Check rarely
+        if (this.timer % 10 === 0) {
+            for(let e of entities) {
+                if (e !== this && e.hp > 0 && (e instanceof Enemy || e instanceof ShieldBearer || e instanceof HeavyGunner)) {
+                    if (checkRectOverlap(this, e)) this.explode();
+                }
+            }
+        }
+    }
+    takeDamage(amt) {
+        this.explode();
+    }
+    explode() {
+        if (!this.active) return;
+        this.active = false;
+        spawnExplosion(this.x + 10, this.y, "orange", 3);
+        // Damage handled by explosion radius usually, but let's ensure player takes hit
+        if (Math.abs(player.x - this.x) < 60 && Math.abs(player.y - this.y) < 60) {
+            player.takeDamage(1);
+        }
+        // Destroy terrain
+        let c = Math.floor(this.x / TILE_SIZE);
+        let r = Math.floor(this.y / TILE_SIZE);
+        destroyRadius(c, r, 1);
+
+        this.x = -9999;
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+        ctx.fillStyle = "#333";
+        ctx.beginPath(); ctx.arc(cx+10, cy+5, 8, 0, Math.PI, true); ctx.fill();
+        // Blinking light
+        if (Math.floor(Date.now() / 200) % 2 === 0) {
+            ctx.fillStyle = "red";
+            ctx.beginPath(); ctx.arc(cx+10, cy, 2, 0, Math.PI*2); ctx.fill();
+        }
+    }
+}
+
 class FallingBlock {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
@@ -233,8 +298,8 @@ class TrappedBeast {
     update() {
         if (!this.freed && checkRectOverlap(this, player)) {
             this.freed = true;
-            spawnExplosion(this.x, this.y, "green", 2);
-            // Give powerup?
+            // spawnExplosion(this.x, this.y, "green", 2); // Handled by player.rescueSwap
+            player.rescueSwap();
         }
     }
     draw(ctx, camX, camY) {

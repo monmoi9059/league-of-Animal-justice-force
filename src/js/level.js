@@ -183,6 +183,11 @@ function generateLevel() {
                             newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
                         }
                     }
+
+                    // Underground Landmines
+                    if (secureRandom() < 0.02) {
+                        newEntities.push(new Landmine(tx * TILE_SIZE, (tunnelY+2) * TILE_SIZE + 20));
+                    }
                 }
             }
         }
@@ -231,6 +236,11 @@ function generateLevel() {
              if (difficulty >= 2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
         if (secureRandom() < 0.02) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+
+        // Surface Landmines (Harder difficulties or random hazard)
+        if (secureRandom() < 0.02 + (difficulty * 0.005)) {
+             newEntities.push(new Landmine(x * TILE_SIZE, (y-1) * TILE_SIZE + 35)); // +35 to put it on the floor
+        }
     }
 
     // 5. FINISH
@@ -263,6 +273,15 @@ function generateLevel() {
          // Boss Entourage
          spawnSquad(bossX - 5, bossY);
          spawnSquad(bossX + 5, bossY);
+
+         // Minefield around boss?
+         if (difficulty >= 10) {
+             for(let i=0; i<5; i++) {
+                 let mx = bossX + (secureRandom()-0.5)*20;
+                 let my = surfaceMap[Math.floor(mx)] || 10;
+                 newEntities.push(new Landmine(mx*TILE_SIZE, (my-1)*TILE_SIZE + 35));
+             }
+         }
 
     } else {
          // Level 20+: Special Room

@@ -28,6 +28,31 @@ class Player {
         spawnExplosion(this.x, this.y, "#00ff41", 2);
     }
 
+    // --- RESCUE SWAP MECHANIC ---
+    rescueSwap() {
+        // Gain a life
+        gameState.lives++;
+        // Increment Score
+        gameState.score += 500;
+
+        // Swap to random hero (Simulating unlocking/tagging in)
+        let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
+        let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
+
+        // Force swap even if same char? Yes, for full health + effect.
+        this.setCharacter(unlockedChars[newCharIndex].id);
+
+        // Full Health
+        this.health = 3;
+
+        // Visuals
+        spawnExplosion(this.x, this.y, "gold", 2);
+        spawnDamageNumber(this.x, this.y - 40, "RESCUE!", "#00ff41");
+        spawnDamageNumber(this.x, this.y - 60, "1 UP", "yellow");
+
+        updateUI();
+    }
+
     // --- WALL DETECTION ---
     checkWall(dir) {
         if (!tiles) return false;

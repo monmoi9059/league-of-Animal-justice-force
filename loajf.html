@@ -700,6 +700,71 @@ class PropaneTank {
     }
 }
 
+class Landmine {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 20; this.h = 5;
+        this.hp = 1;
+        this.active = true;
+        this.timer = 0;
+    }
+    update() {
+        if (!this.active) return;
+        this.timer++;
+
+        // Gravity
+        this.y += 5;
+        let r = Math.floor((this.y + this.h) / TILE_SIZE);
+        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+             this.y = r * TILE_SIZE - this.h;
+        }
+
+        // Player Collision
+        if (checkRectOverlap(this, player)) {
+            this.explode();
+        }
+
+        // Enemy Collision (Friendly Fire!)
+        // Optimization: Check rarely
+        if (this.timer % 10 === 0) {
+            for(let e of entities) {
+                if (e !== this && e.hp > 0 && (e instanceof Enemy || e instanceof ShieldBearer || e instanceof HeavyGunner)) {
+                    if (checkRectOverlap(this, e)) this.explode();
+                }
+            }
+        }
+    }
+    takeDamage(amt) {
+        this.explode();
+    }
+    explode() {
+        if (!this.active) return;
+        this.active = false;
+        spawnExplosion(this.x + 10, this.y, "orange", 3);
+        // Damage handled by explosion radius usually, but let's ensure player takes hit
+        if (Math.abs(player.x - this.x) < 60 && Math.abs(player.y - this.y) < 60) {
+            player.takeDamage(1);
+        }
+        // Destroy terrain
+        let c = Math.floor(this.x / TILE_SIZE);
+        let r = Math.floor(this.y / TILE_SIZE);
+        destroyRadius(c, r, 1);
+
+        this.x = -9999;
+    }
+    draw(ctx, camX, camY) {
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+        ctx.fillStyle = "#333";
+        ctx.beginPath(); ctx.arc(cx+10, cy+5, 8, 0, Math.PI, true); ctx.fill();
+        // Blinking light
+        if (Math.floor(Date.now() / 200) % 2 === 0) {
+            ctx.fillStyle = "red";
+            ctx.beginPath(); ctx.arc(cx+10, cy, 2, 0, Math.PI*2); ctx.fill();
+        }
+    }
+}
+
 class FallingBlock {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
@@ -890,8 +955,8 @@ class TrappedBeast {
     update() {
         if (!this.freed && checkRectOverlap(this, player)) {
             this.freed = true;
-            spawnExplosion(this.x, this.y, "green", 2);
-            // Give powerup?
+            // spawnExplosion(this.x, this.y, "green", 2); // Handled by player.rescueSwap
+            player.rescueSwap();
         }
     }
     draw(ctx, camX, camY) {
@@ -1621,6 +1686,31 @@ class Player {
         spawnExplosion(this.x, this.y, "#00ff41", 2);
     }
     
+    // --- RESCUE SWAP MECHANIC ---
+    rescueSwap() {
+        // Gain a life
+        gameState.lives++;
+        // Increment Score
+        gameState.score += 500;
+
+        // Swap to random hero (Simulating unlocking/tagging in)
+        let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
+        let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
+
+        // Force swap even if same char? Yes, for full health + effect.
+        this.setCharacter(unlockedChars[newCharIndex].id);
+
+        // Full Health
+        this.health = 3;
+
+        // Visuals
+        spawnExplosion(this.x, this.y, "gold", 2);
+        spawnDamageNumber(this.x, this.y - 40, "RESCUE!", "#00ff41");
+        spawnDamageNumber(this.x, this.y - 60, "1 UP", "yellow");
+
+        updateUI();
+    }
+
     // --- WALL DETECTION ---
     checkWall(dir) {
         if (!tiles) return false;
@@ -2136,6 +2226,11 @@ function generateLevel() {
                             newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
                         }
                     }
+
+                    // Underground Landmines
+                    if (secureRandom() < 0.02) {
+                        newEntities.push(new Landmine(tx * TILE_SIZE, (tunnelY+2) * TILE_SIZE + 20));
+                    }
                 }
             }
         }
@@ -2184,6 +2279,11 @@ function generateLevel() {
              if (difficulty >= 2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
         if (secureRandom() < 0.02) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+
+        // Surface Landmines (Harder difficulties or random hazard)
+        if (secureRandom() < 0.02 + (difficulty * 0.005)) {
+             newEntities.push(new Landmine(x * TILE_SIZE, (y-1) * TILE_SIZE + 35)); // +35 to put it on the floor
+        }
     }
 
     // 5. FINISH
@@ -2216,6 +2316,15 @@ function generateLevel() {
          // Boss Entourage
          spawnSquad(bossX - 5, bossY);
          spawnSquad(bossX + 5, bossY);
+
+         // Minefield around boss?
+         if (difficulty >= 10) {
+             for(let i=0; i<5; i++) {
+                 let mx = bossX + (secureRandom()-0.5)*20;
+                 let my = surfaceMap[Math.floor(mx)] || 10;
+                 newEntities.push(new Landmine(mx*TILE_SIZE, (my-1)*TILE_SIZE + 35));
+             }
+         }
 
     } else {
          // Level 20+: Special Room
