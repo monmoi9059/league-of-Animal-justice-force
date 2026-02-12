@@ -175,13 +175,13 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
 </style>
 </head>
 <body>
-    
+
     <div id="gameContainer">
         <!-- Canvas size will be set by JS -->
         <canvas id="gameCanvas"></canvas>
         <div id="errorOverlay"></div>
         <div id="debugHUD">Initializing...</div>
-        
+
         <!-- HUD -->
         <div id="gameUI">
             <div class="stat-box">HERO: <span id="charName" style="color:#00ff41">IRON MUTT</span></div>
@@ -191,7 +191,7 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
             <div class="stat-box">SCORE: <span id="scoreDisplay">0</span></div>
             <div class="stat-box">LEVEL: <span id="levelDisplay">1</span></div>
         </div>
-        
+
         <div id="bossHealthContainer">
             <div id="bossHealthBar"></div>
         </div>
@@ -278,7 +278,6 @@ window.FRICTION = 0.85;
 window.ACCELERATION = 0.8;
 window.JUMP_FORCE = -13;
 window.TERMINAL_VELOCITY = 15;
-window.MAX_LEVEL_WIDTH = 400;
 window.LEVEL_WIDTH = 400;
 window.LEVEL_HEIGHT = 60;
 window.FPS = 60;
@@ -288,7 +287,7 @@ window.INTERVAL = 1000 / FPS;
 window.C = {
     dirtBase: "#5d4037", dirtLight: "#8d6e63", grassTop: "#4caf50",
     stoneBase: "#546e7a", stoneLight: "#78909c",
-    skyTop: "#1e3c72", skyBot: "#2a5298", 
+    skyTop: "#1e3c72", skyBot: "#2a5298",
     checkpoint: "#00ff41", leash: "#555", tank: "#e74c3c", ladder: "#d35400"
 };
 
@@ -299,7 +298,7 @@ window.CHARACTERS = [
     { id: 'cat', name: 'BAT CAT', type: 'cat', cSkin: '#222', cDark: '#000', cSuit: '#111', pType: 'boomerang', pColor: '#ff69b4' },
     { id: 'corgi', name: 'THOR-GI', type: 'dog_pointy', cSkin: '#E3C099', cDark: '#FFF', cSuit: '#333', pType: 'boomerang', pColor: '#00FFFF' },
     { id: 'hulk', name: 'HULK-POODLE', type: 'poodle', cSkin: '#00FF00', cDark: '#006400', cSuit: '#800080', pType: 'melee_smash', pColor: '#00FF00' },
-    { id: 'spider', name: 'SPIDER-PIG', type: 'pig', cSkin: '#FFC0CB', cDark: '#FF69B4', cSuit: '#FF0000', pType: 'gun', pColor: '#FFF' }, 
+    { id: 'spider', name: 'SPIDER-PIG', type: 'pig', cSkin: '#FFC0CB', cDark: '#FF69B4', cSuit: '#FF0000', pType: 'gun', pColor: '#FFF' },
     { id: 'wolvie', name: 'WOLVER-WEENIE', type: 'dog_long', cSkin: '#8B4513', cDark: '#000', cSuit: '#FFFF00', pType: 'melee_slash', pColor: '#C0C0C0' },
     { id: 'dead', name: 'DEAD-POODLE', type: 'poodle', cSkin: '#FF0000', cDark: '#000', cSuit: '#333', pType: 'gun', pColor: '#FF0000' },
     { id: 'cap', name: 'CAPTAIN EAGLE', type: 'bird', cSkin: '#FFF', cDark: '#A52A2A', cSuit: '#0000FF', pType: 'boomerang', pColor: '#FFF' },
@@ -342,7 +341,7 @@ window.gameState = {
     checkpointsHit: 0,
     rescues: 0,
     lives: 3,
-    unlockedCount: 1, 
+    unlockedCount: 1,
     globalUnlocked: 1, // Alias for legacy code
     spawnPoint: { x: 100, y: 0 },
     bossActive: false,
@@ -413,43 +412,51 @@ function destroyRadius(cx, cy, r) {
         }
     }
 }
+function shakeCamera(amount) {
+    gameState.shake = amount;
+    if(amount > 10) gameState.hitStop = 3;
+}
 
-function createExplosion(x, y, radiusTiles, damage) {
-    // 1. Visuals
-    spawnExplosion(x, y, "orange", radiusTiles * 2);
-    shakeCamera(radiusTiles * 5);
+function createExplosion(x, y, radius, damage) {
+    // Visuals
+    spawnExplosion(x, y, "orange", radius);
 
-    // 2. Terrain Destruction
+    // Terrain Destruction
     let c = Math.floor(x / TILE_SIZE);
     let r = Math.floor(y / TILE_SIZE);
-    destroyRadius(c, r, radiusTiles);
+    destroyRadius(c, r, radius);
 
-    // 3. Entity Damage (Chain Reaction)
-    let radiusPx = radiusTiles * TILE_SIZE * 1.5; // Slightly larger hitbox than terrain
-
-    // Check all entities
-    entities.forEach(e => {
-        if (e.hp !== undefined && e.hp > 0 && Math.abs(e.x - x) < radiusPx && Math.abs(e.y - y) < radiusPx) {
-            // Check distance
-            let dist = Math.hypot(e.x + e.w/2 - x, e.y + e.h/2 - y);
-            if (dist < radiusPx) {
-                if(e.takeDamage) e.takeDamage(damage, x);
-            }
+    // Entity Damage (Player)
+    if (player) {
+        let dist = Math.sqrt(Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2));
+        // Radius is in tiles, so convert to pixels. Giving slight grace area.
+        if (dist < (radius * TILE_SIZE) + 20) {
+            player.takeDamage(damage);
         }
-    });
+    }
 
-    // Check Player
-    if (player && Math.abs(player.x - x) < radiusPx && Math.abs(player.y - y) < radiusPx) {
-        let dist = Math.hypot(player.x + player.w/2 - x, player.y + player.h/2 - y);
-        if (dist < radiusPx) {
-            player.takeDamage(1);
+    // Entity Damage (Enemies)
+    for(let i=0; i<entities.length; i++) {
+        let e = entities[i];
+        if (e.hp > 0) {
+            let dist = Math.sqrt(Math.pow(e.x - x, 2) + Math.pow(e.y - y, 2));
+            if (dist < (radius * TILE_SIZE) + 20) {
+                 if(e.takeDamage) e.takeDamage(damage, x);
+            }
         }
     }
 }
 
-function shakeCamera(amount) {
-    gameState.shake = amount;
-    if(amount > 10) gameState.hitStop = 3;
+function unlockCharacter() {
+    if (gameState.globalUnlocked < CHARACTERS.length) {
+        gameState.globalUnlocked++;
+        gameState.unlockedCount = gameState.globalUnlocked;
+        spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "gold");
+        // Maybe visual effect?
+        spawnExplosion(player.x, player.y, "gold", 2);
+    } else {
+        spawnDamageNumber(player.x, player.y - 40, "MAX ROSTER!", "gold");
+    }
 }
 
 
@@ -483,18 +490,9 @@ class Bullet {
     constructor(x, y, dir, isSpecial, charData, isDown = false, isSecondary = false) {
         this.x = x; this.y = y;
         this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5;
-
-        // Robust check for charData to prevent crashes
-        if (charData && typeof charData === 'object' && charData.pColor) {
-            this.color = charData.pColor;
-            this.type = charData.pType;
-            this.isPlayerBullet = true;
-        } else {
-            this.color = "#ff4444";
-            this.type = 'enemy_standard';
-            this.isPlayerBullet = false;
-        }
-
+        this.color = charData.pColor;
+        this.type = charData.pType;
+        this.isEnemy = charData.isEnemy || false;
         this.returnState = 0;
 
         // DEFAULT VELOCITIES
@@ -574,24 +572,27 @@ class Bullet {
             }
         }
 
-        // ENTITY COLLISIONS
-        if (this.isPlayerBullet) {
+        // ENEMY COLLISIONS (Player Bullets Only)
+        if (!this.isEnemy) {
             for(let i=0; i<entities.length; i++) {
                 let e = entities[i];
                 if((e.hp !== undefined && e.hp > 0)) {
                     if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
-                        if(e.takeDamage) e.takeDamage(this.isSpecial ? 5 : 1, this.x);
+                        if(e.takeDamage) e.takeDamage(this.isSpecial ? 5 : 1);
                         if (this.type !== 'boomerang') this.life = 0;
                         else this.returnState = 1;
                     }
                 }
             }
-        } else {
-            // Enemy hits player
-            if (player && rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) {
-                player.takeDamage(1);
-                this.life = 0;
-            }
+        }
+
+        // PLAYER COLLISION (Enemy Bullets Only)
+        if (this.isEnemy && player) {
+             if(rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) {
+                  player.takeDamage(this.isSpecial ? 2 : 1);
+                  if (this.type !== 'boomerang') this.life = 0;
+                  else this.returnState = 1;
+             }
         }
     }
 
@@ -723,8 +724,7 @@ class PropaneTank {
         // Simple floor collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        // Corrected collision
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
              this.vx *= 0.8;
@@ -736,8 +736,8 @@ class PropaneTank {
         this.vx = (this.x - sourceX) > 0 ? 5 : -5;
         this.vy = -5;
         if(this.hp <= 0) {
+            createExplosion(this.x + this.w/2, this.y + this.h/2, 2, 50);
             this.x = -9999;
-            createExplosion(this.x + this.w/2, this.y + this.h/2, 3, 5);
         }
     }
     draw(ctx, camX, camY) {
@@ -760,18 +760,21 @@ class FallingBlock {
         this.active = false;
     }
     update() {
+        // Trigger fall if player is near/under? Or just physics object?
+        // Let's make it a physics object that falls if unsupported
         this.vy += GRAVITY;
         this.y += this.vy;
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
         }
 
-        if (player && (Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2)) {
+        // Damage player if falls on head?
+        if (Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) {
             if (checkRectOverlap(this, player)) {
                 player.takeDamage(10);
             }
@@ -799,7 +802,7 @@ class BridgeBlock {
         }
     }
     draw(ctx, camX, camY) {
-        ctx.fillStyle = "#8e44ad";
+        ctx.fillStyle = "#8e44ad"; // Purple bridge?
         ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
         ctx.beginPath();
         ctx.moveTo(this.x - camX, this.y - camY);
@@ -816,14 +819,16 @@ class MechSuit {
     }
     update() {
         if (!this.occupied) {
-            this.y += 5;
+            // Apply gravity
+            this.y += 5; // Simple gravity
              let r = Math.floor((this.y + this.h) / TILE_SIZE);
              let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
                  this.y = r * TILE_SIZE - this.h;
              }
 
-            if (player && Math.abs(player.x - this.x) < 50 && Math.abs(player.y - this.y) < 50 && keys['e']) {
+            // Interaction
+            if (Math.abs(player.x - this.x) < 50 && Math.abs(player.y - this.y) < 50 && keys['e']) {
                 this.enter();
             }
         }
@@ -832,6 +837,7 @@ class MechSuit {
         this.occupied = true;
         player.inMech = true;
         player.mech = this;
+        // Visual effect
         spawnExplosion(this.x + 30, this.y + 40, "cyan", 2);
     }
     eject() {
@@ -840,17 +846,17 @@ class MechSuit {
         player.mech = null;
         this.x = player.x;
         this.y = player.y;
-        this.hp = 0;
+        this.hp = 0; // Destroy after use? Or leave it? Let's destroy it to prevent spam
         spawnExplosion(this.x + 30, this.y + 40, "cyan", 5);
         this.x = -9999;
     }
     draw(ctx, camX, camY) {
-        if (this.occupied) return;
+        if (this.occupied) return; // Drawn with player
         let cx = this.x - camX;
         let cy = this.y - camY;
         ctx.fillStyle = "#34495e";
         drawRoundedRect(ctx, cx, cy, this.w, this.h, 10);
-        ctx.fillStyle = "#f1c40f";
+        ctx.fillStyle = "#f1c40f"; // Glass
         ctx.fillRect(cx + 15, cy + 10, 30, 20);
         // Legs
         ctx.fillStyle = "#2c3e50";
@@ -866,17 +872,21 @@ class Helicopter {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
-        this.hp = 9999;
-        this.isIntro = (x < 1000);
+        this.isIntro = (x < 1000); // Hacky check if it's at start of level
     }
     update() {
         this.timer++;
+        // Hover
         this.y += Math.sin(this.timer * 0.1) * 2;
 
-        if (player && !this.isIntro && checkRectOverlap(this, player)) {
+        // Extraction
+        // Only extract if it's NOT the intro heli
+        if (!this.isIntro && checkRectOverlap(this, player)) {
             gameState.levelComplete = true;
+            winGame();
         }
 
+        // If intro heli, fly away after a bit
         if (this.isIntro && this.timer > 100) {
             this.y -= 2;
             this.x -= 2;
@@ -886,7 +896,7 @@ class Helicopter {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = "#27ae60";
+        ctx.fillStyle = "#27ae60"; // Green friendly heli
         drawRoundedRect(ctx, cx, cy, 100, 50, 10);
         // Rotor
         ctx.fillStyle = "rgba(0,0,0,0.5)";
@@ -908,14 +918,13 @@ class Helicopter {
 class Dumpster {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 60; this.h = 40;
-        this.hp = 100; // Prevent cleanup
     }
     update() {
         // Gravity
         this.y += 5;
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
              this.y = r * TILE_SIZE - this.h;
         }
     }
@@ -931,14 +940,13 @@ class TrappedBeast {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
-        this.hp = 100; // Prevent cleanup
     }
     update() {
-        if (!this.freed && player && checkRectOverlap(this, player)) {
+        if (!this.freed && checkRectOverlap(this, player)) {
             this.freed = true;
             spawnExplosion(this.x, this.y, "green", 2);
-            gameState.rescues++;
             unlockCharacter();
+            gameState.rescues++;
         }
     }
     draw(ctx, camX, camY) {
@@ -962,14 +970,13 @@ class Mailman {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 30; this.h = 60;
         this.vx = 2;
-        this.hp = 100; // Prevent cleanup
     }
     update() {
         this.x += this.vx;
         // Turn around
         let c = Math.floor((this.x + (this.vx>0?this.w:0)) / TILE_SIZE);
         let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
-        if (tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) this.vx *= -1;
+        if (tiles[r] && tiles[r][c] && tiles[r][c].solid) this.vx *= -1;
     }
     draw(ctx, camX, camY) {
         ctx.fillStyle = "#3498db"; // Uniform
@@ -978,6 +985,8 @@ class Mailman {
         ctx.fillRect(this.x - camX - 5, this.y - camY + 20, 10, 20);
     }
 }
+
+// Expose for testing
 
 
 // --- enemies.js ---
@@ -992,58 +1001,114 @@ class Enemy {
         this.vy = 0;
         this.hp = 3;
         this.facing = 1;
-        this.state = 'patrol';
+        this.state = 'patrol'; // patrol, chase
         this.timer = 0;
         this.shootTimer = 0;
         this.color = "#e74c3c"; // Default color asset
+        this.blockedTimer = 0;
+        this.speed = 2; // Default patrol speed
+        this.chaseSpeed = 3;
     }
 
     update() {
         this.vy += GRAVITY;
         this.y += this.vy;
 
-        // Corrected Map Collision
+        // Vertical Collision (Ground)
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        // Check for type 1 (Dirt) or 2 (Stone)
+        // Check for solid ground (Type 1=Dirt, 2=Stone)
         if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
 
-        // AI
-        if (player) {
+        // AI Logic
+        if (this.blockedTimer > 0) {
+            this.blockedTimer--;
+            // Force movement away from wall
+            this.vx = this.facing * this.speed;
+        } else if (player) {
             let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
-            if (dist < 400) this.state = 'chase';
-            else this.state = 'patrol';
+
+            if (dist < 400) {
+                this.state = 'chase';
+            } else {
+                this.state = 'patrol';
+            }
+
+            if (this.state === 'patrol') {
+                if (this.timer <= 0) {
+                    this.timer = 60 + Math.random() * 60;
+                    this.facing = Math.random() < 0.5 ? -1 : 1;
+                    this.vx = this.facing * this.speed;
+                }
+                this.timer--;
+                this.vx = this.facing * this.speed;
+            } else if (this.state === 'chase') {
+                // Determine direction based on player, unless just blocked
+                this.facing = player.x < this.x ? -1 : 1;
+                this.vx = this.facing * this.chaseSpeed;
+
+                this.shootTimer++;
+                if (this.shootTimer > 60) {
+                    this.shoot();
+                    this.shootTimer = 0;
+                }
+            }
         }
 
-        if (this.state === 'patrol') {
-            if (this.timer <= 0) {
-                this.timer = 60 + Math.random() * 60;
-                this.facing = Math.random() < 0.5 ? -1 : 1;
-                this.vx = this.facing * 2;
-            }
-            this.timer--;
+        // Horizontal Movement & Wall/Ledge Collision
+        let nextX = this.x + this.vx;
 
-            // Turn at walls
-            let nextC = Math.floor((this.x + this.w/2 + this.vx*20) / TILE_SIZE);
-            if (tiles[r] && tiles[r][nextC] && (tiles[r][nextC].type === 1 || tiles[r][nextC].type === 2)) {
-                this.vx *= -1; this.facing *= -1;
-            }
-        } else if (this.state === 'chase' && player) {
-            this.facing = player.x < this.x ? -1 : 1;
-            this.vx = this.facing * 3;
+        // Check Wall Ahead
+        // Check both top and bottom corners of the hitbox to avoid getting stuck on half-blocks
+        let wallCheckY_Top = Math.floor(this.y / TILE_SIZE);
+        let wallCheckY_Bot = Math.floor((this.y + this.h - 1) / TILE_SIZE);
+        let wallCheckX = Math.floor((nextX + (this.vx > 0 ? this.w : 0)) / TILE_SIZE);
 
-            this.shootTimer++;
-            if (this.shootTimer > 60) {
-                this.shoot();
-                this.shootTimer = 0;
-            }
+        let hitWall = false;
+        if (wallCheckX >= 0 && wallCheckX < LEVEL_WIDTH) {
+             let t1 = (tiles[wallCheckY_Top] && tiles[wallCheckY_Top][wallCheckX]);
+             let t2 = (tiles[wallCheckY_Bot] && tiles[wallCheckY_Bot][wallCheckX]);
+
+             if ((t1 && (t1.type === 1 || t1.type === 2)) || (t2 && (t2.type === 1 || t2.type === 2))) {
+                 hitWall = true;
+             }
+        } else {
+            hitWall = true; // Level boundary
         }
 
-        this.x += this.vx;
+        // Check Ledge Ahead (Ground Check at next position)
+        // We check the tile directly below the future feet position
+        let ledgeCheckX = Math.floor((nextX + (this.vx > 0 ? this.w : 0)) / TILE_SIZE);
+        // Or check center? Standard platformer check usually checks the leading edge.
+        // If leading edge is over empty space, turn back.
+        let ledgeCheckY = Math.floor((this.y + this.h + 2) / TILE_SIZE); // Look slightly down
+
+        let hitLedge = false;
+        if (ledgeCheckY < LEVEL_HEIGHT && ledgeCheckX >= 0 && ledgeCheckX < LEVEL_WIDTH) {
+            let t = tiles[ledgeCheckY][ledgeCheckX];
+            // If air (0) or non-solid, it's a ledge.
+            if (!t || t.type === 0 || t.type === 4 || t.type === 6) {
+                hitLedge = true;
+            }
+        } else {
+             hitLedge = true; // Off map bottom
+        }
+
+        // React to Obstacle
+        if (hitWall || hitLedge) {
+            this.vx = 0;
+            this.facing *= -1; // Turn around
+            this.blockedTimer = 60; // Ignore player/patrol logic for 1 second
+
+            // Push back slightly to avoid sticking
+            // this.x += this.facing * 2;
+        } else {
+            this.x += this.vx;
+        }
     }
 
     shoot() {
@@ -1051,7 +1116,7 @@ class Enemy {
         let angle = Math.atan2(player.y - this.y, player.x - this.x);
         angle += (Math.random() - 0.5) * 0.2;
         // Pass minimal valid args
-        let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false);
+        let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
         b.vx = Math.cos(angle) * 8;
         b.vy = Math.sin(angle) * 8;
         entities.push(b);
@@ -1062,6 +1127,7 @@ class Enemy {
         spawnDamageNumber(this.x, this.y, amt * 10);
         this.vx = (this.x - sourceX) > 0 ? 5 : -5;
         this.vy = -3;
+        this.blockedTimer = 10; // Stun briefly
 
         if (this.hp <= 0) {
             spawnExplosion(this.x + this.w/2, this.y + this.h/2, "red", 1);
@@ -1072,16 +1138,46 @@ class Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        // Body
-        ctx.fillStyle = this.color;
-        ctx.fillRect(cx, cy, this.w, this.h);
-        // Head band
-        ctx.fillStyle = "#c0392b";
-        ctx.fillRect(cx, cy + 10, this.w, 10);
-        // Gun
+
+        // RETRO ROBOT GRUNT
+        // Color
+        let mainColor = "#c0392b"; // Red
+        let metalColor = "#7f8c8d"; // Grey
+
+        // Legs (Tracks)
         ctx.fillStyle = "#2c3e50";
-        if (this.facing === 1) ctx.fillRect(cx + 20, cy + 30, 30, 10);
-        else ctx.fillRect(cx - 10, cy + 30, 30, 10);
+        ctx.fillRect(cx + 5, cy + 40, 10, 20); // L
+        ctx.fillRect(cx + 25, cy + 40, 10, 20); // R
+
+        // Body (Blocky)
+        ctx.fillStyle = mainColor;
+        ctx.fillRect(cx, cy + 10, 40, 30);
+        ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(cx, cy+10, 40, 30);
+
+        // Rivets
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(cx+2, cy+12, 2, 2); ctx.fillRect(cx+36, cy+12, 2, 2);
+        ctx.fillRect(cx+2, cy+36, 2, 2); ctx.fillRect(cx+36, cy+36, 2, 2);
+
+        // Head
+        ctx.fillStyle = metalColor;
+        ctx.fillRect(cx + 10, cy - 5, 20, 15);
+        ctx.strokeRect(cx + 10, cy - 5, 20, 15);
+
+        // Eye (Cyclops)
+        ctx.fillStyle = "#e74c3c"; // Glowing red
+        ctx.beginPath(); ctx.arc(cx + 20 + (this.facing*2), cy + 2, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.fillRect(cx + 20 + (this.facing*2) - 1, cy + 1, 2, 2); // Shine
+
+        // Arms (Clamps)
+        ctx.fillStyle = metalColor;
+        // Front arm based on facing
+        let armX = this.facing === 1 ? cx + 30 : cx - 10;
+        ctx.fillRect(armX, cy + 15, 20, 8); // Arm
+
+        // Gun/Weapon
+        ctx.fillStyle = "#222";
+        ctx.fillRect(armX + (this.facing===1?20:-5), cy + 12, 5, 14); // Hand/Gun
     }
 }
 
@@ -1090,33 +1186,82 @@ class FlyingEnemy extends Enemy {
         super(x, y);
         this.type = 'fly';
         this.hp = 2;
+        this.w = 40; this.h = 40;
     }
     update() {
         if (!player) return;
         let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
+
+        let targetVx = 0;
+        let targetVy = 0;
+
         if (dist < 500) {
-            this.vx = (player.x - this.x) * 0.01;
-            this.vy = (player.y - this.y - 100) * 0.01;
+            // Move towards player
+            targetVx = (player.x - this.x) * 0.02; // Reduced speed for smoother flight
+            targetVy = (player.y - this.y - 100) * 0.02; // Hover above
+
             this.shootTimer++;
             if (this.shootTimer > 100) {
                 this.shoot();
                 this.shootTimer = 0;
             }
         } else {
-            this.vx *= 0.9;
-            this.vy *= 0.9;
+            // Idle hover
+            targetVx *= 0.9;
+            targetVy = Math.sin(Date.now() * 0.005) * 1;
         }
+
+        // Soft Collision with walls (Bounce)
+        let nextX = this.x + targetVx;
+        let nextY = this.y + targetVy;
+        let r = Math.floor((nextY + this.h/2) / TILE_SIZE);
+        let c = Math.floor((nextX + this.w/2) / TILE_SIZE);
+
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+             // Hit wall, bounce back
+             targetVx *= -1.5;
+             targetVy *= -1.5;
+        }
+
+        this.vx += (targetVx - this.vx) * 0.1;
+        this.vy += (targetVy - this.vy) * 0.1;
+
         this.x += this.vx;
         this.y += this.vy;
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
+
+        // UFO / DRONE
+        // Dome
+        ctx.fillStyle = "rgba(142, 68, 173, 0.6)"; // Purple glass
+        ctx.beginPath(); ctx.arc(cx + 20, cy + 15, 15, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+
+        // Brain/Pilot inside
         ctx.fillStyle = "#8e44ad";
-        ctx.beginPath(); ctx.arc(cx + 20, cy + 20, 20, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.beginPath(); ctx.ellipse(cx, cy+10, 20, 10, 0, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(cx+40, cy+10, 20, 10, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 20, cy + 12, 6, 0, Math.PI*2); ctx.fill();
+
+        // Ring Body
+        ctx.fillStyle = "#bdc3c7"; // Silver
+        ctx.beginPath(); ctx.ellipse(cx + 20, cy + 20, 20, 8, 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = "#7f8c8d"; ctx.stroke();
+
+        // Lights
+        let time = Date.now();
+        for(let i=0; i<3; i++) {
+            ctx.fillStyle = (Math.floor(time / 200) % 3 === i) ? "red" : "#550000";
+            ctx.beginPath(); ctx.arc(cx + 10 + (i*10), cy + 20, 2, 0, Math.PI*2); ctx.fill();
+        }
+
+        // Thruster
+        ctx.fillStyle = "#333";
+        ctx.fillRect(cx + 15, cy + 25, 10, 5);
+        if (Math.random() < 0.5) {
+             ctx.fillStyle = "cyan";
+             ctx.beginPath(); ctx.moveTo(cx+15, cy+30); ctx.lineTo(cx+20, cy+40); ctx.lineTo(cx+25, cy+30); ctx.fill();
+        }
     }
 }
 
@@ -1125,32 +1270,23 @@ class KamikazeEnemy extends Enemy {
         super(x, y);
         this.hp = 1;
         this.speed = 4;
+        this.chaseSpeed = 5;
         this.color = "#d35400";
     }
     update() {
-        this.vy += GRAVITY;
-        this.y += this.vy;
+        // Use standard logic for movement, but override chase behavior slightly
+        super.update();
 
-        let r = Math.floor((this.y + this.h) / TILE_SIZE);
-        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
-            this.y = r * TILE_SIZE - this.h;
-            this.vy = 0;
-        }
-
+        // Special Explode Logic
         if (player) {
             let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
-            if (dist < 400) {
-                this.facing = player.x < this.x ? -1 : 1;
-                this.vx = this.facing * this.speed;
-                if (dist < 50) this.explode();
-            }
+            if (dist < 50) this.explode();
         }
-        this.x += this.vx;
     }
     explode() {
+        let ex = this.x; let ey = this.y;
         this.x = -9999;
-        createExplosion(this.x + 20, this.y + 30, 2, 2);
+        createExplosion(ex + 20, ey + 30, 2, 50);
     }
     takeDamage(amt, sourceX) {
         super.takeDamage(amt, sourceX);
@@ -1159,14 +1295,38 @@ class KamikazeEnemy extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = this.color;
-        ctx.fillRect(cx, cy, this.w, this.h);
-        ctx.fillStyle = "#2c3e50";
-        ctx.fillRect(cx+5, cy+20, 30, 20);
+
+        // WALKING BOMB BOT
+        // Legs
+        ctx.fillStyle = "#333";
+        ctx.fillRect(cx + 10, cy + 40, 5, 20);
+        ctx.fillRect(cx + 25, cy + 40, 5, 20);
+
+        // Body (Bomb Shape)
+        ctx.fillStyle = "#2c3e50"; // Dark body
+        ctx.beginPath(); ctx.arc(cx + 20, cy + 25, 18, 0, Math.PI*2); ctx.fill();
+
+        // Fuse / Antenna
+        ctx.fillStyle = "#7f8c8d";
+        ctx.fillRect(cx + 18, cy, 4, 10);
+        // Spark
         if (Math.random() < 0.5) {
              ctx.fillStyle = "yellow";
-             ctx.fillRect(cx+15, cy+10, 5, 5);
+             ctx.beginPath(); ctx.arc(cx + 20, cy, 4, 0, Math.PI*2); ctx.fill();
         }
+
+        // Face (Screen)
+        ctx.fillStyle = "#000";
+        ctx.fillRect(cx + 10, cy + 20, 20, 10);
+        // Digital Face
+        ctx.fillStyle = "red";
+        ctx.font = "10px monospace";
+        let blink = Math.floor(Date.now() / 100) % 2 === 0;
+        ctx.fillText(blink ? ":(" : "X(", cx + 12, cy + 28);
+
+        // Chest Light
+        ctx.fillStyle = blink ? "red" : "#500";
+        ctx.beginPath(); ctx.arc(cx + 20, cy + 35, 3, 0, Math.PI*2); ctx.fill();
     }
 }
 
@@ -1176,11 +1336,14 @@ class HeavyGunner extends Enemy {
         this.hp = 10;
         this.w = 50; this.h = 70;
         this.color = "#27ae60";
+        this.speed = 0; // Stationary usually, or very slow
+        this.chaseSpeed = 0; // Doesn't chase
     }
     update() {
         this.vy += GRAVITY;
         this.y += this.vy;
 
+        // Ground Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
         if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
@@ -1204,7 +1367,7 @@ class HeavyGunner extends Enemy {
         if (!player) return;
         let angle = Math.atan2(player.y - this.y, player.x - this.x);
         angle += (Math.random() - 0.5) * 0.4;
-        let b = new Bullet(this.x + this.w/2, this.y + 30, 1, false);
+        let b = new Bullet(this.x + this.w/2, this.y + 30, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
         b.vx = Math.cos(angle) * 10;
         b.vy = Math.sin(angle) * 10;
         entities.push(b);
@@ -1212,10 +1375,34 @@ class HeavyGunner extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = this.color;
-        ctx.fillRect(cx, cy, this.w, this.h);
+
+        // TANK BOT
+        // Treads
         ctx.fillStyle = "#2c3e50";
-        ctx.fillRect(cx - 10, cy + 30, 70, 20);
+        drawRoundedRect(ctx, cx, cy + 50, 50, 20, 5);
+        // Tread wheels
+        ctx.fillStyle = "#7f8c8d";
+        for(let i=0; i<3; i++) ctx.beginPath(), ctx.arc(cx + 10 + i*15, cy + 60, 6, 0, Math.PI*2), ctx.fill();
+
+        // Torso
+        ctx.fillStyle = "#27ae60"; // Green Armor
+        ctx.fillRect(cx + 5, cy + 10, 40, 40);
+
+        // Head (Small, armored)
+        ctx.fillStyle = "#1e8449";
+        ctx.fillRect(cx + 15, cy, 20, 10);
+        // Visor
+        ctx.fillStyle = "#f1c40f";
+        ctx.fillRect(cx + 18, cy + 2, 14, 4);
+
+        // Minigun Arm
+        ctx.fillStyle = "#333";
+        let gunX = this.facing === 1 ? cx + 40 : cx - 20;
+        ctx.fillRect(gunX, cy + 25, 30, 10); // Barrel
+        // Rotation
+        let spin = Math.sin(Date.now() * 0.5) * 2;
+        ctx.fillStyle = "#111";
+        ctx.fillRect(gunX + (this.facing===1?30:0), cy + 22 + spin, 5, 16);
     }
 }
 
@@ -1226,11 +1413,14 @@ class SniperEnemy extends Enemy {
         this.range = 800;
         this.aimTimer = 0;
         this.color = "#3498db";
+        this.speed = 1;
+        this.chaseSpeed = 0; // Holds position
     }
     update() {
         this.vy += GRAVITY;
         this.y += this.vy;
 
+        // Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
         if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
@@ -1241,6 +1431,7 @@ class SniperEnemy extends Enemy {
         if (player) {
             let dist = Math.abs(player.x - this.x);
             if (dist < this.range) {
+                 this.facing = player.x < this.x ? -1 : 1;
                  this.aimTimer++;
                  if (this.aimTimer > 180) {
                      this.shoot();
@@ -1248,13 +1439,15 @@ class SniperEnemy extends Enemy {
                  }
             } else {
                 this.aimTimer = 0;
+                // Maybe patrol if player far?
+                super.update(); // Use default patrol if out of range
             }
         }
     }
     shoot() {
         if (!player) return;
         let angle = Math.atan2(player.y - this.y, player.x - this.x);
-        let b = new Bullet(this.x + this.w/2, this.y + 20, 2, false);
+        let b = new Bullet(this.x + this.w/2, this.y + 20, 2, false, { pColor: this.color, pType: 'normal', isEnemy: true });
         b.vx = Math.cos(angle) * 20;
         b.vy = Math.sin(angle) * 20;
         entities.push(b);
@@ -1262,13 +1455,45 @@ class SniperEnemy extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = this.color;
-        ctx.fillRect(cx, cy, this.w, this.h);
+
+        // SNIPER BOT (Tall, Thin)
+        // Legs
+        ctx.fillStyle = "#34495e";
+        ctx.fillRect(cx + 15, cy + 40, 4, 20);
+        ctx.fillRect(cx + 25, cy + 40, 4, 20);
+
+        // Body
+        ctx.fillStyle = "#3498db"; // Blue
+        ctx.fillRect(cx + 15, cy + 15, 14, 25);
+
+        // Head
+        ctx.fillStyle = "#2c3e50";
+        ctx.beginPath(); ctx.arc(cx + 22, cy + 10, 8, 0, Math.PI*2); ctx.fill();
+
+        // Eye (Scope)
+        ctx.fillStyle = "#000";
+        let eyeX = cx + 22 + (this.facing * 4);
+        ctx.beginPath(); ctx.arc(eyeX, cy + 10, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "red";
+        ctx.beginPath(); ctx.arc(eyeX, cy + 10, 2, 0, Math.PI*2); ctx.fill();
+
+        // Rifle
+        ctx.fillStyle = "#111";
+        let gunLen = 40;
+        if(this.facing === 1) {
+             ctx.fillRect(cx + 20, cy + 20, gunLen, 4);
+             ctx.fillRect(cx + 20, cy + 22, 10, 6); // Stock
+        } else {
+             ctx.fillRect(cx + 24 - gunLen, cy + 20, gunLen, 4);
+             ctx.fillRect(cx + 14, cy + 22, 10, 6);
+        }
+
+        // Laser Sight
         if (this.aimTimer > 100 && player) {
             ctx.strokeStyle = "rgba(231, 76, 60, 0.5)";
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(cx+this.w/2, cy+20);
+            ctx.moveTo(cx+this.w/2, cy+22);
             ctx.lineTo(player.x - camX + player.w/2, player.y - camY + player.h/2);
             ctx.stroke();
         }
@@ -1281,23 +1506,11 @@ class ShieldBearer extends Enemy {
         this.hp = 8;
         this.shieldUp = true;
         this.color = "#7f8c8d";
+        this.speed = 1;
+        this.chaseSpeed = 1;
     }
     update() {
-        this.vy += GRAVITY;
-        this.y += this.vy;
-
-        let r = Math.floor((this.y + this.h) / TILE_SIZE);
-        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
-            this.y = r * TILE_SIZE - this.h;
-            this.vy = 0;
-        }
-
-        if (player && Math.abs(player.x - this.x) < 300) {
-            this.facing = player.x < this.x ? -1 : 1;
-            this.vx = this.facing * 1;
-        }
-        this.x += this.vx;
+        super.update(); // Use standard wall/ledge logic
 
         if (player) {
             this.shieldUp = (player.x < this.x && this.facing === -1) || (player.x > this.x && this.facing === 1);
@@ -1322,13 +1535,36 @@ class ShieldBearer extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = this.color;
-        drawRoundedRect(ctx, cx, cy, this.w, this.h, 5);
-        ctx.fillStyle = "#3498db";
-        if (this.facing === -1) ctx.fillRect(cx - 10, cy, 10, this.h);
-        else ctx.fillRect(cx + this.w, cy, 10, this.h);
+
+        // RIOT BOT
+        // Legs
         ctx.fillStyle = "#2c3e50";
-        ctx.beginPath(); ctx.arc(cx+20, cy-5, 12, 0, Math.PI*2); ctx.fill();
+        ctx.fillRect(cx + 5, cy + 40, 10, 20);
+        ctx.fillRect(cx + 25, cy + 40, 10, 20);
+
+        // Body
+        ctx.fillStyle = "#95a5a6";
+        ctx.fillRect(cx + 5, cy + 10, 30, 30);
+
+        // Head
+        ctx.fillStyle = "#2c3e50";
+        drawRoundedRect(ctx, cx + 10, cy - 5, 20, 15, 5);
+        // Visor slit
+        ctx.fillStyle = "cyan";
+        ctx.fillRect(cx + 12, cy, 16, 2);
+
+        // SHIELD (Draw last so it covers)
+        ctx.fillStyle = "rgba(52, 152, 219, 0.6)"; // Energy Blue
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+
+        let shieldX = this.facing === 1 ? cx + 25 : cx - 15;
+        drawRoundedRect(ctx, shieldX, cy, 30, 60, 5);
+        ctx.stroke();
+
+        // Shield details
+        ctx.fillStyle = "white";
+        ctx.font = "10px Arial";
+        ctx.fillText("POLICE", shieldX + 2, cy + 30);
     }
 }
 
@@ -1368,7 +1604,7 @@ class CaptainEnemy extends Enemy {
             setTimeout(() => {
                 if(this.hp <= 0 || !player) return;
                 let angle = Math.atan2(player.y - this.y, player.x - this.x);
-                let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false);
+                let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
                 b.vx = Math.cos(angle) * 12;
                 b.vy = Math.sin(angle) * 12;
                 b.color = "gold";
@@ -1390,14 +1626,28 @@ class CaptainEnemy extends Enemy {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = this.color;
-        ctx.fillRect(cx, cy, this.w, this.h);
+
+        // CAPTAIN ROBOT
+        // Gold Plating
+        ctx.fillStyle = "#f1c40f"; // Gold
+        drawRoundedRect(ctx, cx, cy, this.w, this.h, 10);
+
+        // Trim
+        ctx.fillStyle = "#8e44ad"; // Purple Royal
+        ctx.fillRect(cx + 20, cy, 10, this.h);
+
+        // Head
+        ctx.fillStyle = "#f39c12";
+        ctx.beginPath(); ctx.arc(cx + 25, cy - 10, 15, 0, Math.PI*2); ctx.fill();
+
+        // Crown/Antenna
         ctx.fillStyle = "gold";
-        ctx.fillRect(cx + (this.facing===1?20:-10), cy + 10, 40, 5);
-        ctx.fillStyle = "#2c3e50";
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+this.w, cy); ctx.lineTo(cx+this.w-5, cy-15); ctx.lineTo(cx+5, cy-15); ctx.fill();
-        ctx.fillStyle = "gold";
-        ctx.beginPath(); ctx.arc(cx+this.w/2, cy-10, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx+15, cy-20); ctx.lineTo(cx+25, cy-35); ctx.lineTo(cx+35, cy-20); ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = "red";
+        ctx.beginPath(); ctx.arc(cx + 20, cy - 10, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 30, cy - 10, 3, 0, Math.PI*2); ctx.fill();
     }
 }
 
@@ -1438,7 +1688,7 @@ class Boss {
             let speed = 8 + (difficulty * 0.2);
 
             // Attack 1: Standard Shot
-            let b = new Bullet(this.x + 60, this.y + 60, 2, false);
+            let b = new Bullet(this.x + 60, this.y + 60, 2, false, { pColor: '#c0392b', pType: 'normal', isEnemy: true });
             b.vx = Math.cos(angle) * speed;
             b.vy = Math.sin(angle) * speed;
             entities.push(b);
@@ -1446,11 +1696,11 @@ class Boss {
             // Attack 2: Spread (Level 3+)
             if (difficulty >= 3) {
                  let spread = 0.2;
-                 let b1 = new Bullet(this.x + 60, this.y + 60, 2, false);
+                 let b1 = new Bullet(this.x + 60, this.y + 60, 2, false, { pColor: '#c0392b', pType: 'normal', isEnemy: true });
                  b1.vx = Math.cos(angle - spread) * speed;
                  b1.vy = Math.sin(angle - spread) * speed;
 
-                 let b2 = new Bullet(this.x + 60, this.y + 60, 2, false);
+                 let b2 = new Bullet(this.x + 60, this.y + 60, 2, false, { pColor: '#c0392b', pType: 'normal', isEnemy: true });
                  b2.vx = Math.cos(angle + spread) * speed;
                  b2.vy = Math.sin(angle + spread) * speed;
 
@@ -1461,12 +1711,12 @@ class Boss {
             // Attack 3: Shotgun (Level 6+)
             if (difficulty >= 6) {
                  let spread = 0.4;
-                 let b3 = new Bullet(this.x + 60, this.y + 60, 2, false);
+                 let b3 = new Bullet(this.x + 60, this.y + 60, 2, false, { pColor: '#c0392b', pType: 'normal', isEnemy: true });
                  b3.vx = Math.cos(angle - spread) * speed;
                  b3.vy = Math.sin(angle - spread) * speed;
                  entities.push(b3);
 
-                 let b4 = new Bullet(this.x + 60, this.y + 60, 2, false);
+                 let b4 = new Bullet(this.x + 60, this.y + 60, 2, false, { pColor: '#c0392b', pType: 'normal', isEnemy: true });
                  b4.vx = Math.cos(angle + spread) * speed;
                  b4.vy = Math.sin(angle + spread) * speed;
                  entities.push(b4);
@@ -1603,7 +1853,7 @@ class HelicopterBoss {
              let angle = Math.atan2(player.y - this.y, player.x - this.x);
              // Spread
              angle += (Math.random() - 0.5) * 0.2;
-             let b = new Bullet(this.x + 75, this.y + 60, 1, false);
+             let b = new Bullet(this.x + 75, this.y + 60, 1, false, { pColor: '#f1c40f', pType: 'normal', isEnemy: true });
              // Manually set velocities
              b.vx = Math.cos(angle) * 15;
              b.vy = Math.sin(angle) * 15;
@@ -1682,13 +1932,15 @@ class HelicopterBoss {
     }
 }
 
+// Expose for testing
+
 
 // --- player.js ---
 class Player {
     constructor() { this.reset(); this.charData = CHARACTERS[0]; }
-    setCharacter(typeId) { 
+    setCharacter(typeId) {
         this.charData = CHARACTERS.find(c => c.id === typeId) || CHARACTERS[0];
-        if (player) updateUI(); 
+        if (player) updateUI();
     }
     reset() {
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y;
@@ -1703,26 +1955,26 @@ class Player {
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
-        
+
         // Pick from unlocked characters
         let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
         let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
         this.setCharacter(unlockedChars[newCharIndex].id);
-        
-        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40; 
+
+        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
         spawnExplosion(this.x, this.y, "#00ff41", 2);
     }
-    
+
     // --- WALL DETECTION ---
     checkWall(dir) {
         if (!tiles) return false;
         let sensorSize = 2; // Check 2 pixels away
         let checkX = dir > 0 ? this.x + this.w + sensorSize : this.x - sensorSize;
-        
+
         // Check top, middle, and bottom points to ensure we are really next to a wall
         let points = [this.y, this.y + this.h/2, this.y + this.h - 1];
-        
+
         for (let py of points) {
             let r = Math.floor(py / TILE_SIZE);
             let c = Math.floor(checkX / TILE_SIZE);
@@ -1763,7 +2015,7 @@ class Player {
         let input = 0;
         if (keys['arrowleft'] || keys['a']) input = -1;
         if (keys['arrowright'] || keys['d']) input = 1;
-        
+
         // SECONDARY ATTACK
         if ((keys['c'] || keys['v']) && this.secondaryCooldown <= 0) {
             this.performSecondary();
@@ -1780,14 +2032,14 @@ class Player {
         if (this.checkWall(1)) wallDir = 1;
 
         let isWallSliding = false;
-        
+
         // Must be airborne, pressing against a wall, moving downwards, and pressing INTO the wall
         if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
             isWallSliding = true;
-            
+
             // Wall Slide Physics (Slow fall)
             if (this.vy > 2) this.vy = 2;
-            
+
             // Wall Jump Logic
             // We check jump key here directly to override normal jump behavior
             if (keys[' '] && !this.wallJumpLocked) {
@@ -1795,15 +2047,15 @@ class Player {
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
                 this.facing = -wallDir; // Face away
-                
+
                 // Visuals
                 spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, C.dirtLight, 0.5);
-                
+
                 // Force exit slide state immediately
-                isWallSliding = false; 
+                isWallSliding = false;
             }
         }
-        
+
         // Reset jump lock when key released
         if (!keys[' ']) this.wallJumpLocked = false;
 
@@ -1826,14 +2078,14 @@ class Player {
             if (keys[' ']) { this.vy = JUMP_FORCE; }
         } else {
             // Only apply normal physics if NOT wall jumping this frame
-            if (!this.wallJumpLocked) { 
+            if (!this.wallJumpLocked) {
                 if (input !== 0) {
-                    this.vx += input * ACCELERATION; this.facing = input; 
-                    this.animFrame += isSprinting ? 2 : 1; 
+                    this.vx += input * ACCELERATION; this.facing = input;
+                    this.animFrame += isSprinting ? 2 : 1;
                     let dustFreq = isSprinting ? 5 : 10;
                     if(this.grounded && this.animFrame % dustFreq === 0) particles.push(new Particle(this.x + 15, this.y + 30, "#d2b48c"));
                 } else { this.vx *= FRICTION; this.animFrame = 0; }
-                
+
                 if(Math.abs(this.vx) > this.speed) this.vx = Math.sign(this.vx) * this.speed;
             }
 
@@ -1841,11 +2093,11 @@ class Player {
             if (keys[' '] && this.grounded && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
             }
-            
-            this.vy += GRAVITY; 
+
+            this.vy += GRAVITY;
             if(this.vy > TERMINAL_VELOCITY) this.vy = TERMINAL_VELOCITY;
         }
-        
+
         // Dust particles for wall slide
         if (isWallSliding && gameState.frame % 5 === 0) {
              particles.push(new Particle(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h, "#fff"));
@@ -1854,8 +2106,7 @@ class Player {
         // Apply Shoot Input (Separate from movement)
         if((keys['z'] || keys['j']) && shootCooldown <= 0) {
             let isDown = keys['arrowdown'] || keys['s'];
-            let isUp = keys['arrowup'] || keys['w'];
-            this.shoot(false, isDown, isUp);
+            this.shoot(false, isDown);
             shootCooldown = 15;
         }
         if((keys['x'] || keys['k']) && specialCooldown <= 0) {
@@ -1871,7 +2122,7 @@ class Player {
 
     checkCollisions(isX) {
         if (!tiles) return;
-        
+
         let l = Math.floor(this.x / TILE_SIZE);
         let r = Math.floor((this.x + this.w - 0.01) / TILE_SIZE);
         let t = Math.floor(this.y / TILE_SIZE);
@@ -1881,7 +2132,7 @@ class Player {
             for(let col = l; col <= r; col++) {
                 if(row>=0 && row<LEVEL_HEIGHT && col>=0 && col<LEVEL_WIDTH && tiles[row] && tiles[row][col] && tiles[row][col].type !== 0) {
                     let type = tiles[row][col].type;
-                    
+
                     if(type === 6) continue; // Ignore ladders for solid collision
                     if(type === 4) { this.takeDamage(); return; }
                     if(type === 9) { winGame(); return; }
@@ -1930,7 +2181,7 @@ class Player {
         if(this.health <= 0) this.respawn();
         updateUI();
     }
-    
+
     performSecondary() {
         let type = this.charData.pType;
         let isMelee = (type === 'melee_slash' || type === 'melee_smash');
@@ -1948,12 +2199,12 @@ class Player {
         }
     }
 
-    shoot(isSpecial, isDown, isUp) {
+    shoot(isSpecial, isDown) {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
-        
+
         let type = this.charData.pType;
-        
+
         if (isSpecial) {
              this.attackAnim = { type: 'punch', timer: 15, max: 15 };
              shakeCamera(10);
@@ -2009,29 +2260,11 @@ class Player {
                 return;
             }
 
-            if (isUp) {
-                // Upward Attack
-                if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
-                    // Upward Slash Hitbox
-                    entities.push(new MeleeHitbox(this.x - 10, this.y - 40, this.w + 20, 40, this, 2));
-                    this.attackAnim = { type: 'slash_up', timer: 15, max: 15 };
-                } else {
-                    // Shoot Up
-                    let b = new Bullet(this.x + this.w/2 - 5, this.y - 10, this.facing, isSpecial, this.charData);
-                    b.vx = 0;
-                    b.vy = -15; // Upwards
-                    b.w = 8; b.h = 20; // Vertical
-                    entities.push(b);
-                    this.attackAnim = { type: 'shoot_up', timer: 10, max: 10 };
-                }
-                return;
-            }
-
             if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
                 let range = type === 'melee_smash' ? 80 : 50; let power = type === 'melee_smash' ? 3 : 2;
                 entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-range), this.y, range, 40, this, power));
                 this.attackAnim = { type: 'slash', timer: 15, max: 15 };
-            } 
+            }
             else if (type === 'spread') {
                 for(let i=0; i<3; i++) {
                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
@@ -2048,11 +2281,11 @@ class Player {
     }
     draw(ctx, camX, camY) {
         if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
-        let cx = this.x - camX + this.w/2; 
+        let cx = this.x - camX + this.w/2;
         let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));
-        
-        ctx.save(); 
-        ctx.translate(cx, cy); 
+
+        ctx.save();
+        ctx.translate(cx, cy);
         ctx.scale(this.facing * this.stretchX, this.stretchY);
         // Shadow
         ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 25, 20, 5, 0, 0, Math.PI*2); ctx.fill();
@@ -2067,25 +2300,15 @@ class Player {
 function generateLevel() {
     let newTiles = [];
     let newEntities = [];
-    
+
     let difficulty = gameState.currentLevel;
     let biome = 'forest';
     if (difficulty >= 3) biome = 'city';
     if (difficulty >= 5) biome = 'volcano';
 
-    // Scaling Level Width
-    // Start at 150, cap at 400 around level 20
-    let targetWidth = 150 + (difficulty * 12);
-    if (targetWidth > window.MAX_LEVEL_WIDTH) targetWidth = window.MAX_LEVEL_WIDTH;
-    // Special case: Level 20+ always max width (Boss Arena logic relies on it)
-    if (difficulty >= 20) targetWidth = window.MAX_LEVEL_WIDTH;
-
-    window.LEVEL_WIDTH = Math.floor(targetWidth);
-
     // Update global level data for rendering
     gameState.levelData.biome = biome;
     gameState.levelData.difficulty = difficulty;
-    gameState.levelData.width = window.LEVEL_WIDTH;
 
     // Helper: Spawn Enemy Squad
     function spawnSquad(x, y) {
@@ -2100,54 +2323,17 @@ function generateLevel() {
              // Heavy Squad: 1 Heavy + 1 Shield
              newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE));
              newEntities.push(new ShieldBearer((x+2) * TILE_SIZE, y * TILE_SIZE));
-        } else if (difficulty >= 3 && type < 0.15 + (difficulty * 0.05)) { // Only spawn Kamikazes at difficulty 3+
+        } else if (type < 0.4) {
              // Suicide Squad: 3 Kamikazes
              newEntities.push(new KamikazeEnemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x+1) * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x-1) * TILE_SIZE, y * TILE_SIZE));
         } else {
-             // Standard Patrol: 2-4 Grunts (Increased pack size)
+             // Standard Patrol: 2-3 Grunts
              newEntities.push(new Enemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-             if (secureRandom() < 0.7) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
-             if (secureRandom() < 0.3) newEntities.push(new Enemy((x+2) * TILE_SIZE, y * TILE_SIZE));
+             if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
         }
-    }
-
-    function buildOutpost(x, y) {
-        let width = 6 + Math.floor(secureRandom() * 4);
-        let height = 5 + Math.floor(secureRandom() * 4);
-
-        // Structure
-        for(let r=y-height; r<y; r++) {
-            for(let c=x; c<x+width; c++) {
-                if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH) {
-                    // Floors
-                    if (r === y - height || r === y - Math.floor(height/2)) {
-                         newTiles[r][c] = { type: 1 }; // Dirt/Wood floor
-                    }
-                    // Walls
-                    else if (c === x || c === x + width - 1) {
-                         newTiles[r][c] = { type: 1 };
-                    }
-                    // Empty space inside
-                    else {
-                        newTiles[r][c] = { type: 0 };
-                    }
-                }
-            }
-        }
-        // Ladder
-        let ladderX = x + Math.floor(width/2);
-        for(let r=y-height; r<y; r++) {
-            if(r>=0) newTiles[r][ladderX] = { type: 6 };
-        }
-
-        // Populate
-        newEntities.push(new PropaneTank((x+1)*TILE_SIZE, (y-1)*TILE_SIZE));
-        newEntities.push(new PropaneTank((x+width-2)*TILE_SIZE, (y-1)*TILE_SIZE));
-        spawnSquad(x + Math.floor(width/2), y - 1);
-        spawnSquad(x + Math.floor(width/2), y - Math.floor(height/2) - 1);
     }
 
     // 1. Init Empty Grid
@@ -2156,7 +2342,7 @@ function generateLevel() {
     }
 
     // 2. Terrain Walker
-    let currentHeight = 10; 
+    let currentHeight = 10;
     let checkpointInterval = Math.floor(LEVEL_WIDTH / 6);
     let nextCheckpoint = checkpointInterval;
     let checkpointsPlaced = 0;
@@ -2166,7 +2352,7 @@ function generateLevel() {
     let surfaceMap = [];
 
     for (let x = 0; x < LEVEL_WIDTH; x++) {
-        
+
         // Level 20+: Boss Arena at the end
         if (difficulty >= 20 && x > LEVEL_WIDTH - 40) {
             currentHeight = 12;
@@ -2177,7 +2363,7 @@ function generateLevel() {
                     if(12-w > 0) newTiles[12-w][x] = { type: 2 };
                 }
             }
-        } 
+        }
         else if (x > 15) {
             // Roughness increases with difficulty
             let roughness = 0.2 + (difficulty * 0.05);
@@ -2187,21 +2373,11 @@ function generateLevel() {
             if (currentHeight < 6) currentHeight = 6;
             if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
 
-            // Randomly build Outpost (Broforce style buildings)
-            if (secureRandom() < 0.05 && x < LEVEL_WIDTH - 50) {
-                 buildOutpost(x, currentHeight);
-                 // Fill surfaceMap for skipped section to prevent crashes in Pass 3
-                 for(let i=0; i<=10; i++) surfaceMap[x+i] = currentHeight;
-                 // Skip ahead a bit
-                 x += 10;
-                 continue; // Skip terrain gen for this chunk
-            }
-
             // Pit Chance (More pits in later levels)
             let pitChance = 0.02 + (difficulty * 0.01);
             if (secureRandom() < pitChance && x > 20) {
-                for(let y=0; y<LEVEL_HEIGHT; y++) { 
-                    if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 }; 
+                for(let y=0; y<LEVEL_HEIGHT; y++) {
+                    if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 };
                 }
 
                 // Lava at bottom for Volcano
@@ -2222,10 +2398,10 @@ function generateLevel() {
             }
 
             // DECIDE RESCUE TYPE (Broforce: Often on high ground/cages)
-            // Increase frequency (beastsPlaced < 8) and reduce distance check (20)
-            if (beastsPlaced < 8 && (x - lastBeastX > 20) && secureRandom() < 0.15) {
+            // Increase frequency (beastsPlaced < 8) and reduce distance check (30)
+            if (beastsPlaced < 8 && (x - lastBeastX > 30) && secureRandom() < 0.08) {
                 if (secureRandom() < 0.5 && currentHeight > 6) {
-                    let islandY = currentHeight - 4; 
+                    let islandY = currentHeight - 4;
                     if (islandY > 2) {
                         newTiles[islandY][x] = { type: 1 }; // Anchor
                         newEntities.push(new TrappedBeast(x * TILE_SIZE, (islandY + 1) * TILE_SIZE, islandY, x));
@@ -2265,7 +2441,7 @@ function generateLevel() {
         if (secureRandom() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
             let startY = surfaceMap[x];
             let bottomY = LEVEL_HEIGHT - 5;
-            
+
             // 1. Vertical Ladder Shaft
             for (let y = startY; y < bottomY; y++) {
                 if (y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 6 };
@@ -2294,15 +2470,15 @@ function generateLevel() {
                     }
 
                     // Hostage Check (Hidden in caves)
-                    if (beastsPlaced < 8 && (tx - lastBeastX > 20 || lastBeastX - tx > 20) && secureRandom() < 0.10) {
+                    if (beastsPlaced < 8 && (tx - lastBeastX > 30 || lastBeastX - tx > 30) && secureRandom() < 0.05) {
                         let beastY = tunnelY;
                         if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) {
                             newTiles[beastY-1][tx] = { type: 1 };
                             newEntities.push(new TrappedBeast(tx * TILE_SIZE, (beastY + 1) * TILE_SIZE, beastY-1, tx));
                             beastsPlaced++;
                             lastBeastX = tx;
-                            // Cave Guard Squad
-                            spawnSquad(tx+2, beastY+1);
+                            // Cave Guard
+                            newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
                         }
                     }
                 }
@@ -2324,7 +2500,7 @@ function generateLevel() {
         if (difficulty >= 5 && checkpointsPlaced >= 3) cpReq = false;
 
         if (x >= nextCheckpoint && cpReq) {
-            newTiles[y][x] = { type: 2 }; 
+            newTiles[y][x] = { type: 2 };
             newTiles[y-1][x] = { type: 5, active: false, id: checkpointsPlaced };
             nextCheckpoint += Math.floor(LEVEL_WIDTH / (difficulty >= 5 ? 4 : 6));
             checkpointsPlaced++;
@@ -2335,19 +2511,14 @@ function generateLevel() {
                  newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
             }
         }
-        else if (secureRandom() < 0.08 + (difficulty*0.02)) { // Increased barrel density
-            if (y > 0 && newTiles[y-1] && newTiles[y-1][x] && newTiles[y-1][x].type === 0) {
-                 newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
-            }
+        else if (secureRandom() < 0.03 + (difficulty*0.01)) {
+            if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
 
         // ENEMY ENCOUNTERS (Clusters)
         // Spawn a squad every ~15-25 tiles, with some randomness
-        let threshold = 14 - (difficulty * 0.5);
-        if (threshold < 6) threshold = 6;
-
-        if (x - lastEncounterX > threshold) {
-             if (secureRandom() < 0.65) { // Increased spawn rate
+        if (x - lastEncounterX > (15 - difficulty)) { // More frequent in hard levels
+             if (secureRandom() < 0.4) {
                  spawnSquad(x, y-1);
                  lastEncounterX = x;
              }
@@ -2357,7 +2528,7 @@ function generateLevel() {
         if (secureRandom() < 0.02) {
              if (difficulty >= 2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        if (secureRandom() < 0.01) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        if (secureRandom() < 0.02) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
@@ -2367,17 +2538,7 @@ function generateLevel() {
     }
 
     // Boss Spawning Logic
-    if (difficulty >= 20) {
-         // Level 20+: Special Room
-         // Boss is in the arena at the end
-         newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
-
-         // Traps/Turrets in arena?
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
-    }
-    // Only spawn bosses every 5 levels (e.g., 5, 10, 15) if < 20
-    else if (difficulty % 5 === 0) {
+    if (difficulty < 20) {
          // Spawn Boss in normal terrain (Last 30% of map)
          let spawnRangeStart = Math.floor(LEVEL_WIDTH * 0.7);
          let bossX = spawnRangeStart + Math.floor(secureRandom() * (LEVEL_WIDTH - spawnRangeStart - 5));
@@ -2400,28 +2561,15 @@ function generateLevel() {
          // Boss Entourage
          spawnSquad(bossX - 5, bossY);
          spawnSquad(bossX + 5, bossY);
+
     } else {
-        // Non-Boss Level: Spawn Captain to trigger extraction
-        let tileX = LEVEL_WIDTH - 20;
-        // Ensure there is ground for the captain
-        let groundY = surfaceMap[tileX] || 10;
+         // Level 20+: Special Room
+         // Boss is in the arena at the end
+         newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
 
-        // Force ground if missing
-        if (groundY >= LEVEL_HEIGHT) {
-            groundY = LEVEL_HEIGHT - 5;
-            // Build a platform
-            for(let w=0; w<5; w++) {
-                if(tileX+w < LEVEL_WIDTH) newTiles[groundY][tileX+w] = { type: 2 };
-            }
-        }
-
-        let endX = tileX * TILE_SIZE;
-        let endY = (groundY - 2) * TILE_SIZE;
-
-        newEntities.push(new CaptainEnemy(endX, endY));
-        // Spawn guards at same location
-        spawnSquad(tileX - 2, groundY - 1);
-        spawnSquad(tileX + 2, groundY - 1);
+         // Traps/Turrets in arena?
+         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
+         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
     }
 
     entities = newEntities;
@@ -2636,11 +2784,6 @@ function drawAnatomicalHero(ctx, char, frame, attackAnim = null) {
              if(t < 0.5) armAngle = 0; // Wind up then smash
         } else if (attackAnim.type === 'throw') {
              armAngle = -Math.PI/2 + (1-t) * Math.PI;
-        } else if (attackAnim.type === 'shoot_up') {
-             armAngle = -Math.PI;
-             armOffsetX = -5;
-        } else if (attackAnim.type === 'slash_up') {
-             armAngle = -Math.PI + (1-t) * Math.PI/2;
         } else if (attackAnim.type === 'flex') {
              // Bicep Flex
              armAngle = -Math.PI + 0.5; // Up
@@ -2811,39 +2954,6 @@ function updateUI() {
     if(player.charData) document.getElementById('charName').style.color = player.charData.cSkin;
 }
 
-function unlockCharacter() {
-    // Unlock new character
-    if (gameState.globalUnlocked < CHARACTERS.length) {
-        gameState.globalUnlocked++;
-    }
-    gameState.lives++; // Gain a life for rescue
-
-    // Switch Player Character Immediately (Broforce Style)
-    // Use the *latest* unlocked character or random unlocked?
-    // Broforce gives you the character you just rescued (or random from pool).
-    // Let's go with random unlocked to keep variety or simply the next one if linear.
-    // Let's use logic: We just unlocked index `gameState.globalUnlocked - 1`.
-
-    // Actually, to make it fun, let's switch to a RANDOM character from the UNLOCKED pool
-    // This simulates the "get a new hero" feel.
-
-    let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
-    let newChar = unlockedChars[Math.floor(secureRandom() * unlockedChars.length)];
-
-    player.setCharacter(newChar.id);
-    player.health = 3; // Refill health
-    spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "cyan");
-    updateUI();
-}
-
-// Expose for debugging/verification
-window.createExplosion = createExplosion;
-window.PropaneTank = PropaneTank;
-window.Bullet = Bullet;
-window.TrappedBeast = TrappedBeast;
-window.CaptainEnemy = CaptainEnemy;
-window.Helicopter = Helicopter;
-
 function winGame() {
     gameState.running = false;
     // Calculate Stats
@@ -2872,7 +2982,7 @@ function endGame() {
 function loop(timestamp) {
     if (!lastTime) lastTime = timestamp;
     const deltaTime = timestamp - lastTime;
-    
+
     // Slow Motion Logic
     let interval = INTERVAL / gameState.slowMo;
 
@@ -2881,7 +2991,7 @@ function loop(timestamp) {
         return;
     }
     lastTime = timestamp - (deltaTime % interval);
-    
+
     // DEBUG UPDATE
     try {
         if (debugHUD) {
@@ -2911,8 +3021,7 @@ function loop(timestamp) {
 
                 if((keys['z'] || keys['j']) && shootCooldown <= 0) {
                     let isDown = keys['arrowdown'] || keys['s'];
-                    let isUp = keys['arrowup'] || keys['w'];
-                    if(player) player.shoot(false, isDown, isUp);
+                    if(player) player.shoot(false, isDown);
                     shootCooldown = 15;
                 }
                 if((keys['x'] || keys['k']) && specialCooldown <= 0 && player) { player.shoot(true, false); specialCooldown = 120; }
@@ -2924,12 +3033,6 @@ function loop(timestamp) {
                 damageNumbers = damageNumbers.filter(d => d.life > 0);
                 damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
                 debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
-
-                // Check for Level Completion
-                if (gameState.levelComplete) {
-                    winGame();
-                    gameState.levelComplete = false;
-                }
             }
 
             if (player) {
@@ -3087,8 +3190,8 @@ function handleResize() {
 // MAIN INIT FUNCTION
 function init() {
     console.log("INIT() CALLED");
-    lastTime = 0; 
-    
+    lastTime = 0;
+
     // Resize setup
     window.addEventListener('resize', handleResize);
     handleResize();
@@ -3097,7 +3200,7 @@ function init() {
     gameState.screen = 'MENU';
     gameState.running = false;
     gameState.currentLevel = 1;
-    
+
     // Show Menu UI, Hide Game UI
     document.getElementById('menuOverlay').style.display = 'flex';
     document.getElementById('rosterOverlay').style.display = 'none';

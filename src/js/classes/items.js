@@ -25,8 +25,7 @@ class PropaneTank {
         this.vx = (this.x - sourceX) > 0 ? 5 : -5;
         this.vy = -5;
         if(this.hp <= 0) {
-            spawnExplosion(this.x + this.w/2, this.y + this.h/2, "orange", 4);
-            // Chain reaction logic handled by explosion
+            createExplosion(this.x + this.w/2, this.y + this.h/2, 2, 50);
             this.x = -9999;
         }
     }
@@ -173,6 +172,7 @@ class Helicopter {
         // Only extract if it's NOT the intro heli
         if (!this.isIntro && checkRectOverlap(this, player)) {
             gameState.levelComplete = true;
+            winGame();
         }
 
         // If intro heli, fly away after a bit
@@ -234,7 +234,8 @@ class TrappedBeast {
         if (!this.freed && checkRectOverlap(this, player)) {
             this.freed = true;
             spawnExplosion(this.x, this.y, "green", 2);
-            // Give powerup?
+            unlockCharacter();
+            gameState.rescues++;
         }
     }
     draw(ctx, camX, camY) {
@@ -273,3 +274,5 @@ class Mailman {
         ctx.fillRect(this.x - camX - 5, this.y - camY + 20, 10, 20);
     }
 }
+
+// Expose for testing
