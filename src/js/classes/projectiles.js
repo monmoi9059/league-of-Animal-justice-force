@@ -153,8 +153,9 @@ class MeleeHitbox {
         }
     }
     draw(ctx, camX, camY) {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        // Invisible Hitbox
+        // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        // ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
     }
     takeDamage() {}
 }
