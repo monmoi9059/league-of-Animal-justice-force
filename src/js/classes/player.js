@@ -168,7 +168,8 @@ class Player {
         // Apply Shoot Input (Separate from movement)
         if((keys['z'] || keys['j']) && shootCooldown <= 0) {
             let isDown = keys['arrowdown'] || keys['s'];
-            this.shoot(false, isDown);
+            let isUp = keys['arrowup'] || keys['w'];
+            this.shoot(false, isDown, isUp);
             shootCooldown = 15;
         }
         if((keys['x'] || keys['k']) && specialCooldown <= 0) {
@@ -261,7 +262,7 @@ class Player {
         }
     }
 
-    shoot(isSpecial, isDown) {
+    shoot(isSpecial, isDown, isUp = false) {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
 
@@ -322,6 +323,19 @@ class Player {
                 return;
             }
 
+            if (isUp) {
+                // Upward Attack
+                if (type === 'melee_slash' || type === 'melee_smash') {
+                    // Upward Slash (Anti-air)
+                    entities.push(new MeleeHitbox(this.x, this.y - 40, this.w, 40, this, 2));
+                    this.attackAnim = { type: 'slash', timer: 15, max: 15 }; // Reuse slash anim
+                } else {
+                    // Shoot Up
+                    entities.push(new Bullet(this.x + this.w/2 - 5, this.y - 20, this.facing, isSpecial, this.charData, false, false, true));
+                }
+                return;
+            }
+
             if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
                 let range = type === 'melee_smash' ? 80 : 50; let power = type === 'melee_smash' ? 3 : 2;
                 entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-range), this.y, range, 40, this, power));
@@ -333,6 +347,23 @@ class Player {
                     b.vy = (secureRandom() - 0.5) * 5; entities.push(b);
                 }
                 this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
+            }
+            else if (type === 'shuriken') {
+                 for(let i=0; i<3; i++) {
+                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
+                     b.vy = (i - 1) * 2;
+                     entities.push(b);
+                 }
+                 this.attackAnim = { type: 'throw', timer: 10, max: 10 };
+            }
+            else if (type === 'water_gun') {
+                 for(let i=0; i<4; i++) {
+                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
+                     b.vx = this.facing * (12 + secureRandom() * 4);
+                     b.vy = (secureRandom() - 0.5) * 6;
+                     entities.push(b);
+                 }
+                 this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
             }
             else {
                 entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, false, this.charData));
