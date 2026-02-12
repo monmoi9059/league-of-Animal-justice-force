@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
     <title>League of Animal Justice Avenger Force: Operation Dumpster Fire</title>
     <!-- CSS_INJECTION_POINT -->
 </head>
@@ -63,6 +64,38 @@
 
         <div class="controls">
             ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack | F: Flex
+        </div>
+
+        <!-- Touch Controls -->
+        <button id="controlsToggle" class="touch-toggle">🎮</button>
+
+        <div id="touchControls" class="touch-overlay" style="display: none;">
+            <div class="dpad-area">
+                <div class="dpad-row">
+                    <button id="btnUp" class="touch-btn dpad-btn">▲</button>
+                </div>
+                <div class="dpad-row">
+                    <button id="btnLeft" class="touch-btn dpad-btn">◀</button>
+                    <div class="dpad-spacer"></div>
+                    <button id="btnRight" class="touch-btn dpad-btn">▶</button>
+                </div>
+                <div class="dpad-row">
+                    <button id="btnDown" class="touch-btn dpad-btn">▼</button>
+                </div>
+            </div>
+
+            <div class="action-area">
+                <div class="action-group-main">
+                    <button id="btnShoot" class="touch-btn action-btn large">Z</button>
+                    <button id="btnJump" class="touch-btn action-btn large">SPACE</button>
+                </div>
+                <div class="action-group-sub">
+                    <button id="btnSpecial" class="touch-btn action-btn">X</button>
+                    <button id="btnSecondary" class="touch-btn action-btn">C</button>
+                    <button id="btnFlex" class="touch-btn action-btn">F</button>
+                    <button id="btnSprint" class="touch-btn action-btn toggle-btn">RUN</button>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
     <title>League of Animal Justice Avenger Force: Operation Dumpster Fire</title>
     <style>
 /* --- CSS --- */
@@ -172,6 +173,141 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
     display: none; /* Hide unless needed */
 }
 
+/* --- TOUCH CONTROLS --- */
+.touch-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    margin-top: 0; /* Override generic button */
+    box-shadow: none;
+}
+
+.touch-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through empty space */
+    z-index: 90;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.touch-btn {
+    pointer-events: auto; /* Enable clicks on buttons */
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+    font-weight: bold;
+    user-select: none;
+    touch-action: manipulation;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+    padding: 0; /* Reset */
+    backdrop-filter: blur(2px);
+    transition: transform 0.1s, background 0.1s;
+    box-shadow: none; /* Reset */
+    text-shadow: 1px 1px 0 #000;
+}
+
+.touch-btn:active, .touch-btn.active {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+}
+
+.touch-btn.toggle-btn.active {
+    background: rgba(0, 255, 65, 0.5);
+    border-color: #00ff41;
+}
+
+/* D-PAD */
+.dpad-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    margin-left: 20px;
+}
+.dpad-row {
+    display: flex;
+}
+.dpad-spacer {
+    width: 60px;
+    height: 60px;
+    margin: 5px;
+}
+
+/* ACTIONS */
+.action-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    margin-right: 20px;
+}
+
+.action-group-main {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+.action-group-sub {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    max-width: 280px; /* Force wrap if needed */
+}
+
+.action-btn.large {
+    width: 80px;
+    height: 80px;
+    font-size: 24px;
+    background: rgba(255, 0, 222, 0.2);
+    border-color: rgba(255, 0, 222, 0.5);
+}
+
+/* Landscape adjustments for mobile */
+@media (max-height: 500px) {
+    .touch-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 16px;
+    }
+    .touch-btn.large {
+        width: 70px;
+        height: 70px;
+    }
+    .dpad-spacer {
+        width: 50px;
+        height: 50px;
+    }
+    .action-area {
+        margin-right: 50px; /* Give thumb space */
+    }
+    .dpad-area {
+        margin-left: 50px;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -231,6 +367,38 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
 
         <div class="controls">
             ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack | F: Flex
+        </div>
+
+        <!-- Touch Controls -->
+        <button id="controlsToggle" class="touch-toggle">🎮</button>
+
+        <div id="touchControls" class="touch-overlay" style="display: none;">
+            <div class="dpad-area">
+                <div class="dpad-row">
+                    <button id="btnUp" class="touch-btn dpad-btn">▲</button>
+                </div>
+                <div class="dpad-row">
+                    <button id="btnLeft" class="touch-btn dpad-btn">◀</button>
+                    <div class="dpad-spacer"></div>
+                    <button id="btnRight" class="touch-btn dpad-btn">▶</button>
+                </div>
+                <div class="dpad-row">
+                    <button id="btnDown" class="touch-btn dpad-btn">▼</button>
+                </div>
+            </div>
+
+            <div class="action-area">
+                <div class="action-group-main">
+                    <button id="btnShoot" class="touch-btn action-btn large">Z</button>
+                    <button id="btnJump" class="touch-btn action-btn large">SPACE</button>
+                </div>
+                <div class="action-group-sub">
+                    <button id="btnSpecial" class="touch-btn action-btn">X</button>
+                    <button id="btnSecondary" class="touch-btn action-btn">C</button>
+                    <button id="btnFlex" class="touch-btn action-btn">F</button>
+                    <button id="btnSprint" class="touch-btn action-btn toggle-btn">RUN</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -532,6 +700,107 @@ function unlockCharacter() {
 const keys = {};
 window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+// --- TOUCH CONTROLS ---
+(function() {
+    const touchMap = {
+        'btnUp': 'arrowup',
+        'btnDown': 'arrowdown',
+        'btnLeft': 'arrowleft',
+        'btnRight': 'arrowright',
+        'btnJump': ' ',
+        'btnShoot': 'z',
+        'btnSpecial': 'x',
+        'btnSecondary': 'c',
+        'btnFlex': 'f'
+        // Sprint handled separately
+    };
+
+    function setKey(key, state) {
+        if (keys[key] !== state) {
+            keys[key] = state;
+        }
+    }
+
+    function handleTouch(id, isDown) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+
+        // Sprint Toggle Logic
+        if (id === 'btnSprint') {
+            if (isDown) { // Only toggle on press
+                keys['shift'] = !keys['shift'];
+                if (keys['shift']) btn.classList.add('active');
+                else btn.classList.remove('active');
+            }
+            return;
+        }
+
+        const key = touchMap[id];
+        if (key) {
+            setKey(key, isDown);
+            if (isDown) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    }
+
+    // Attach listeners
+    const allBtnIds = Object.keys(touchMap).concat(['btnSprint']);
+
+    allBtnIds.forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+
+        const start = (e) => {
+            e.preventDefault();
+            handleTouch(id, true);
+        };
+        const end = (e) => {
+            e.preventDefault();
+            handleTouch(id, false);
+        };
+
+        btn.addEventListener('touchstart', start, {passive: false});
+        btn.addEventListener('touchend', end, {passive: false});
+        // Mouse fallbacks for testing
+        btn.addEventListener('mousedown', start);
+        btn.addEventListener('mouseup', end);
+        btn.addEventListener('mouseleave', end);
+    });
+
+    // Toggle Visibility
+    const toggleBtn = document.getElementById('controlsToggle');
+    const controlsDiv = document.getElementById('touchControls');
+
+    function updateToggleBtn() {
+        if (controlsDiv.style.display === 'none') {
+            toggleBtn.style.opacity = '0.5';
+        } else {
+            toggleBtn.style.opacity = '1';
+        }
+    }
+
+    if (toggleBtn && controlsDiv) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (controlsDiv.style.display === 'none') {
+                controlsDiv.style.display = 'flex';
+            } else {
+                controlsDiv.style.display = 'none';
+            }
+            updateToggleBtn();
+        });
+
+        // Auto-show on touch devices
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            controlsDiv.style.display = 'flex';
+        } else {
+            // Hide by default on desktop
+            controlsDiv.style.display = 'none';
+        }
+        updateToggleBtn();
+    }
+})();
 
 
 // --- particles.js ---
