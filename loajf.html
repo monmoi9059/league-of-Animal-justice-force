@@ -319,7 +319,12 @@ function spawnExplosion(x, y, color, scale=1) {
     for(let i=0; i<8*scale; i++) particles.push(new Particle(x, y, color));
 }
 function spawnDebris(x, y, color) {
-    for(let i=0; i<3; i++) debris.push(new RockChunk(x, y, color));
+    // Spawn more, smaller chunks for better "shattering" effect
+    for(let i=0; i<6; i++) {
+        let chunk = new RockChunk(x + secureRandom()*20, y + secureRandom()*20, color);
+        chunk.size = secureRandom() * 4 + 2; // Smaller chunks (2-6px)
+        debris.push(chunk);
+    }
 }
 function destroyRadius(cx, cy, r) {
     for(let y = cy - r; y <= cy + r; y++) {
@@ -444,7 +449,8 @@ class Bullet {
                     spawnExplosion(this.x, this.y, C.dirtLight, 1);
                     this.life = 0;
                     if (t.type === 1) { tiles[r][c] = { type: 0 }; }
-                    if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.vy > 0) destroyRadius(c, r, 2); // Down shots destroy area
+                    // Reduced destroy radius from 2 to 1 for smaller destruction
+                    if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.vy > 0) destroyRadius(c, r, 1);
                 }
             }
         }

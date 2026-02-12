@@ -77,7 +77,8 @@ class Bullet {
                     spawnExplosion(this.x, this.y, C.dirtLight, 1);
                     this.life = 0;
                     if (t.type === 1) { tiles[r][c] = { type: 0 }; }
-                    if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.vy > 0) destroyRadius(c, r, 2); // Down shots destroy area
+                    // Reduced destroy radius from 2 to 1 for smaller destruction
+                    if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.vy > 0) destroyRadius(c, r, 1);
                 }
             }
         }

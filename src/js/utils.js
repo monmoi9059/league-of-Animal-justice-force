@@ -20,7 +20,12 @@ function spawnExplosion(x, y, color, scale=1) {
     for(let i=0; i<8*scale; i++) particles.push(new Particle(x, y, color));
 }
 function spawnDebris(x, y, color) {
-    for(let i=0; i<3; i++) debris.push(new RockChunk(x, y, color));
+    // Spawn more, smaller chunks for better "shattering" effect
+    for(let i=0; i<6; i++) {
+        let chunk = new RockChunk(x + secureRandom()*20, y + secureRandom()*20, color);
+        chunk.size = secureRandom() * 4 + 2; // Smaller chunks (2-6px)
+        debris.push(chunk);
+    }
 }
 function destroyRadius(cx, cy, r) {
     for(let y = cy - r; y <= cy + r; y++) {
