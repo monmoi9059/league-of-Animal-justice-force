@@ -1779,7 +1779,8 @@ class Player {
         // Apply Shoot Input (Separate from movement)
         if((keys['z'] || keys['j']) && shootCooldown <= 0) {
             let isDown = keys['arrowdown'] || keys['s'];
-            this.shoot(false, isDown);
+            let isUp = keys['arrowup'] || keys['w'];
+            this.shoot(false, isDown, isUp);
             shootCooldown = 15;
         }
         if((keys['x'] || keys['k']) && specialCooldown <= 0) {
@@ -1872,7 +1873,7 @@ class Player {
         }
     }
 
-    shoot(isSpecial, isDown) {
+    shoot(isSpecial, isDown, isUp) {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
         
@@ -1929,6 +1930,24 @@ class Player {
                     // Shoot Down
                     entities.push(new Bullet(this.x + this.w/2 - 5, this.y + this.h, this.facing, isSpecial, this.charData, true));
                     this.vy = -2; // Hover
+                }
+                return;
+            }
+
+            if (isUp) {
+                // Upward Attack
+                if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
+                    // Upward Slash Hitbox
+                    entities.push(new MeleeHitbox(this.x - 10, this.y - 40, this.w + 20, 40, this, 2));
+                    this.attackAnim = { type: 'slash_up', timer: 15, max: 15 };
+                } else {
+                    // Shoot Up
+                    let b = new Bullet(this.x + this.w/2 - 5, this.y - 10, this.facing, isSpecial, this.charData);
+                    b.vx = 0;
+                    b.vy = -15; // Upwards
+                    b.w = 8; b.h = 20; // Vertical
+                    entities.push(b);
+                    this.attackAnim = { type: 'shoot_up', timer: 10, max: 10 };
                 }
                 return;
             }
@@ -2468,6 +2487,11 @@ function drawAnatomicalHero(ctx, char, frame, attackAnim = null) {
              if(t < 0.5) armAngle = 0; // Wind up then smash
         } else if (attackAnim.type === 'throw') {
              armAngle = -Math.PI/2 + (1-t) * Math.PI;
+        } else if (attackAnim.type === 'shoot_up') {
+             armAngle = -Math.PI;
+             armOffsetX = -5;
+        } else if (attackAnim.type === 'slash_up') {
+             armAngle = -Math.PI + (1-t) * Math.PI/2;
         } else if (attackAnim.type === 'flex') {
              // Bicep Flex
              armAngle = -Math.PI + 0.5; // Up
@@ -2705,7 +2729,8 @@ function loop(timestamp) {
 
                 if((keys['z'] || keys['j']) && shootCooldown <= 0) {
                     let isDown = keys['arrowdown'] || keys['s'];
-                    if(player) player.shoot(false, isDown);
+                    let isUp = keys['arrowup'] || keys['w'];
+                    if(player) player.shoot(false, isDown, isUp);
                     shootCooldown = 15;
                 }
                 if((keys['x'] || keys['k']) && specialCooldown <= 0 && player) { player.shoot(true, false); specialCooldown = 120; }
