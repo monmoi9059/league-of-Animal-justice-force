@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>League of Animal Justice Avenger Force: Operation Dumpster Fire</title>
+    <!-- CSS_INJECTION_POINT -->
+</head>
+<body>
+
+    <h1>League of Animal Justice Avenger Force</h1>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="900" height="500"></canvas>
+        <div id="errorOverlay"></div>
+        <div id="debugHUD">Initializing...</div>
+
+        <!-- HUD -->
+        <div id="gameUI">
+            <div class="stat-box">HERO: <span id="charName" style="color:#00ff41">IRON MUTT</span></div>
+            <div class="stat-box">HP: <span id="healthDisplay" style="color:#ff00de">❤❤❤</span></div>
+            <div class="stat-box">LIVES: <span id="livesDisplay" style="color:yellow">3</span></div>
+            <div class="stat-box">RESCUES: <span id="rescueDisplay">0</span></div>
+            <div class="stat-box">SCORE: <span id="scoreDisplay">0</span></div>
+        </div>
+
+        <div id="bossHealthContainer">
+            <div id="bossHealthBar"></div>
+        </div>
+
+        <!-- MAIN MENU -->
+        <div id="menuOverlay" class="overlay-screen">
+            <!-- Canvas will draw the grid behind this -->
+            <button onclick="window.startGame()">DEPLOY SQUAD</button>
+            <button onclick="window.viewRoster()">VIEW TEAM</button>
+        </div>
+
+        <!-- ROSTER MENU -->
+        <div id="rosterOverlay" class="overlay-screen">
+            <button onclick="window.returnToMenu()">BACK</button>
+        </div>
+
+        <!-- GAME OVER / WIN -->
+        <div id="gameOverOverlay" class="overlay-screen">
+            <h2 id="ovTitle" style="font-size: 50px; color: #00ff41; margin-bottom: 10px;">MISSION FAILED</h2>
+            <p id="ovMsg" style="margin-bottom: 30px; font-size: 20px;">The HOA has won.</p>
+            <button onclick="window.returnToBase()">RETURN TO BASE</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        ARROWS/WASD: Move | SPACE: Jump | SHIFT: Sprint | Z: Shoot | X: Special | C: 2nd Attack | DOWN+Z: Down Attack | F: Flex
+    </div>
+
+    <!-- JS_INJECTION_POINT -->
+
+</body>
+</html>

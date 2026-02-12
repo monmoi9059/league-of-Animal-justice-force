@@ -1,0 +1,342 @@
+class Player {
+    constructor() { this.reset(); this.charData = CHARACTERS[0]; }
+    setCharacter(typeId) {
+        this.charData = CHARACTERS.find(c => c.id === typeId) || CHARACTERS[0];
+        if (player) updateUI();
+    }
+    reset() {
+        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y;
+        this.w = 24; this.h = 30; // SLIM FIT HITBOX
+        this.vx = 0; this.vy = 0; this.speed = 5;
+        this.grounded = false; this.facing = 1; this.health = 3; this.invincible = 0;
+        this.stretchX = 1; this.stretchY = 1; this.animFrame = 0;
+        this.lastY = this.y;
+        this.secondaryCooldown = 0;
+        this.attackAnim = { type: null, timer: 0, max: 0 };
+    }
+    respawn() {
+        gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
+
+        // Pick from unlocked characters
+        let unlockedChars = CHARACTERS.slice(0, globalUnlocked);
+        let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
+        this.setCharacter(unlockedChars[newCharIndex].id);
+
+        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
+        this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
+        spawnExplosion(this.x, this.y, "#00ff41", 2);
+    }
+
+    // --- NEW HELPER METHOD FOR WALL DETECTION ---
+    checkWall(dir) {
+        if (!tiles) return false;
+        let sensorSize = 2; // Check 2 pixels away
+        let checkX = dir > 0 ? this.x + this.w + sensorSize : this.x - sensorSize;
+
+        // Check top, middle, and bottom points to ensure we are really next to a wall
+        let points = [this.y, this.y + this.h/2, this.y + this.h - 1];
+
+        for (let py of points) {
+            let r = Math.floor(py / TILE_SIZE);
+            let c = Math.floor(checkX / TILE_SIZE);
+            if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    update() {
+        this.lastY = this.y;
+        if(this.secondaryCooldown > 0) this.secondaryCooldown--;
+        if(this.attackAnim.timer > 0) this.attackAnim.timer--;
+
+        // FLEX LOGIC
+        if (keys['f']) {
+            this.vx = 0; // Stop moving
+            this.attackAnim = { type: 'flex', timer: 10, max: 10 }; // Keep resetting timer as long as held
+            if (gameState.frame % 10 === 0) {
+                 spawnDamageNumber(this.x, this.y - 20, "FLEX!", "gold");
+                 shakeCamera(2);
+            }
+            // Optional: Slight heal or invincibility?
+            // Let's just make it cool for now.
+            return; // Skip physics/movement if flexing? Maybe gravity should still apply?
+        }
+
+        // LADDER CHECK
+        let cx = Math.floor((this.x + this.w/2) / TILE_SIZE);
+        let cy = Math.floor((this.y + this.h/2) / TILE_SIZE);
+        let onLadder = (cy>=0 && cy<LEVEL_HEIGHT && cx>=0 && cx<LEVEL_WIDTH && tiles[cy] && tiles[cy][cx] && tiles[cy][cx].type === 6);
+
+        let input = 0;
+        if (keys['arrowleft'] || keys['a']) input = -1;
+        if (keys['arrowright'] || keys['d']) input = 1;
+
+        // SECONDARY ATTACK
+        if ((keys['c'] || keys['v']) && this.secondaryCooldown <= 0) {
+            this.performSecondary();
+            this.secondaryCooldown = 30;
+        }
+
+        // SPRINT LOGIC
+        let isSprinting = keys['shift'];
+        this.speed = isSprinting ? 9 : 5;
+
+        // WALL LOGIC
+        let wallDir = 0;
+        if (this.checkWall(-1)) wallDir = -1;
+        if (this.checkWall(1)) wallDir = 1;
+
+        let isWallSliding = false;
+
+        // Must be airborne, pressing against a wall, and moving downwards
+        if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
+            isWallSliding = true;
+
+            // Wall Slide Physics (Slow fall)
+            if (this.vy > 2) this.vy = 2;
+
+            // Wall Jump Logic
+            // We check jump key here directly to override normal jump behavior
+            if (keys[' '] && !this.wallJumpLocked) {
+                this.vy = JUMP_FORCE;
+                this.vx = -wallDir * 10; // Kick off away from wall
+                this.wallJumpLocked = true; // Prevent spam
+
+                // Visuals
+                spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, C.dirtLight, 0.5);
+
+                // Force exit slide state immediately
+                isWallSliding = false;
+            }
+        }
+
+        // Reset jump lock when key released
+        if (!keys[' ']) this.wallJumpLocked = false;
+
+        if (onLadder) {
+            this.vy = 0;
+
+            // Allow lateral movement to get off
+            if (input !== 0) {
+                this.x += input * 3;
+            } else {
+                // Smooth snap to center
+                let targetX = cx * TILE_SIZE + (TILE_SIZE - this.w) / 2;
+                this.x += (targetX - this.x) * 0.2;
+            }
+
+            if (keys['arrowup'] || keys['w']) this.y -= 3;
+            if (keys['arrowdown'] || keys['s']) this.y += 3;
+
+            // Jump
+            if (keys[' ']) { this.vy = JUMP_FORCE; }
+        } else {
+            // Only apply normal physics if NOT wall jumping this frame
+            if (!this.wallJumpLocked) {
+                if (input !== 0) {
+                    this.vx += input * ACCELERATION; this.facing = input;
+                    this.animFrame += isSprinting ? 2 : 1;
+                    let dustFreq = isSprinting ? 5 : 10;
+                    if(this.grounded && this.animFrame % dustFreq === 0) particles.push(new Particle(this.x + 15, this.y + 30, "#d2b48c"));
+                } else { this.vx *= FRICTION; this.animFrame = 0; }
+
+                if(Math.abs(this.vx) > this.speed) this.vx = Math.sign(this.vx) * this.speed;
+            }
+
+            // Normal Jump
+            if (keys[' '] && this.grounded && !isWallSliding) {
+                this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
+            }
+
+            this.vy += GRAVITY;
+            if(this.vy > TERMINAL_VELOCITY) this.vy = TERMINAL_VELOCITY;
+        }
+
+        // Dust particles for wall slide
+        if (isWallSliding && this.animFrame % 5 === 0) {
+             particles.push(new Particle(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h, "#fff"));
+        }
+
+        this.x += this.vx; this.checkCollisions(true);
+        this.y += this.vy; this.checkCollisions(false);
+        this.stretchX += (1 - this.stretchX) * 0.1; this.stretchY += (1 - this.stretchY) * 0.1;
+        if(this.invincible > 0) this.invincible--;
+        if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
+    }
+    checkCollisions(isX) {
+        if (!tiles) return;
+        // STANDARD AABB COLLISION (Simplified for stability)
+        // No "skin" offsets needed because character size (24x30) is smaller than tile (40x40)
+
+        let l = Math.floor(this.x / TILE_SIZE);
+        let r = Math.floor((this.x + this.w - 0.01) / TILE_SIZE);
+        let t = Math.floor(this.y / TILE_SIZE);
+        let b = Math.floor((this.y + this.h - 0.01) / TILE_SIZE);
+
+        for(let row = t; row <= b; row++) {
+            for(let col = l; col <= r; col++) {
+                if(row>=0 && row<LEVEL_HEIGHT && col>=0 && col<LEVEL_WIDTH && tiles[row] && tiles[row][col] && tiles[row][col].type !== 0) {
+                    let type = tiles[row][col].type;
+
+                    if(type === 6) continue; // Ignore ladders for solid collision
+                    if(type === 4) { this.takeDamage(); return; }
+                    if(type === 9) { winGame(); return; }
+                    if(type === 5) {
+                        if(!tiles[row][col].active) {
+                            tiles[row][col].active = true; gameState.checkpointsHit++;
+                            gameState.spawnPoint = { x: col * TILE_SIZE, y: (row * TILE_SIZE) - 40 };
+                            spawnExplosion(col*TILE_SIZE+20, row*TILE_SIZE+20, "#00ff41", 2);
+                            if(this.health < 3) this.health = 3; updateUI();
+                        }
+                        continue;
+                    }
+                    if(type === 1 || type === 2) {
+                        if(isX) {
+                            if(this.vx > 0) {
+                                this.x = (col * TILE_SIZE) - this.w;
+                                this.vx = 0;
+                            } else if (this.vx < 0) {
+                                this.x = (col * TILE_SIZE) + TILE_SIZE;
+                                this.vx = 0;
+                            }
+                        } else {
+                            if(this.vy > 0) {
+                                // Only land if feet were previously above the block
+                                if (this.lastY + this.h <= row * TILE_SIZE + 15) {
+                                    this.y = (row * TILE_SIZE) - this.h;
+                                    this.vy = 0;
+                                    if(!this.grounded) { this.stretchX = 1.4; this.stretchY = 0.6; }
+                                    this.grounded = true;
+                                    return;
+                                }
+                            } else if (this.vy < 0) {
+                                this.y = (row * TILE_SIZE) + TILE_SIZE;
+                                this.vy = 0;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    takeDamage(amt = 1) {
+        if(this.invincible > 0) return;
+        this.health -= amt; shakeCamera(15); this.invincible = 60; spawnExplosion(this.x, this.y, "red");
+        if(this.health <= 0) this.respawn();
+        updateUI();
+    }
+
+    performSecondary() {
+        let type = this.charData.pType;
+        let isMelee = (type === 'melee_slash' || type === 'melee_smash');
+
+        if (isMelee) {
+            // Throw Rock/Knife
+            entities.push(new Bullet(this.x + 15*this.facing, this.y + 10, this.facing, false, this.charData, false, true)); // isSecondary=true
+            this.attackAnim = { type: 'throw', timer: 15, max: 15 };
+        } else {
+            // Punch/Kick
+            entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
+            // Visual
+            particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
+            this.attackAnim = { type: 'kick', timer: 15, max: 15 };
+        }
+    }
+
+    shoot(isSpecial, isDown) {
+        particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
+        shakeCamera(2);
+
+        let type = this.charData.pType;
+
+        if (isSpecial) {
+             this.attackAnim = { type: 'punch', timer: 15, max: 15 };
+             shakeCamera(10);
+
+             if(this.charData.id === 'raccoon') {
+                 entities.push(new Dumpster(this.x, this.y - 100));
+             }
+             else if (type === 'spread') {
+                 // 360 degree shot
+                 for(let i=0; i<16; i++) {
+                     let angle = (i / 16) * Math.PI * 2;
+                     let b = new Bullet(this.x + 15, this.y + 15, this.facing, true, this.charData);
+                     b.vx = Math.cos(angle) * 15;
+                     b.vy = Math.sin(angle) * 15;
+                     entities.push(b);
+                 }
+             }
+             else if (type === 'grenade' || type === 'rocket') {
+                 // Cluster
+                 for(let i=0; i<3; i++) {
+                     let b = new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, true, this.charData);
+                     b.vy = -5 - (i*3);
+                     b.vx = this.facing * (10 + i*2);
+                     entities.push(b);
+                 }
+             }
+             else if (type === 'melee_smash') {
+                 // Shockwave
+                 entities.push(new MeleeHitbox(this.x - 100, this.y, 200 + this.w, 60, this, 5));
+                 spawnExplosion(this.x, this.y + 30, "white", 3);
+                 shakeCamera(20);
+             }
+             else {
+                 // Default special: Bigger, faster bullet
+                 let b = new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, true, this.charData);
+                 b.w = 30; b.h = 10; b.vx = this.facing * 30; // High speed
+                 entities.push(b);
+                 this.vx -= this.facing * 20; // Big recoil
+             }
+        } else {
+            if (isDown) {
+                // Downward Attack
+                if (type === 'melee_slash' || type === 'melee_smash') {
+                    // Ground Smash Hitbox
+                    entities.push(new MeleeHitbox(this.x, this.y + this.h, this.w, 40, this, 2));
+                    this.vy = -5; // Bounce up
+                    this.attackAnim = { type: 'smash_down', timer: 20, max: 20 };
+                } else {
+                    // Shoot Down
+                    entities.push(new Bullet(this.x + this.w/2 - 5, this.y + this.h, this.facing, isSpecial, this.charData, true));
+                    this.vy = -2; // Hover
+                }
+                return;
+            }
+
+            if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
+                let range = type === 'melee_smash' ? 80 : 50; let power = type === 'melee_smash' ? 3 : 2;
+                entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-range), this.y, range, 40, this, power));
+                this.attackAnim = { type: 'slash', timer: 15, max: 15 };
+            }
+            else if (type === 'spread') {
+                for(let i=0; i<3; i++) {
+                    let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
+                    b.vy = (secureRandom() - 0.5) * 5; entities.push(b);
+                }
+                this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
+            }
+            else {
+                entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, false, this.charData));
+                this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
+            }
+            this.vx -= this.facing * 2;
+        }
+    }
+    draw(ctx, camX, camY) {
+        if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
+        let cx = this.x - camX + this.w/2;
+        let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(this.facing * this.stretchX, this.stretchY);
+        // Shadow
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 25, 20, 5, 0, 0, Math.PI*2); ctx.fill();
+        drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim);
+        ctx.restore();
+    }
+}
