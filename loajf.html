@@ -3070,6 +3070,17 @@ function generateLevel() {
     gameState.levelData.biome = biome;
     gameState.levelData.difficulty = difficulty;
 
+    // Scale Level Width with Difficulty
+    // Start smaller (200) and grow to max (400) by level 5
+    let dynamicWidth = 200;
+    if (difficulty >= 2) dynamicWidth = 250;
+    if (difficulty >= 3) dynamicWidth = 300;
+    if (difficulty >= 4) dynamicWidth = 350;
+    if (difficulty >= 5) dynamicWidth = 400;
+
+    // Update Global for other systems
+    window.LEVEL_WIDTH = dynamicWidth;
+
     let captainSpawned = false;
 
     // Helper: Spawn Enemy Squad
