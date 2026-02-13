@@ -136,7 +136,7 @@ export class Bullet {
             if (this.type === 'sonic_wave') {
                  // Pass through
             }
-            else if (t.type === 1 || t.type === 2) {
+            else if (t.type === 1 || t.type === 2 || t.type === 3) {
                 if(this.type === 'boomerang' && this.vx !== 0) {
                     this.returnState = 1;
                     if (t.type === 1) {

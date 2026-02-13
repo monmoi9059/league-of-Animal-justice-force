@@ -33,8 +33,8 @@ export class Enemy {
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        // Check for solid ground (Type 1=Dirt, 2=Stone)
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        // Check for solid ground (Type 1=Dirt, 2=Stone, 3=Metal)
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -100,7 +100,7 @@ export class Enemy {
              let t1 = (tiles[wallCheckY_Top] && tiles[wallCheckY_Top][wallCheckX]);
              let t2 = (tiles[wallCheckY_Bot] && tiles[wallCheckY_Bot][wallCheckX]);
 
-             if ((t1 && (t1.type === 1 || t1.type === 2)) || (t2 && (t2.type === 1 || t2.type === 2))) {
+             if ((t1 && (t1.type === 1 || t1.type === 2 || t1.type === 3)) || (t2 && (t2.type === 1 || t2.type === 2 || t2.type === 3))) {
                  hitWall = true;
              }
         } else {
@@ -257,7 +257,7 @@ export class FlyingEnemy extends Enemy {
         let r = Math.floor((nextY + this.h/2) / TILE_SIZE);
         let c = Math.floor((nextX + this.w/2) / TILE_SIZE);
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
              // Hit wall, bounce back
              targetVx *= -1.5;
              targetVy *= -1.5;
@@ -397,7 +397,7 @@ export class HeavyGunner extends Enemy {
         // Ground Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -487,7 +487,7 @@ export class SniperEnemy extends Enemy {
         // Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -671,7 +671,7 @@ export class CaptainEnemy extends Enemy {
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }

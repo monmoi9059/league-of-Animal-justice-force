@@ -61,7 +61,7 @@ export class Player {
         for (let py of points) {
             let r = Math.floor(py / TILE_SIZE);
             let c = Math.floor(checkX / TILE_SIZE);
-            if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2)) {
+            if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
                 return true;
             }
         }
@@ -237,7 +237,7 @@ export class Player {
                         }
                         continue;
                     }
-                    if(type === 1 || type === 2) {
+            if(type === 1 || type === 2 || type === 3) {
                         if(isX) {
                             if(this.vx > 0) {
                                 this.x = (col * TILE_SIZE) - this.w;

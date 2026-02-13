@@ -25,10 +25,19 @@ export function destroyRadius(cx, cy, r) {
     for(let y = cy - r; y <= cy + r; y++) {
         for(let x = cx - r; x <= cx + r; x++) {
             if(y>=0 && y<LEVEL_HEIGHT && x>=0 && x<LEVEL_WIDTH) {
-                if(tiles[y] && tiles[y][x] && tiles[y][x].type === 1) {
-                    spawnDebris(x*TILE_SIZE, y*TILE_SIZE, ASSETS.dirtLight);
-                    tiles[y][x] = { type: 0 };
-                    if(soundManager) soundManager.play('brick_break');
+                let t = tiles[y][x];
+                if(t) {
+                    if (t.type === 1) {
+                        spawnDebris(x*TILE_SIZE, y*TILE_SIZE, ASSETS.dirtLight);
+                        tiles[y][x] = { type: 0 };
+                        if(soundManager) soundManager.play('brick_break');
+                    }
+                    // Metal (Type 3) is tough but breakable by explosions (radius > 1)
+                    else if (t.type === 3 && r >= 2) {
+                        spawnDebris(x*TILE_SIZE, y*TILE_SIZE, "#7f8c8d");
+                        tiles[y][x] = { type: 0 };
+                        if(soundManager) soundManager.play('brick_break');
+                    }
                 }
             }
         }

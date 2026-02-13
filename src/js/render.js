@@ -170,6 +170,18 @@ export function drawGame() {
                     CTX.moveTo(tx, ty+20); CTX.lineTo(tx+TILE_SIZE, ty+20);
                     CTX.stroke();
                 }
+                else if (t.type === 3) {
+                    // Metal / Skyscraper
+                    CTX.fillStyle = "#34495e"; // Dark Blue-Grey
+                    CTX.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                    // Windows
+                    CTX.fillStyle = (Math.floor(Date.now() / 1000) + c + r) % 3 === 0 ? "yellow" : "#2c3e50";
+                    CTX.fillRect(tx+10, ty+10, 8, 12);
+                    CTX.fillRect(tx+22, ty+10, 8, 12);
+                    // Border
+                    CTX.strokeStyle = "#2c3e50"; CTX.lineWidth = 2;
+                    CTX.strokeRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                }
                 else if (t.type === 9) {
                     CTX.fillStyle = "gold"; CTX.shadowBlur=30; CTX.shadowColor="gold";
                     CTX.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); CTX.shadowBlur=0;
