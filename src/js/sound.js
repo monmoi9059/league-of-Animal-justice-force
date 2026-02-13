@@ -1,4 +1,4 @@
-class SoundManager {
+export class SoundManager {
     constructor() {
         this.ctx = null;
         this.masterGain = null;
@@ -137,5 +137,4 @@ class SoundManager {
     }
 }
 
-// Expose global
-window.SoundManager = SoundManager;
+export const soundManager = new SoundManager();

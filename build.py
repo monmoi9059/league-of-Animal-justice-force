@@ -1,39 +1,25 @@
 import os
 import shutil
+import subprocess
 
 def read_file(filepath):
     with open(filepath, 'r') as f:
         return f.read()
 
 def main():
+    print("Building JS bundle...")
+    # Run npm build
+    try:
+        subprocess.check_call(["npm", "run", "build"])
+    except subprocess.CalledProcessError as e:
+        print(f"Error building JS: {e}")
+        return
+
     html_template = read_file('src/html/index.html')
     css_content = read_file('src/css/style.css')
 
-    # Scripts to be included individually
-    physics_js = read_file('src/js/physics.js')
-    errorhandler_js = read_file('src/js/errorhandler.js')
-
-    # Scripts to be concatenated inside the IIFE
-    js_files = [
-        'src/js/constants.js',
-        'src/js/sound.js',
-        'src/js/state.js',
-        'src/js/utils.js',
-        'src/js/input.js',
-        'src/js/classes/particles.js',
-        'src/js/classes/projectiles.js',
-        'src/js/classes/items.js',
-        'src/js/classes/enemies.js',
-        'src/js/classes/player.js',
-        'src/js/level.js',
-        'src/js/render.js',
-        'src/js/main.js'
-    ]
-
-    concatenated_js = ""
-    for js_file in js_files:
-        concatenated_js += f"// --- {os.path.basename(js_file)} ---\n"
-        concatenated_js += read_file(js_file) + "\n\n"
+    # Read the bundled JS
+    bundled_js = read_file('dist/game.bundle.js')
 
     # Construct the final HTML
     final_html = html_template.replace(
@@ -43,17 +29,7 @@ def main():
 
     js_injection = f"""
 <script>
-{physics_js}
-</script>
-
-<script>
-{errorhandler_js}
-</script>
-
-<script>
-(function() {{
-{concatenated_js}
-}})();
+{bundled_js}
 </script>
 """
 

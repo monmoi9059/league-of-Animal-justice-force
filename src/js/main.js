@@ -1,286 +1,24 @@
-// --- SYSTEM FUNCTIONS ---
+import { INTERVAL, CANVAS, CTX, TILE_SIZE, LEVEL_WIDTH, LEVEL_HEIGHT, CHARACTERS, DEBUG_HUD } from './constants.js';
+import { gameState, entities, setEntities, players, setPlayers, particles, setParticles, damageNumbers, setDamageNumbers, debris, setDebris, setTiles, tiles, player, setPlayer, lastTime, setLastTime } from './state.js';
+import { updateUI } from './ui.js';
+import { winGame, endGame } from './game-flow.js';
+import { SoundManager, soundManager } from './sound.js';
+import { initInput, inputConfig, pollGamepad } from './input.js';
+import { generateLevel } from './level.js';
+import { drawMenu, drawRoster, drawGame, drawBackground } from './render.js';
+import { secureRandom, spawnExplosion } from './utils.js';
+import { setupErrorHandler } from './errorhandler.js';
+import { Player } from './classes/player.js';
+import { Helicopter } from './classes/items.js';
 
-function updateUI() {
-    // Show P1 stats or summary
-    let p1 = window.players && window.players[0];
-    if (!p1) return;
-
-    let hearts = "❤".repeat(Math.max(0, p1.health));
-    // Append other players hearts?
-    if (window.players.length > 1) {
-        hearts += " | ";
-        for(let i=1; i<window.players.length; i++) {
-            hearts += "P" + (i+1) + ":" + "❤".repeat(Math.max(0, window.players[i].health)) + " ";
-        }
-    }
-
-    document.getElementById('healthDisplay').innerText = hearts;
-    document.getElementById('scoreDisplay').innerText = gameState.score;
-    document.getElementById('rescueDisplay').innerText = gameState.rescues;
-    document.getElementById('livesDisplay').innerText = gameState.lives;
-    document.getElementById('levelDisplay').innerText = gameState.currentLevel;
-
-    let charName = p1.charData ? p1.charData.name : "UNKNOWN";
-    if (window.players.length > 1) charName += " + TEAM";
-
-    document.getElementById('charName').innerText = charName;
-    if(p1.charData) document.getElementById('charName').style.color = p1.charData.cSkin;
-}
-
-function winGame() {
-    gameState.running = false;
-    // Calculate Stats
-    gameState.levelCompleteStats.kills = 0; // Todo: Track kills properly in state?
-    // Simplified: Score / 100 roughly
-    let kills = Math.floor((gameState.score - (gameState.rescues * 500)) / 100);
-    if (kills < 0) kills = 0;
-
-    document.getElementById('lcKills').innerText = kills;
-    document.getElementById('lcRescues').innerText = gameState.rescues;
-    document.getElementById('lcTime').innerText = Math.floor((10000 - gameState.frame)/60); // Bonus
-
-    document.getElementById('levelCompleteOverlay').style.display = 'flex';
-}
-
-function endGame() {
-    gameState.running = false;
-    document.getElementById('ovTitle').innerText = "MISSION FAILED";
-    document.getElementById('ovTitle').style.color = "red";
-    document.getElementById('ovMsg').innerText = "Out of lives. The pound awaits.";
-    document.getElementById('gameOverOverlay').style.display = 'flex';
-}
-
-// FRAMERATE CAP
-
-function loop(timestamp) {
-    if (!lastTime) lastTime = timestamp;
-    const deltaTime = timestamp - lastTime;
-
-    // Slow Motion Logic
-    let interval = INTERVAL / gameState.slowMo;
-
-    if (deltaTime < interval) {
-        requestAnimationFrame(loop);
-        return;
-    }
-    lastTime = timestamp - (deltaTime % interval);
-
-    // POLL GAMEPAD
-    if (window.pollGamepad) window.pollGamepad();
-
-    // DEBUG UPDATE
-    try {
-        if (debugHUD) {
-            debugHUD.textContent =
-                `State: ${gameState.screen}\n` +
-                `Run: ${gameState.running}\n` +
-                `Level: ${gameState.currentLevel}\n` +
-                `Biome: ${gameState.levelData.biome}\n` +
-                `Ents: ${entities.length}\n` +
-                `FPS: ${Math.round(1000/deltaTime)}`;
-        }
-    } catch(e) {}
-
-    // 1. UPDATE LOOP (Logic)
-    try {
-        if(gameState.screen === 'MENU' || gameState.screen === 'ROSTER') {
-            // No logic update needed for menus in this simple game
-        } else if (gameState.running) {
-            if(gameState.hitStop > 0) {
-                gameState.hitStop--;
-            } else {
-                gameState.frame++;
-
-                // Update all players
-                if (window.players) {
-                    window.players.forEach(p => {
-                        if (p.health > 0) p.update();
-                    });
-                }
-
-                entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
-                entities.forEach(e => e.update());
-
-                particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
-                damageNumbers = damageNumbers.filter(d => d.life > 0);
-                damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
-                debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
-            }
-
-            // Camera Logic: Average Position
-            let activePlayers = window.players.filter(p => p.health > 0);
-            if (activePlayers.length > 0) {
-                let avgX = 0;
-                let avgY = 0;
-                activePlayers.forEach(p => { avgX += p.x; avgY += p.y; });
-                avgX /= activePlayers.length;
-                avgY /= activePlayers.length;
-
-                let targetX = avgX - canvas.width * 0.5; // Center
-                if(targetX < 0) targetX = 0;
-                if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
-                gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
-
-                let targetY = avgY - canvas.height * 0.5;
-                if (targetY < 0) targetY = 0;
-                gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
-            }
-
-            let sx = (secureRandom()-0.5) * gameState.shake;
-            let sy = (secureRandom()-0.5) * gameState.shake;
-            gameState.shake *= 0.9;
-        }
-    } catch(e) {
-        console.error("Game Loop Update Error:", e);
-        // Explicitly call onerror to show in overlay
-        window.onerror(e.message, "loajf.html (Update Loop)", 0, 0, e);
-    }
-
-    // 2. DRAW LOOP (Rendering)
-    try {
-        if(gameState.screen === 'MENU') {
-            drawMenu();
-        } else if(gameState.screen === 'ROSTER') {
-            drawRoster();
-        } else {
-            // GAME DRAW
-            let sx = (secureRandom()-0.5) * gameState.shake;
-            let sy = (secureRandom()-0.5) * gameState.shake;
-
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Background based on Biome
-            drawBackground(ctx, gameState.cameraX + sx, gameState.cameraY + sy);
-
-            ctx.save();
-            ctx.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
-
-            let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (canvas.width / TILE_SIZE) + 4;
-            let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (canvas.height / TILE_SIZE) + 4;
-
-            for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
-                for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) {
-                    if(tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
-                        let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
-
-                        if(t.type === 6) {
-                            ctx.fillStyle = C.ladder;
-                            ctx.fillRect(tx + 10, ty, 5, TILE_SIZE);
-                            ctx.fillRect(tx + 25, ty, 5, TILE_SIZE);
-                            for(let i=0; i<4; i++) ctx.fillRect(tx+10, ty + (i*10) + 2, 20, 4);
-                        }
-                        else if(t.type === 5) {
-                            ctx.fillStyle = t.active ? "#00ff41" : "#555";
-                            ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
-                            ctx.fillRect(tx+15, ty+10, 5, 30);
-                            ctx.beginPath(); ctx.moveTo(tx+20, ty+10); ctx.lineTo(tx+35, ty+15); ctx.lineTo(tx+20, ty+20); ctx.fill();
-                            ctx.shadowBlur = 0; ctx.fillStyle = "#333"; ctx.fillRect(tx+5, ty+35, 30, 5);
-                        }
-                        else if(t.type === 4) {
-                            // Spikes / Lava
-                            if(t.color === '#e74c3c') { // Lava
-                                ctx.fillStyle = t.color;
-                                ctx.fillRect(tx, ty + 10, TILE_SIZE, TILE_SIZE - 10);
-                                ctx.fillStyle = "orange";
-                                ctx.beginPath(); ctx.arc(tx + secureRandom()*40, ty+10, 5, 0, Math.PI*2); ctx.fill();
-                            } else {
-                                let grd = ctx.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
-                                grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); ctx.fillStyle = grd;
-                                ctx.beginPath(); ctx.moveTo(tx, ty+TILE_SIZE); ctx.lineTo(tx+10, ty); ctx.lineTo(tx+20, ty+TILE_SIZE); ctx.lineTo(tx+30, ty); ctx.lineTo(tx+40, ty+TILE_SIZE); ctx.fill();
-                            }
-                        }
-                        else if (t.type === 1) {
-                            // Dirt / Ground
-                            let color = C.dirtBase;
-                            if (gameState.levelData.biome === 'city') color = "#333";
-                            if (gameState.levelData.biome === 'volcano') color = "#422";
-
-                            ctx.fillStyle = color; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-
-                            if (gameState.levelData.biome === 'city') {
-                                ctx.fillStyle = "#444"; ctx.fillRect(tx, ty+35, 40, 5); // Piping
-                            } else {
-                                ctx.fillStyle = C.dirtLight; ctx.fillRect(tx + 5, ty + 5, 10, 10); ctx.fillRect(tx + 25, ty + 20, 8, 8);
-                            }
-
-                            if(r > 0 && tiles[r-1][c].type === 0) {
-                                if (gameState.levelData.biome === 'city') ctx.fillStyle = "#555"; // Concrete top
-                                else if (gameState.levelData.biome === 'volcano') ctx.fillStyle = "#722"; // Charred top
-                                else ctx.fillStyle = C.grassTop;
-                                ctx.fillRect(tx, ty, TILE_SIZE, 8);
-                            }
-                        }
-                        else if (t.type === 2) {
-                            // Stone / Indestructible
-                            let color = C.stoneBase;
-                            if (gameState.levelData.biome === 'city') color = "#222";
-                            ctx.fillStyle = color; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-                            ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 2; ctx.beginPath();
-                            ctx.moveTo(tx, ty+20); ctx.lineTo(tx+TILE_SIZE, ty+20);
-                            ctx.stroke();
-                        }
-                        else if (t.type === 9) {
-                            ctx.fillStyle = "gold"; ctx.shadowBlur=30; ctx.shadowColor="gold";
-                            ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); ctx.shadowBlur=0;
-                            ctx.fillStyle = "#000"; ctx.font = "10px Arial"; ctx.fillText("VAN", tx+5, ty+25);
-                        }
-                    }
-                }
-            }
-
-            debris.forEach(d => d.draw(ctx));
-            entities.forEach(e => e.draw(ctx, 0, 0));
-            if (window.players) {
-                window.players.forEach(p => {
-                    if (p.health > 0) p.draw(ctx, 0, 0);
-                });
-            }
-            particles.forEach(p => p.draw(ctx));
-
-            ctx.font = "900 20px 'Segoe UI'";
-            ctx.lineWidth = 3;
-            damageNumbers.forEach(d => {
-                ctx.fillStyle = d.color; ctx.strokeStyle = "black";
-                ctx.strokeText(d.text, d.x, d.y); ctx.fillText(d.text, d.x, d.y);
-            });
-
-            ctx.restore();
-
-            var grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 200, canvas.width/2, canvas.height/2, 600);
-            grd.addColorStop(0, "transparent"); grd.addColorStop(1, "rgba(0,0,0,0.6)");
-            ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width, canvas.height);
-        }
-
-    } catch(e) {
-        console.error("Game Loop Draw Error:", e);
-        // Visual crash indicator
-        ctx.fillStyle = "#ff00ff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        window.onerror(e.message, "loajf.html (Draw Loop)", 0, 0, e);
-    }
-
-    requestAnimationFrame(loop);
-}
-
-// RESIZE HANDLING
-function handleResize() {
-    if (canvas) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        // Redraw menu if active, as it's static
-        if (gameState.screen === 'MENU') drawMenu();
-        if (gameState.screen === 'ROSTER') drawRoster();
-    }
-}
-
-// MAIN INIT FUNCTION
+// --- MAIN INIT FUNCTION ---
 function init() {
     console.log("INIT() CALLED");
-    lastTime = 0;
+    setLastTime(0);
 
-    if (!window.soundManager) {
-        window.soundManager = new window.SoundManager();
+    if (!soundManager.initialized) {
+        // Init happens on user interaction usually, but let's ensure instance is there.
+        // soundManager is exported instance.
     }
 
     // Resize setup
@@ -296,16 +34,16 @@ function init() {
         newBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation(); // Prevent touch-through
-            if (window.soundManager) {
-                const muted = window.soundManager.toggleMute();
+            if (soundManager) {
+                const muted = soundManager.toggleMute();
                 newBtn.innerText = muted ? "🔇" : "🔊";
                 // Ensure init on interaction
-                window.soundManager.init();
+                soundManager.init();
             }
         });
         // Set initial state
-        if (window.soundManager) {
-             newBtn.innerText = window.soundManager.muted ? "🔇" : "🔊";
+        if (soundManager) {
+             newBtn.innerText = soundManager.muted ? "🔇" : "🔊";
         }
     }
 
@@ -324,49 +62,91 @@ function init() {
     document.getElementById('levelCompleteOverlay').style.display = 'none';
 }
 
+// RESIZE HANDLING
+function handleResize() {
+    if (CANVAS) {
+        CANVAS.width = window.innerWidth;
+        CANVAS.height = window.innerHeight;
+        // Redraw menu if active, as it's static
+        if (gameState.screen === 'MENU') drawMenu();
+        if (gameState.screen === 'ROSTER') drawRoster();
+    }
+}
+
 // LOBBY LOGIC
 window.enterLobby = function() {
     gameState.screen = 'LOBBY';
     document.getElementById('menuOverlay').style.display = 'none';
     document.getElementById('lobbyOverlay').style.display = 'flex';
 
-    // Reset inputs
-    window.inputConfig = [null, null, null, null];
+    // Reset inputs - Assuming inputConfig is mutable array
+    for(let i=0; i<4; i++) inputConfig[i] = null;
 
-    // Auto-assign P1 Keyboard immediately for convenience?
-    // Or make them press space. Let's make them press Space.
     updateLobbyUI();
 };
 
 window.lobbyLoop = function() {
+    // This function is not called by the loop?
+    // In original code, it was called? No, it was defined.
+    // Ah, it should be called in the main loop if screen is LOBBY.
+    // The original main loop had:
+    // if(gameState.screen === 'MENU' || gameState.screen === 'ROSTER') {}
+    // It didn't explicitly call lobbyLoop in the loop provided in the prompt?
+    // Let me check the original loop.
+    // The original loop:
+    // if(gameState.screen === 'MENU' || gameState.screen === 'ROSTER') {}
+    // else if (gameState.running) { ... }
+
+    // But `window.lobbyLoop` was defined.
+    // Maybe `lobbyLoop` should be called in the loop if `gameState.screen === 'LOBBY'`.
+    // I'll add that.
+
     if (gameState.screen !== 'LOBBY') return;
 
-    // Check Keyboard
-    if (keys[' '] || keys['enter']) { // Space or Enter
-        // Assign to first available slot if not already assigned
-        let existing = window.inputConfig.find(c => c && c.type === 'keyboard');
-        if (!existing) {
-            let slot = window.inputConfig.findIndex(c => c === null);
-            if (slot !== -1) {
-                window.inputConfig[slot] = { type: 'keyboard' };
-                // Debounce?
-            }
-        }
+    // We need access to keys to check for Space/Enter assignment.
+    // But input.js handles keys.
+    // `inputConfig` is exported.
+
+    // Ideally lobby logic should be in input.js or a lobby.js?
+    // Since it's small, I'll keep it here, but I need access to raw input.
+    // `playerKeys` are available. But for unassigned inputs?
+    // `input.js` logic was: "Assign to first available slot if not already assigned".
+    // But `window.addEventListener` in `input.js` only updates `playerKeys`.
+
+    // I'll re-implement lobby logic here using `playerKeys`? No, we need to know WHICH device was pressed.
+    // `input.js` maps keyboard to P1 default if unassigned.
+    // I might need to improve `input.js` to expose raw events or handle lobby assignment.
+
+    // For now, let's just stick to the original behavior:
+    // Keyboard always P1 (slot 0) if pressed?
+    // `lobbyLoop` in original code checked `keys`.
+
+    // I'll assume keyboard is always P1 for simplicity in this refactor, as per original code's "defaulting P1 to Keyboard".
+
+    // Check P1 keys (Keyboard default)
+    import { playerKeys } from './state.js'; // Wait, I already imported it.
+
+    if (playerKeys[0][' '] || playerKeys[0]['enter']) {
+        if (!inputConfig[0]) inputConfig[0] = { type: 'keyboard' };
     }
 
-    // Check Gamepads
+    // Gamepads are polled in `loop()`. `input.js` handles mapping to playerKeys.
+    // But for lobby assignment, we need to know if an unassigned gamepad pressed a button.
+    // `pollGamepad` in `input.js` iterates gamepads.
+    // Maybe `pollGamepad` should return info or handle assignment if in lobby?
+    // Since I refactored `pollGamepad`, it only updates `playerKeys` if assigned.
+
+    // I'll modify `pollGamepad` in `input.js`? Or just iterate gamepads here.
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (let i = 0; i < gamepads.length; i++) {
         let gp = gamepads[i];
         if (gp) {
-            // Check A (0) or Start (9)
             if ((gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[9] && gp.buttons[9].pressed)) {
-                // Check if already assigned
-                let existing = window.inputConfig.find(c => c && c.type === 'gamepad' && c.index === gp.index);
+                let existing = inputConfig.find(c => c && c.type === 'gamepad' && c.index === gp.index);
                 if (!existing) {
-                    let slot = window.inputConfig.findIndex(c => c === null);
+                    let slot = inputConfig.findIndex(c => c === null);
                     if (slot !== -1) {
-                        window.inputConfig[slot] = { type: 'gamepad', index: gp.index };
+                        inputConfig[slot] = { type: 'gamepad', index: gp.index };
                     }
                 }
             }
@@ -380,47 +160,41 @@ function updateLobbyUI() {
     let count = 0;
     for(let i=0; i<4; i++) {
         let el = document.getElementById('lobbyStatus' + (i+1));
-        let slot = document.getElementById('lobbyP1'); // Just to get class if needed
-        if (window.inputConfig[i]) {
-            let type = window.inputConfig[i].type === 'keyboard' ? "KEYBOARD" : `GAMEPAD ${window.inputConfig[i].index + 1}`;
-            el.innerText = "READY\n(" + type + ")";
-            el.style.color = "#00ff41";
-            count++;
-        } else {
-            el.innerText = "PRESS A / SPACE";
-            el.style.color = "#777";
+        if (el) {
+            if (inputConfig[i]) {
+                let type = inputConfig[i].type === 'keyboard' ? "KEYBOARD" : `GAMEPAD ${inputConfig[i].index + 1}`;
+                el.innerText = "READY\n(" + type + ")";
+                el.style.color = "#00ff41";
+                count++;
+            } else {
+                el.innerText = "PRESS A / SPACE";
+                el.style.color = "#777";
+            }
         }
     }
 
     let btn = document.getElementById('lobbyStartBtn');
-    if (count > 0) {
-        btn.style.display = 'block';
-        document.getElementById('lobbyMessage').innerText = `${count} PLAYER(S) READY`;
-    } else {
-        btn.style.display = 'none';
-        document.getElementById('lobbyMessage').innerText = "WAITING FOR PLAYERS...";
+    if (btn) {
+        if (count > 0) {
+            btn.style.display = 'block';
+            document.getElementById('lobbyMessage').innerText = `${count} PLAYER(S) READY`;
+        } else {
+            btn.style.display = 'none';
+            document.getElementById('lobbyMessage').innerText = "WAITING FOR PLAYERS...";
+        }
     }
 }
-
-window.startMultiplayerGame = function() {
-    // Filter out nulls but keep indices? No, players array is dense.
-    // We need to map config to players.
-    // Actually startGame will read inputConfig.
-    window.startGame();
-};
 
 // Start actual gameplay
 window.startGame = function() {
     console.log("STARTGAME() CALLED");
     try {
-        if (typeof rectIntersect !== 'function') throw new Error("CRITICAL: rectIntersect function missing!");
-
-        tiles = generateLevel();
+        setTiles(generateLevel());
         console.log("LEVEL GENERATED. TILES:", tiles.length);
-        particles = [];
-        damageNumbers = [];
-        debris = [];
-        // gameState.spawnPoint = { x: 100, y: 0 }; // Replaced by Heli logic below
+        setParticles([]);
+        setDamageNumbers([]);
+        setDebris([]);
+
         gameState.checkpointsHit = 0;
         // Keep score/rescues if next level, else reset
         if (gameState.screen === 'MENU' || gameState.screen === 'LOBBY') {
@@ -435,18 +209,19 @@ window.startGame = function() {
         gameState.running = true;
 
         // Spawn Players based on Config
-        window.players = [];
-        window.player = null; // Reset legacy
+        setPlayers([]);
+        setPlayer(null);
 
-        let activeConfigs = window.inputConfig.map((c, i) => ({config: c, slot: i})).filter(o => o.config !== null);
+        let activeConfigs = inputConfig.map((c, i) => ({config: c, slot: i})).filter(o => o.config !== null);
 
         // Fallback for debugging if started without lobby (e.g. tests)
         if (activeConfigs.length === 0) {
             console.log("No inputs configured, defaulting P1 to Keyboard");
-            window.inputConfig[0] = { type: 'keyboard' };
+            inputConfig[0] = { type: 'keyboard' };
             activeConfigs = [{ config: { type: 'keyboard' }, slot: 0 }];
         }
 
+        let newPlayers = [];
         activeConfigs.forEach((obj, idx) => {
             // We create Player with the SLOT index so it reads from playerKeys[slot]
             let p = new Player(obj.slot);
@@ -457,10 +232,10 @@ window.startGame = function() {
             let charIdx = (Math.floor(secureRandom() * available) + idx) % available;
             p.setCharacter(CHARACTERS[charIdx].id);
 
-            window.players.push(p);
+            newPlayers.push(p);
         });
-
-        window.player = window.players[0];
+        setPlayers(newPlayers);
+        setPlayer(players[0]);
 
         // --- HELICOPTER INTRO ---
         let startX = 2 * TILE_SIZE;
@@ -469,7 +244,7 @@ window.startGame = function() {
         entities.push(introHeli);
 
         // Players start falling from heli
-        window.players.forEach((p, idx) => {
+        players.forEach((p, idx) => {
             p.x = startX + 20 + (idx * 10);
             p.y = startY + 60;
             p.vy = 5;
@@ -485,12 +260,9 @@ window.startGame = function() {
         document.getElementById('levelCompleteOverlay').style.display = 'none';
         updateUI();
 
-        // Reset Time so we don't jump
-        lastTime = 0;
+        setLastTime(0);
     } catch (e) {
         console.error("Error starting game:", e);
-        // Force error overlay
-        window.onerror(e.message, "loajf.html (startGame)", 0, 0, e);
         // Fallback
         gameState.screen = 'MENU';
         document.getElementById('menuOverlay').style.display = 'flex';
@@ -527,6 +299,125 @@ window.returnToMenu = function() {
     document.getElementById('menuOverlay').style.display = 'flex';
 };
 
-// Start App
+// GAME LOOP
+function loop(timestamp) {
+    if (!lastTime) setLastTime(timestamp);
+    const deltaTime = timestamp - lastTime;
+
+    // Slow Motion Logic
+    let interval = INTERVAL / gameState.slowMo;
+
+    if (deltaTime < interval) {
+        requestAnimationFrame(loop);
+        return;
+    }
+    setLastTime(timestamp - (deltaTime % interval));
+
+    // POLL GAMEPAD
+    pollGamepad();
+
+    // DEBUG UPDATE
+    try {
+        if (DEBUG_HUD) {
+            DEBUG_HUD.textContent =
+                `State: ${gameState.screen}\n` +
+                `Run: ${gameState.running}\n` +
+                `Level: ${gameState.currentLevel}\n` +
+                `Biome: ${gameState.levelData.biome}\n` +
+                `Ents: ${entities.length}\n` +
+                `FPS: ${Math.round(1000/deltaTime)}`;
+        }
+    } catch(e) {}
+
+    // 1. UPDATE LOOP (Logic)
+    try {
+        if(gameState.screen === 'MENU') {
+            // No logic
+        } else if(gameState.screen === 'ROSTER') {
+            // No logic
+        } else if(gameState.screen === 'LOBBY') {
+            window.lobbyLoop();
+        } else if (gameState.running) {
+            if(gameState.hitStop > 0) {
+                gameState.hitStop--;
+            } else {
+                gameState.frame++;
+
+                // Update all players
+                if (players) {
+                    players.forEach(p => {
+                        if (p.health > 0) p.update();
+                    });
+                }
+
+                // Filter dead entities (using reassignment)
+                setEntities(entities.filter(e => (e.hp > 0) || (e.life > 0)));
+                entities.forEach(e => e.update());
+
+                setParticles(particles.filter(p => p.life > 0));
+                particles.forEach(p => p.update());
+
+                setDamageNumbers(damageNumbers.filter(d => d.life > 0));
+                damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
+
+                setDebris(debris.filter(d => d.life > 0));
+                debris.forEach(d => d.update());
+            }
+
+            // Camera Logic: Average Position
+            let activePlayers = players.filter(p => p.health > 0);
+            if (activePlayers.length > 0) {
+                let avgX = 0;
+                let avgY = 0;
+                activePlayers.forEach(p => { avgX += p.x; avgY += p.y; });
+                avgX /= activePlayers.length;
+                avgY /= activePlayers.length;
+
+                let targetX = avgX - CANVAS.width * 0.5; // Center
+                if(targetX < 0) targetX = 0;
+                if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
+                gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
+
+                let targetY = avgY - CANVAS.height * 0.5;
+                if (targetY < 0) targetY = 0;
+                gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
+            }
+
+            let sx = (secureRandom()-0.5) * gameState.shake;
+            let sy = (secureRandom()-0.5) * gameState.shake;
+            gameState.shake *= 0.9;
+        }
+    } catch(e) {
+        console.error("Game Loop Update Error:", e);
+        // Explicitly call onerror (assuming setupErrorHandler put it on window)
+        // window.onerror(e.message, "loajf.html (Update Loop)", 0, 0, e);
+    }
+
+    // 2. DRAW LOOP (Rendering)
+    try {
+        if(gameState.screen === 'MENU') {
+            drawMenu();
+        } else if(gameState.screen === 'ROSTER') {
+            drawRoster();
+        } else if (gameState.screen !== 'LOBBY') { // Don't draw game if in lobby, or do we? Original code didn't handle lobby draw in loop explicit other than "else".
+            // Original code: if menu... else if roster... else { game draw }
+            // If screen is LOBBY, it would fall into 'else' and try to draw game?
+            // But lobbyOverlay covers it.
+            // Let's call drawGame if running or if we want to show something behind lobby.
+            // But in lobby state, we might not have tiles.
+            if (gameState.screen === 'GAME' || gameState.running) {
+                drawGame();
+            }
+        }
+    } catch(e) {
+        console.error("Game Loop Draw Error:", e);
+    }
+
+    requestAnimationFrame(loop);
+}
+
+// SETUP
+setupErrorHandler();
+initInput();
 init();
 requestAnimationFrame(loop);

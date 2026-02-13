@@ -1,25 +1,18 @@
-function secureRandom() {
-    try {
-        const array = new Uint32Array(1);
-        // Fallback for secure random
-        let cryptoObj = window.crypto || window.msCrypto;
-        if (cryptoObj && cryptoObj.getRandomValues) {
-             cryptoObj.getRandomValues(array);
-             return array[0] / 4294967296;
-        }
-        return Math.random();
-    } catch (e) {
-        return Math.random();
-    }
-}
+import { damageNumbers, particles, debris, tiles, gameState, players, entities } from './state.js';
+import { Particle, RockChunk } from './classes/particles.js';
+import { secureRandom } from './math.js';
+import { soundManager } from './sound.js';
+import { LEVEL_HEIGHT, LEVEL_WIDTH, TILE_SIZE, ASSETS, CHARACTERS } from './constants.js';
 
-function spawnDamageNumber(x, y, amount, color="white") {
+export function spawnDamageNumber(x, y, amount, color="white") {
     damageNumbers.push({ x: x, y: y, text: amount, life: 60, vy: -2, color: color });
 }
-function spawnExplosion(x, y, color, scale=1) {
+
+export function spawnExplosion(x, y, color, scale=1) {
     for(let i=0; i<8*scale; i++) particles.push(new Particle(x, y, color));
 }
-function spawnDebris(x, y, color) {
+
+export function spawnDebris(x, y, color) {
     // Spawn more, smaller chunks for better "shattering" effect
     for(let i=0; i<6; i++) {
         let chunk = new RockChunk(x + secureRandom()*20, y + secureRandom()*20, color);
@@ -27,28 +20,30 @@ function spawnDebris(x, y, color) {
         debris.push(chunk);
     }
 }
-function destroyRadius(cx, cy, r) {
+
+export function destroyRadius(cx, cy, r) {
     for(let y = cy - r; y <= cy + r; y++) {
         for(let x = cx - r; x <= cx + r; x++) {
             if(y>=0 && y<LEVEL_HEIGHT && x>=0 && x<LEVEL_WIDTH) {
                 if(tiles[y] && tiles[y][x] && tiles[y][x].type === 1) {
-                    spawnDebris(x*TILE_SIZE, y*TILE_SIZE, C.dirtLight);
+                    spawnDebris(x*TILE_SIZE, y*TILE_SIZE, ASSETS.dirtLight);
                     tiles[y][x] = { type: 0 };
-                    if(window.soundManager) window.soundManager.play('brick_break');
+                    if(soundManager) soundManager.play('brick_break');
                 }
             }
         }
     }
 }
-function shakeCamera(amount) {
+
+export function shakeCamera(amount) {
     gameState.shake = amount;
     if(amount > 10) gameState.hitStop = 3;
 }
 
-function createExplosion(x, y, radius, damage) {
+export function createExplosion(x, y, radius, damage) {
     // Visuals
     spawnExplosion(x, y, "orange", radius);
-    if(window.soundManager) window.soundManager.play('explosion');
+    if(soundManager) soundManager.play('explosion');
 
     // Terrain Destruction
     let c = Math.floor(x / TILE_SIZE);
@@ -56,8 +51,8 @@ function createExplosion(x, y, radius, damage) {
     destroyRadius(c, r, radius);
 
     // Entity Damage (Players)
-    if (window.players) {
-        for (let p of window.players) {
+    if (players) {
+        for (let p of players) {
             if (p.health > 0) {
                 let dist = Math.sqrt(Math.pow(p.x - x, 2) + Math.pow(p.y - y, 2));
                 if (dist < (radius * TILE_SIZE) + 20) {
@@ -79,7 +74,7 @@ function createExplosion(x, y, radius, damage) {
     }
 }
 
-function unlockCharacter(sourcePlayer) {
+export function unlockCharacter(sourcePlayer) {
     let px = sourcePlayer ? sourcePlayer.x : 0;
     let py = sourcePlayer ? sourcePlayer.y : 0;
 
@@ -96,7 +91,7 @@ function unlockCharacter(sourcePlayer) {
             spawnDamageNumber(px, py - 40, "NEW HERO!", "gold");
             // Maybe visual effect?
             spawnExplosion(px, py, "gold", 2);
-            if(window.soundManager) window.soundManager.play('powerup');
+            if(soundManager) soundManager.play('powerup');
         } else {
             spawnDamageNumber(px, py - 40, "MAX ROSTER!", "gold");
         }

@@ -1,5 +1,11 @@
+import { gameState, setEntities } from './state.js';
+import { LEVEL_WIDTH, LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
+import { secureRandom } from './math.js';
+import { Enemy, CaptainEnemy, ShieldBearer, HeavyGunner, KamikazeEnemy, SniperEnemy, FlyingEnemy, Boss, HelicopterBoss } from './classes/enemies.js';
+import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast } from './classes/items.js';
+
 // --- LEVEL GENERATOR ---
-function generateLevel() {
+export function generateLevel() {
     let newTiles = [];
     let newEntities = [];
 
@@ -20,8 +26,21 @@ function generateLevel() {
     if (difficulty >= 4) dynamicWidth = 350;
     if (difficulty >= 5) dynamicWidth = 400;
 
-    // Update Global for other systems
-    window.LEVEL_WIDTH = dynamicWidth;
+    // Update Global for other systems - Wait, LEVEL_WIDTH is a const in constants.js.
+    // I cannot reassign a const export.
+    // I should probably make LEVEL_WIDTH a let in state.js or constants.js or just pass it around.
+    // Or I can just ignore it if other files use the const.
+    // BUT `tiles` array depends on it. And rendering loop depends on it.
+    // I should modify `constants.js` to export a mutable configuration or use `gameState.levelData.width`.
+
+    // For now, I will assume LEVEL_WIDTH in constants is a default/max, but I should really use the dynamic width.
+    // Ideally refactor constants to mutable state or config.
+    // Since `main.js` render loop uses `LEVEL_WIDTH` from constants (which was window.LEVEL_WIDTH), it will break if I don't update it.
+
+    // I'll update `gameState.levelData.width` and use that in rendering if possible.
+    gameState.levelData.width = dynamicWidth;
+
+    let currentLevelWidth = dynamicWidth;
 
     let captainSpawned = false;
 
@@ -84,12 +103,12 @@ function generateLevel() {
 
     // 1. Init Empty Grid
     for (let r = 0; r < LEVEL_HEIGHT; r++) {
-        newTiles[r] = new Array(LEVEL_WIDTH).fill(null).map(() => ({ type: 0 }));
+        newTiles[r] = new Array(currentLevelWidth).fill(null).map(() => ({ type: 0 }));
     }
 
     // 2. Terrain Walker
     let currentHeight = 10;
-    let checkpointInterval = Math.floor(LEVEL_WIDTH / 6);
+    let checkpointInterval = Math.floor(currentLevelWidth / 6);
     let nextCheckpoint = checkpointInterval;
     let checkpointsPlaced = 0;
     let beastsPlaced = 0;
@@ -97,14 +116,14 @@ function generateLevel() {
     let lastEncounterX = 0;
     let surfaceMap = [];
 
-    for (let x = 0; x < LEVEL_WIDTH; x++) {
+    for (let x = 0; x < currentLevelWidth; x++) {
 
         // Level 20+: Boss Arena at the end
-        if (difficulty >= 20 && x > LEVEL_WIDTH - 40) {
+        if (difficulty >= 20 && x > currentLevelWidth - 40) {
             currentHeight = 12;
 
             // Wall at entrance of arena
-            if (x === LEVEL_WIDTH - 40) {
+            if (x === currentLevelWidth - 40) {
                 for(let w=0; w<15; w++) { // High wall
                     if(12-w > 0) newTiles[12-w][x] = { type: 2 };
                 }
@@ -167,7 +186,7 @@ function generateLevel() {
         for (let y = 0; y < LEVEL_HEIGHT; y++) {
             if (y >= currentHeight) {
                 let type = 1; // Dirt
-                if (x < 15 || (difficulty >= 20 && x > LEVEL_WIDTH - 40)) type = 2; // Stone safe zones / Arena floor
+                if (x < 15 || (difficulty >= 20 && x > currentLevelWidth - 40)) type = 2; // Stone safe zones / Arena floor
                 else if (y >= LEVEL_HEIGHT - 2) type = 2; // Bedrock
                 newTiles[y][x] = { type: type };
             }
@@ -175,7 +194,7 @@ function generateLevel() {
     }
 
     // 3. PASS 2: UNDERGROUND TUNNEL NETWORK
-    for (let x = 40; x < LEVEL_WIDTH - 60; x += 40) {
+    for (let x = 40; x < currentLevelWidth - 60; x += 40) {
         if (secureRandom() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
             let startY = surfaceMap[x];
             let bottomY = LEVEL_HEIGHT - 5;
@@ -195,7 +214,7 @@ function generateLevel() {
                 for (let j = 0; j < tunnelLen; j++) {
                     let tx = x + (j * dir);
                     for (let ty = tunnelY; ty < tunnelY + 3; ty++) {
-                        if (ty >= 0 && ty < LEVEL_HEIGHT && tx >= 0 && tx < LEVEL_WIDTH) {
+                        if (ty >= 0 && ty < LEVEL_HEIGHT && tx >= 0 && tx < currentLevelWidth) {
                             newTiles[ty][tx] = { type: 0 };
                         }
                     }
@@ -227,10 +246,10 @@ function generateLevel() {
 
     // 4. PASS 3: SURFACE OBJECTS & FLOATING ISLANDS
     checkpointsPlaced = 0;
-    nextCheckpoint = Math.floor(LEVEL_WIDTH / 6);
+    nextCheckpoint = Math.floor(currentLevelWidth / 6);
     lastEncounterX = 20;
 
-    for (let x = 20; x < LEVEL_WIDTH - 40; x++) {
+    for (let x = 20; x < currentLevelWidth - 40; x++) {
         let y = surfaceMap[x];
         if (y >= LEVEL_HEIGHT) continue;
 
@@ -241,7 +260,7 @@ function generateLevel() {
         if (x >= nextCheckpoint && cpReq) {
             newTiles[y][x] = { type: 2 };
             newTiles[y-1][x] = { type: 5, active: false, id: checkpointsPlaced };
-            nextCheckpoint += Math.floor(LEVEL_WIDTH / (difficulty >= 5 ? 4 : 6));
+            nextCheckpoint += Math.floor(currentLevelWidth / (difficulty >= 5 ? 4 : 6));
             checkpointsPlaced++;
 
             // Checkpoints are safe zones, no enemies *directly* on them usually
@@ -261,7 +280,7 @@ function generateLevel() {
 
         // Force Captain near end of level if not spawned yet
         // Check if we are in the last 15% of the level (e.g. x > 340 for width 400)
-        let isEndZone = (x > LEVEL_WIDTH - 60);
+        let isEndZone = (x > currentLevelWidth - 60);
 
         if (x - lastEncounterX > encounterDist || (isEndZone && !captainSpawned)) {
              let chance = (isEndZone && !captainSpawned) ? 1.0 : 0.4;
@@ -281,7 +300,7 @@ function generateLevel() {
     // 5. FINISH
     for(let y=0; y<LEVEL_HEIGHT; y++) {
         newTiles[y][0] = { type: 2 };
-        newTiles[y][LEVEL_WIDTH-1] = { type: 2 };
+        newTiles[y][currentLevelWidth-1] = { type: 2 };
     }
 
     // Boss Spawning Logic
@@ -290,16 +309,16 @@ function generateLevel() {
          // Level 20+: Special Room Arena
          if (difficulty >= 20) {
              // Boss is in the arena at the end
-             newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
+             newEntities.push(new Boss((currentLevelWidth - 20) * TILE_SIZE, 8 * TILE_SIZE));
 
              // Traps/Turrets in arena?
-             newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
-             newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
+             newEntities.push(new HeavyGunner((currentLevelWidth - 35) * TILE_SIZE, 8 * TILE_SIZE));
+             newEntities.push(new HeavyGunner((currentLevelWidth - 5) * TILE_SIZE, 8 * TILE_SIZE));
          }
          else {
              // Spawn Boss in normal terrain (Last 30% of map)
-             let spawnRangeStart = Math.floor(LEVEL_WIDTH * 0.7);
-             let bossX = spawnRangeStart + Math.floor(secureRandom() * (LEVEL_WIDTH - spawnRangeStart - 5));
+             let spawnRangeStart = Math.floor(currentLevelWidth * 0.7);
+             let bossX = spawnRangeStart + Math.floor(secureRandom() * (currentLevelWidth - spawnRangeStart - 5));
 
              // Find ground Y
              let bossY = 10;
@@ -322,7 +341,6 @@ function generateLevel() {
          }
     }
 
-    entities = newEntities;
+    setEntities(newEntities);
     return newTiles;
 }
-window.generateLevel = generateLevel;

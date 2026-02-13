@@ -1,5 +1,15 @@
+import { TILE_SIZE, GRAVITY, LEVEL_HEIGHT, LEVEL_WIDTH, CHARACTERS } from '../constants.js';
+import { tiles, players, gameState } from '../state.js';
+import { checkRectOverlap } from '../physics.js';
+import { spawnExplosion, createExplosion, unlockCharacter, spawnDamageNumber } from '../utils.js';
+import { drawRoundedRect } from '../graphics.js';
+import { playerKeys } from '../state.js';
+import { winGame } from '../game-flow.js';
+import { updateUI } from '../ui.js';
+import { secureRandom } from '../math.js';
+import { entities } from '../state.js'; // TrappedBeast needs access to entities list implicitly? No, generated in level.js. But TrappedBeast adds to gameState via unlockCharacter.
 
-class PropaneTank {
+export class PropaneTank {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
         this.hp = 10;
@@ -13,7 +23,7 @@ class PropaneTank {
         // Simple floor collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) { // Changed .solid check to .type !== 0 because tiles are {type: N} objects
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
              this.vx *= 0.8;
@@ -42,7 +52,7 @@ class PropaneTank {
     }
 }
 
-class FallingBlock {
+export class FallingBlock {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
         this.vx = 0; this.vy = 0;
@@ -58,14 +68,14 @@ class FallingBlock {
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
         }
 
         // Damage player if falls on head?
-        if ((Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) && window.players) {
-            for (let p of window.players) {
+        if ((Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) && players) {
+            for (let p of players) {
                 if (p.health > 0 && checkRectOverlap(this, p)) {
                     p.takeDamage(10);
                 }
@@ -80,7 +90,7 @@ class FallingBlock {
     }
 }
 
-class BridgeBlock {
+export class BridgeBlock {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
         this.hp = 20;
@@ -103,7 +113,7 @@ class BridgeBlock {
     }
 }
 
-class MechSuit {
+export class MechSuit {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 60; this.h = 80;
         this.occupied = false;
@@ -115,17 +125,14 @@ class MechSuit {
             this.y += 5; // Simple gravity
              let r = Math.floor((this.y + this.h) / TILE_SIZE);
              let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
                  this.y = r * TILE_SIZE - this.h;
              }
 
             // Interaction
-            // Check for any player interacting
-            // Simplified: Just P1 for now? Or iterate?
-            // Let's iterate.
-            if (window.players) {
-                for (let p of window.players) {
-                    if (Math.abs(p.x - this.x) < 50 && Math.abs(p.y - this.y) < 50 && window.playerKeys[p.index]['e']) {
+            if (players) {
+                for (let p of players) {
+                    if (Math.abs(p.x - this.x) < 50 && Math.abs(p.y - this.y) < 50 && playerKeys[p.index]['e']) {
                         this.enter(p);
                         break;
                     }
@@ -168,7 +175,7 @@ class MechSuit {
     }
 }
 
-class Helicopter {
+export class Helicopter {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
@@ -182,8 +189,8 @@ class Helicopter {
 
         // Extraction
         // Only extract if it's NOT the intro heli
-        if (!this.isIntro && window.players) {
-            for(let p of window.players) {
+        if (!this.isIntro && players) {
+            for(let p of players) {
                 if (p.health > 0 && checkRectOverlap(this, p)) {
                     gameState.levelComplete = true;
                     winGame();
@@ -221,7 +228,7 @@ class Helicopter {
     }
 }
 
-class Dumpster {
+export class Dumpster {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 60; this.h = 40;
         this.hp = 100;
@@ -231,7 +238,7 @@ class Dumpster {
         this.y += 5;
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].solid) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
              this.y = r * TILE_SIZE - this.h;
         }
     }
@@ -243,7 +250,7 @@ class Dumpster {
     }
 }
 
-class TrappedBeast {
+export class TrappedBeast {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
@@ -252,8 +259,8 @@ class TrappedBeast {
     update() {
         // Check intersection with any player
         let touchingPlayer = null;
-        if (!this.freed && window.players) {
-            for (let p of window.players) {
+        if (!this.freed && players) {
+            for (let p of players) {
                 if (p.health > 0 && checkRectOverlap(this, p)) {
                     touchingPlayer = p;
                     break;
@@ -306,7 +313,7 @@ class TrappedBeast {
     }
 }
 
-class Mailman {
+export class Mailman {
     constructor(x, y) {
         this.x = x; this.y = y; this.w = 30; this.h = 60;
         this.vx = 2;
@@ -317,7 +324,7 @@ class Mailman {
         // Turn around
         let c = Math.floor((this.x + (this.vx>0?this.w:0)) / TILE_SIZE);
         let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
-        if (tiles[r] && tiles[r][c] && tiles[r][c].solid) this.vx *= -1;
+        if (tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) this.vx *= -1;
     }
     draw(ctx, camX, camY) {
         ctx.fillStyle = "#3498db"; // Uniform
@@ -326,5 +333,3 @@ class Mailman {
         ctx.fillRect(this.x - camX - 5, this.y - camY + 20, 10, 20);
     }
 }
-
-// Expose for testing

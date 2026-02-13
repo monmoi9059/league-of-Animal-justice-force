@@ -1,34 +1,32 @@
-// --- INPUT ---
-// Keys are now stored in window.playerKeys[0] for P1 (Keyboard)
-// We keep window.keys as an alias for backward compatibility (mostly)
-// But actually, we should initialize it from state.js or ensure it's linked
-if (!window.playerKeys) window.playerKeys = [{}, {}, {}, {}];
-window.keys = window.playerKeys[0]; // Alias P1
+import { playerKeys } from './state.js';
 
 // Config: [ { type: 'keyboard' }, { type: 'gamepad', index: 0 }, ... ]
-window.inputConfig = [null, null, null, null];
+export const inputConfig = [null, null, null, null];
 
-window.addEventListener('keydown', e => {
-    // Find which player has keyboard
-    let pIndex = window.inputConfig.findIndex(c => c && c.type === 'keyboard');
-    if (pIndex === -1) {
-        // Default to P1 if not assigned yet (or separate Keyboard player)
-        // For lobby simplicity, we assume Keyboard is always available for P1 initially or claimable
-        // We'll handle assignment in Lobby.
-        // For now, update global buffer if P1 is keyboard OR if no one is assigned (default)
-        window.playerKeys[0][e.key.toLowerCase()] = true;
-    } else {
-        window.playerKeys[pIndex][e.key.toLowerCase()] = true;
-    }
-});
-window.addEventListener('keyup', e => {
-    let pIndex = window.inputConfig.findIndex(c => c && c.type === 'keyboard');
-    if (pIndex !== -1) window.playerKeys[pIndex][e.key.toLowerCase()] = false;
-    else window.playerKeys[0][e.key.toLowerCase()] = false;
-});
+let lastGamepadState = [{}, {}, {}, {}];
 
-// --- TOUCH CONTROLS ---
-(function() {
+export function initInput() {
+    window.addEventListener('keydown', e => {
+        // Find which player has keyboard
+        let pIndex = inputConfig.findIndex(c => c && c.type === 'keyboard');
+        if (pIndex === -1) {
+            // Default to P1 if not assigned yet
+            playerKeys[0][e.key.toLowerCase()] = true;
+        } else {
+            playerKeys[pIndex][e.key.toLowerCase()] = true;
+        }
+    });
+
+    window.addEventListener('keyup', e => {
+        let pIndex = inputConfig.findIndex(c => c && c.type === 'keyboard');
+        if (pIndex !== -1) playerKeys[pIndex][e.key.toLowerCase()] = false;
+        else playerKeys[0][e.key.toLowerCase()] = false;
+    });
+
+    setupTouchControls();
+}
+
+function setupTouchControls() {
     const touchMap = {
         'btnUp': 'arrowup',
         'btnDown': 'arrowdown',
@@ -43,8 +41,9 @@ window.addEventListener('keyup', e => {
     };
 
     function setKey(key, state) {
-        if (keys[key] !== state) {
-            keys[key] = state;
+        // Assume touch is always P1
+        if (playerKeys[0][key] !== state) {
+            playerKeys[0][key] = state;
         }
     }
 
@@ -55,8 +54,8 @@ window.addEventListener('keyup', e => {
         // Sprint Toggle Logic
         if (id === 'btnSprint') {
             if (isDown) { // Only toggle on press
-                keys['shift'] = !keys['shift'];
-                if (keys['shift']) btn.classList.add('active');
+                playerKeys[0]['shift'] = !playerKeys[0]['shift'];
+                if (playerKeys[0]['shift']) btn.classList.add('active');
                 else btn.classList.remove('active');
             }
             return;
@@ -126,14 +125,11 @@ window.addEventListener('keyup', e => {
         }
         updateToggleBtn();
     }
-})();
+}
 
 // --- GAMEPAD SUPPORT ---
-window.pollGamepad = function() {
+export function pollGamepad() {
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-
-    // Store previous state to handle release per player
-    if (!window.lastGamepadState) window.lastGamepadState = [{}, {}, {}, {}];
 
     // Iterate over CONNECTED gamepads, not just 0-3
     for (let i = 0; i < gamepads.length; i++) {
@@ -141,15 +137,13 @@ window.pollGamepad = function() {
         if(!gp) continue;
 
         // Find which player slot owns this gamepad
-        let pSlot = window.inputConfig.findIndex(c => c && c.type === 'gamepad' && c.index === gp.index);
+        let pSlot = inputConfig.findIndex(c => c && c.type === 'gamepad' && c.index === gp.index);
 
         // If not assigned, skip (Lobby handles assignment)
-        // EXCEPTION: If we are in-game and strict mode is off, maybe default?
-        // No, let's rely on config.
         if (pSlot === -1) continue;
 
-        let pKeys = window.playerKeys[pSlot];
-        let pLast = window.lastGamepadState[pSlot];
+        let pKeys = playerKeys[pSlot];
+        let pLast = lastGamepadState[pSlot];
 
         if (!pKeys || !pLast) continue;
 
