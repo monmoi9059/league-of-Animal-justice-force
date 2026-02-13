@@ -64,9 +64,11 @@ class FallingBlock {
         }
 
         // Damage player if falls on head?
-        if (Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) {
-            if (checkRectOverlap(this, player)) {
-                player.takeDamage(10);
+        if ((Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) && window.players) {
+            for (let p of window.players) {
+                if (p.health > 0 && checkRectOverlap(this, p)) {
+                    p.takeDamage(10);
+                }
             }
         }
     }
@@ -118,24 +120,32 @@ class MechSuit {
              }
 
             // Interaction
-            if (Math.abs(player.x - this.x) < 50 && Math.abs(player.y - this.y) < 50 && keys['e']) {
-                this.enter();
+            // Check for any player interacting
+            // Simplified: Just P1 for now? Or iterate?
+            // Let's iterate.
+            if (window.players) {
+                for (let p of window.players) {
+                    if (Math.abs(p.x - this.x) < 50 && Math.abs(p.y - this.y) < 50 && window.playerKeys[p.index]['e']) {
+                        this.enter(p);
+                        break;
+                    }
+                }
             }
         }
     }
-    enter() {
+    enter(p) {
         this.occupied = true;
-        player.inMech = true;
-        player.mech = this;
+        p.inMech = true;
+        p.mech = this;
         // Visual effect
         spawnExplosion(this.x + 30, this.y + 40, "cyan", 2);
     }
-    eject() {
+    eject(p) {
         this.occupied = false;
-        player.inMech = false;
-        player.mech = null;
-        this.x = player.x;
-        this.y = player.y;
+        p.inMech = false;
+        p.mech = null;
+        this.x = p.x;
+        this.y = p.y;
         this.hp = 0; // Destroy after use? Or leave it? Let's destroy it to prevent spam
         spawnExplosion(this.x + 30, this.y + 40, "cyan", 5);
         this.x = -9999;
@@ -172,9 +182,14 @@ class Helicopter {
 
         // Extraction
         // Only extract if it's NOT the intro heli
-        if (!this.isIntro && checkRectOverlap(this, player)) {
-            gameState.levelComplete = true;
-            winGame();
+        if (!this.isIntro && window.players) {
+            for(let p of window.players) {
+                if (p.health > 0 && checkRectOverlap(this, p)) {
+                    gameState.levelComplete = true;
+                    winGame();
+                    break;
+                }
+            }
         }
 
         // If intro heli, fly away after a bit
@@ -235,31 +250,42 @@ class TrappedBeast {
         this.hp = 100; // Required to persist in entity list
     }
     update() {
-        if (!this.freed && checkRectOverlap(this, player)) {
+        // Check intersection with any player
+        let touchingPlayer = null;
+        if (!this.freed && window.players) {
+            for (let p of window.players) {
+                if (p.health > 0 && checkRectOverlap(this, p)) {
+                    touchingPlayer = p;
+                    break;
+                }
+            }
+        }
+
+        if (touchingPlayer) {
             this.freed = true;
             spawnExplosion(this.x, this.y, "green", 2);
-            unlockCharacter();
+            unlockCharacter(touchingPlayer);
             gameState.rescues++;
 
             // Switch Character Logic
-            if (player) {
+            if (touchingPlayer) {
                 // Pick random unlocked character
                 let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
                 let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
                 let newCharId = unlockedChars[newCharIndex].id;
 
                 // Ensure switch if possible (optional, but good for UX)
-                if (unlockedChars.length > 1 && newCharId === player.charData.id) {
+                if (unlockedChars.length > 1 && newCharId === touchingPlayer.charData.id) {
                      newCharIndex = (newCharIndex + 1) % unlockedChars.length;
                      newCharId = unlockedChars[newCharIndex].id;
                 }
 
-                player.setCharacter(newCharId);
-                player.health = 3; // Reset health
+                touchingPlayer.setCharacter(newCharId);
+                touchingPlayer.health = 3; // Reset health
                 updateUI(); // Reflect health change
 
-                spawnExplosion(player.x, player.y, "white", 2);
-                spawnDamageNumber(player.x, player.y - 60, "SWITCH!", "cyan");
+                spawnExplosion(touchingPlayer.x, touchingPlayer.y, "white", 2);
+                spawnDamageNumber(touchingPlayer.x, touchingPlayer.y - 60, "SWITCH!", "cyan");
             }
         }
     }

@@ -30,9 +30,11 @@ window.entities = [];
 window.particles = [];
 window.damageNumbers = [];
 window.debris = [];
-window.player = null;
+window.players = [];
+window.player = null; // Deprecated, kept for legacy reference if needed temporarily
 
 // Global Cooldowns
-window.shootCooldown = 0;
-window.specialCooldown = 0;
 window.lastTime = 0;
+
+// Inputs
+window.playerKeys = [{}, {}, {}, {}];

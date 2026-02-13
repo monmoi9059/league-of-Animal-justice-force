@@ -37,32 +37,44 @@ class Enemy {
             this.blockedTimer--;
             // Force movement away from wall
             this.vx = this.facing * this.speed;
-        } else if (player) {
-            let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
-
-            if (dist < 400) {
-                this.state = 'chase';
-            } else {
-                this.state = 'patrol';
+        } else {
+            // Find nearest player
+            let target = null;
+            let minDist = 9999;
+            if (window.players) {
+                for (let p of window.players) {
+                    if (p.health > 0) {
+                        let d = Math.hypot(p.x - this.x, p.y - this.y);
+                        if (d < minDist) { minDist = d; target = p; }
+                    }
+                }
             }
 
-            if (this.state === 'patrol') {
-                if (this.timer <= 0) {
-                    this.timer = 60 + Math.random() * 60;
-                    this.facing = Math.random() < 0.5 ? -1 : 1;
-                    this.vx = this.facing * this.speed;
+            if (target) {
+                if (minDist < 400) {
+                    this.state = 'chase';
+                } else {
+                    this.state = 'patrol';
                 }
-                this.timer--;
-                this.vx = this.facing * this.speed;
-            } else if (this.state === 'chase') {
-                // Determine direction based on player, unless just blocked
-                this.facing = player.x < this.x ? -1 : 1;
-                this.vx = this.facing * this.chaseSpeed;
 
-                this.shootTimer++;
-                if (this.shootTimer > 60) {
-                    this.shoot();
-                    this.shootTimer = 0;
+                if (this.state === 'patrol') {
+                    if (this.timer <= 0) {
+                        this.timer = 60 + Math.random() * 60;
+                        this.facing = Math.random() < 0.5 ? -1 : 1;
+                        this.vx = this.facing * this.speed;
+                    }
+                    this.timer--;
+                    this.vx = this.facing * this.speed;
+                } else if (this.state === 'chase') {
+                    // Determine direction based on player, unless just blocked
+                    this.facing = target.x < this.x ? -1 : 1;
+                    this.vx = this.facing * this.chaseSpeed;
+
+                    this.shootTimer++;
+                    if (this.shootTimer > 60) {
+                        this.shoot(target);
+                        this.shootTimer = 0;
+                    }
                 }
             }
         }
@@ -119,9 +131,9 @@ class Enemy {
         }
     }
 
-    shoot() {
-        if (!player) return;
-        let angle = Math.atan2(player.y - this.y, player.x - this.x);
+    shoot(target) {
+        if (!target) return;
+        let angle = Math.atan2(target.y - this.y, target.x - this.x);
         angle += (Math.random() - 0.5) * 0.2;
         // Pass minimal valid args
         let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
@@ -197,20 +209,31 @@ class FlyingEnemy extends Enemy {
         this.w = 40; this.h = 40;
     }
     update() {
-        if (!player) return;
-        let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
+        // Find nearest player
+        let target = null;
+        let minDist = 9999;
+        if (window.players) {
+            for (let p of window.players) {
+                if (p.health > 0) {
+                    let d = Math.hypot(p.x - this.x, p.y - this.y);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+        if (!target) return;
 
+        let dist = minDist;
         let targetVx = 0;
         let targetVy = 0;
 
         if (dist < 500) {
             // Move towards player
-            targetVx = (player.x - this.x) * 0.02; // Reduced speed for smoother flight
-            targetVy = (player.y - this.y - 100) * 0.02; // Hover above
+            targetVx = (target.x - this.x) * 0.02; // Reduced speed for smoother flight
+            targetVy = (target.y - this.y - 100) * 0.02; // Hover above
 
             this.shootTimer++;
             if (this.shootTimer > 100) {
-                this.shoot();
+                this.shoot(target);
                 this.shootTimer = 0;
             }
         } else {
@@ -286,9 +309,20 @@ class KamikazeEnemy extends Enemy {
         super.update();
 
         // Special Explode Logic
-        if (player) {
-            let dist = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
-            if (dist < 50) this.explode();
+        // Find nearest player
+        let target = null;
+        let minDist = 9999;
+        if (window.players) {
+            for (let p of window.players) {
+                if (p.health > 0) {
+                    let d = Math.hypot(p.x - this.x, p.y - this.y);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+
+        if (target) {
+            if (minDist < 50) this.explode();
         }
     }
     explode() {
@@ -359,21 +393,32 @@ class HeavyGunner extends Enemy {
             this.vy = 0;
         }
 
-        if (player) {
-            let dist = Math.abs(player.x - this.x);
-            if (dist < 500) {
-                this.facing = player.x < this.x ? -1 : 1;
+        // Find nearest player
+        let target = null;
+        let minDist = 9999;
+        if (window.players) {
+            for (let p of window.players) {
+                if (p.health > 0) {
+                    let d = Math.hypot(p.x - this.x, p.y - this.y);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+
+        if (target) {
+            if (minDist < 500) {
+                this.facing = target.x < this.x ? -1 : 1;
                 this.shootTimer++;
                 if (this.shootTimer > 10) {
-                     this.shoot();
+                     this.shoot(target);
                      this.shootTimer = 0;
                 }
             }
         }
     }
-    shoot() {
-        if (!player) return;
-        let angle = Math.atan2(player.y - this.y, player.x - this.x);
+    shoot(target) {
+        if (!target) return;
+        let angle = Math.atan2(target.y - this.y, target.x - this.x);
         angle += (Math.random() - 0.5) * 0.4;
         let b = new Bullet(this.x + this.w/2, this.y + 30, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
         b.vx = Math.cos(angle) * 10;
@@ -423,6 +468,7 @@ class SniperEnemy extends Enemy {
         this.color = "#3498db";
         this.speed = 1;
         this.chaseSpeed = 0; // Holds position
+        this.target = null;
     }
     update() {
         this.vy += GRAVITY;
@@ -436,13 +482,25 @@ class SniperEnemy extends Enemy {
             this.vy = 0;
         }
 
-        if (player) {
-            let dist = Math.abs(player.x - this.x);
-            if (dist < this.range) {
-                 this.facing = player.x < this.x ? -1 : 1;
+        // Find nearest player
+        let target = null;
+        let minDist = 9999;
+        if (window.players) {
+            for (let p of window.players) {
+                if (p.health > 0) {
+                    let d = Math.abs(p.x - this.x);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+        this.target = target;
+
+        if (target) {
+            if (minDist < this.range) {
+                 this.facing = target.x < this.x ? -1 : 1;
                  this.aimTimer++;
                  if (this.aimTimer > 180) {
-                     this.shoot();
+                     this.shoot(target);
                      this.aimTimer = 0;
                  }
             } else {
@@ -452,9 +510,9 @@ class SniperEnemy extends Enemy {
             }
         }
     }
-    shoot() {
-        if (!player) return;
-        let angle = Math.atan2(player.y - this.y, player.x - this.x);
+    shoot(target) {
+        if (!target) return;
+        let angle = Math.atan2(target.y - this.y, target.x - this.x);
         let b = new Bullet(this.x + this.w/2, this.y + 20, 2, false, { pColor: this.color, pType: 'normal', isEnemy: true });
         b.vx = Math.cos(angle) * 20;
         b.vy = Math.sin(angle) * 20;
@@ -497,12 +555,12 @@ class SniperEnemy extends Enemy {
         }
 
         // Laser Sight
-        if (this.aimTimer > 100 && player) {
+        if (this.aimTimer > 100 && this.target) {
             ctx.strokeStyle = "rgba(231, 76, 60, 0.5)";
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(cx+this.w/2, cy+22);
-            ctx.lineTo(player.x - camX + player.w/2, player.y - camY + player.h/2);
+            ctx.lineTo(this.target.x - camX + this.target.w/2, this.target.y - camY + this.target.h/2);
             ctx.stroke();
         }
     }
@@ -520,8 +578,20 @@ class ShieldBearer extends Enemy {
     update() {
         super.update(); // Use standard wall/ledge logic
 
-        if (player) {
-            this.shieldUp = (player.x < this.x && this.facing === -1) || (player.x > this.x && this.facing === 1);
+        // Find nearest player for shield logic
+        let target = null;
+        let minDist = 9999;
+        if (window.players) {
+            for (let p of window.players) {
+                if (p.health > 0) {
+                    let d = Math.abs(p.x - this.x);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+
+        if (target) {
+            this.shieldUp = (target.x < this.x && this.facing === -1) || (target.x > this.x && this.facing === 1);
         }
     }
     takeDamage(amt, sourceX) {
@@ -594,24 +664,38 @@ class CaptainEnemy extends Enemy {
             this.vy = 0;
         }
 
-        if (player) {
-            let dist = Math.abs(player.x - this.x);
-            if (dist < 600) {
-                this.facing = player.x < this.x ? -1 : 1;
+        // Find nearest player
+        let target = null;
+        let minDist = 9999;
+        if (window.players) {
+            for (let p of window.players) {
+                if (p.health > 0) {
+                    let d = Math.abs(p.x - this.x);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+
+        if (target) {
+            if (minDist < 600) {
+                this.facing = target.x < this.x ? -1 : 1;
                 this.shootTimer++;
                 if (this.shootTimer > 90) {
-                     this.shootBurst();
+                     this.shootBurst(target);
                      this.shootTimer = 0;
                 }
             }
         }
     }
-    shootBurst() {
-        if (!player) return;
+    shootBurst(target) {
+        if (!target) return;
         for(let i=0; i<3; i++) {
             setTimeout(() => {
-                if(this.hp <= 0 || !player) return;
-                let angle = Math.atan2(player.y - this.y, player.x - this.x);
+                if(this.hp <= 0) return;
+                // Re-validate target (simple check)
+                if (target.health <= 0) return;
+
+                let angle = Math.atan2(target.y - this.y, target.x - this.x);
                 let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
                 b.vx = Math.cos(angle) * 12;
                 b.vy = Math.sin(angle) * 12;
@@ -692,7 +776,21 @@ class Boss {
         if (difficulty >= 15) fireRate = 40;
 
         if (this.timer > fireRate) {
-            let angle = Math.atan2(player.y - this.y, player.x - this.x);
+            // Find nearest player
+            let target = null;
+            let minDist = 9999;
+            if (window.players) {
+                for (let p of window.players) {
+                    if (p.health > 0) {
+                        let d = Math.hypot(p.x - this.x, p.y - this.y);
+                        if (d < minDist) { minDist = d; target = p; }
+                    }
+                }
+            }
+
+            if (!target) return; // No targets
+
+            let angle = Math.atan2(target.y - this.y, target.x - this.x);
             let speed = 8 + (difficulty * 0.2);
 
             // Attack 1: Standard Shot
@@ -734,7 +832,7 @@ class Boss {
             if (difficulty >= 10 && this.timer % (fireRate*2) === 0) {
                 // Drop a propane tank
                 let tank = new PropaneTank(this.x + 60, this.y + 60);
-                tank.vx = (player.x - this.x) * 0.05;
+                tank.vx = (target.x - this.x) * 0.05;
                 tank.vy = -5;
                 entities.push(tank);
             }
@@ -838,7 +936,19 @@ class HelicopterBoss {
         this.targetX = x;
     }
     update() {
-        if (!gameState.bossActive && Math.abs(player.x - this.x) < 800) {
+        // Find nearest player
+        let target = null;
+        let minDist = 9999;
+        if (window.players) {
+            for (let p of window.players) {
+                if (p.health > 0) {
+                    let d = Math.hypot(p.x - this.x, p.y - this.y);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+
+        if (!gameState.bossActive && target && minDist < 800) {
             gameState.bossActive = true;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'block';
         }
@@ -849,16 +959,18 @@ class HelicopterBoss {
         this.y += Math.sin(this.timer * 0.05) * 2;
 
         // Follow Player (Laggy)
-        if (this.timer % 60 === 0) {
-            this.targetX = player.x;
+        if (this.timer % 60 === 0 && target) {
+            this.targetX = target.x;
         }
         this.x += (this.targetX - this.x) * 0.02;
 
         let difficulty = gameState.currentLevel;
 
+        if (!target) return;
+
         // Attack 1: Minigun (Rapid Fire)
         if (this.timer % 10 === 0) {
-             let angle = Math.atan2(player.y - this.y, player.x - this.x);
+             let angle = Math.atan2(target.y - this.y, target.x - this.x);
              // Spread
              angle += (Math.random() - 0.5) * 0.2;
              let b = new Bullet(this.x + 75, this.y + 60, 1, false, { pColor: '#f1c40f', pType: 'normal', isEnemy: true });
@@ -876,7 +988,7 @@ class HelicopterBoss {
             // Drop bomb
             let bomb = new PropaneTank(this.x + 75, this.y + 80);
             if (difficulty >= 5) {
-                bomb.vx = (player.x - this.x) * 0.05; // Toss it
+                bomb.vx = (target.x - this.x) * 0.05; // Toss it
             }
             entities.push(bomb);
         }
@@ -884,7 +996,7 @@ class HelicopterBoss {
         // Attack 3: Strafing Run (Level 15+)
         // (Simplified: just moves faster towards player)
         if (difficulty >= 15) {
-             this.x += (player.x - this.x) * 0.01;
+             this.x += (target.x - this.x) * 0.01;
         }
     }
     takeDamage(amt, sourceX) {

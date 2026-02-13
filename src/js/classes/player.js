@@ -1,17 +1,24 @@
 class Player {
-    constructor() { this.reset(); this.charData = CHARACTERS[0]; }
+    constructor(index = 0) {
+        this.index = index;
+        this.reset();
+        this.charData = CHARACTERS[index % CHARACTERS.length]; // Default to different chars for multiplayer
+    }
     setCharacter(typeId) {
         this.charData = CHARACTERS.find(c => c.id === typeId) || CHARACTERS[0];
-        if (player) updateUI();
+        if (this.index === 0) updateUI(); // Only update UI for P1 for now
     }
     reset() {
-        this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y;
+        this.x = gameState.spawnPoint.x + (this.index * 20); // Spread spawn
+        this.y = gameState.spawnPoint.y;
         this.w = 24; this.h = 30; // SLIM FIT HITBOX
         this.vx = 0; this.vy = 0; this.speed = 5;
         this.grounded = false; this.facing = 1; this.health = 3; this.invincible = 0;
         this.stretchX = 1; this.stretchY = 1; this.animFrame = 0;
         this.lastY = this.y;
         this.secondaryCooldown = 0;
+        this.shootCooldown = 0;
+        this.specialCooldown = 0;
         this.attackAnim = { type: null, timer: 0, max: 0 };
         this.wallJumpLocked = false;
     }
@@ -69,23 +76,43 @@ class Player {
             return;
         }
 
+        // INPUT SOURCE
+        let pKeys = window.playerKeys[this.index] || {};
+
+        // FLEX LOGIC
+        if (pKeys['f']) {
+            this.vx = 0; // Stop moving
+            this.attackAnim = { type: 'flex', timer: 10, max: 10 }; // Keep resetting timer as long as held
+            if (gameState.frame % 10 === 0) {
+                 spawnDamageNumber(this.x, this.y - 20, "FLEX!", "gold");
+                 shakeCamera(2);
+            }
+            // Optional: Slight heal or invincibility?
+            // Let's just make it cool for now.
+            // Gravity still applies
+            this.vy += GRAVITY;
+            this.y += this.vy;
+            this.checkCollisions(false);
+            return;
+        }
+
         // LADDER CHECK
         let cx = Math.floor((this.x + this.w/2) / TILE_SIZE);
         let cy = Math.floor((this.y + this.h/2) / TILE_SIZE);
         let onLadder = (cy>=0 && cy<LEVEL_HEIGHT && cx>=0 && cx<LEVEL_WIDTH && tiles[cy] && tiles[cy][cx] && tiles[cy][cx].type === 6);
 
         let input = 0;
-        if (keys['arrowleft'] || keys['a']) input = -1;
-        if (keys['arrowright'] || keys['d']) input = 1;
+        if (pKeys['arrowleft'] || pKeys['a']) input = -1;
+        if (pKeys['arrowright'] || pKeys['d']) input = 1;
 
         // SECONDARY ATTACK
-        if ((keys['c'] || keys['v']) && this.secondaryCooldown <= 0) {
+        if ((pKeys['c'] || pKeys['v']) && this.secondaryCooldown <= 0) {
             this.performSecondary();
             this.secondaryCooldown = 30;
         }
 
         // SPRINT LOGIC
-        let isSprinting = keys['shift'];
+        let isSprinting = pKeys['shift'];
         this.speed = isSprinting ? 9 : 5;
 
         // WALL LOGIC
@@ -104,7 +131,7 @@ class Player {
 
             // Wall Jump Logic
             // We check jump key here directly to override normal jump behavior
-            if (keys[' '] && !this.wallJumpLocked) {
+            if (pKeys[' '] && !this.wallJumpLocked) {
                 this.vy = JUMP_FORCE;
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
@@ -119,7 +146,7 @@ class Player {
         }
 
         // Reset jump lock when key released
-        if (!keys[' ']) this.wallJumpLocked = false;
+        if (!pKeys[' ']) this.wallJumpLocked = false;
 
         if (onLadder) {
             this.vy = 0;
@@ -133,11 +160,11 @@ class Player {
                 this.vx = (targetX - this.x) * 0.2;
             }
 
-            if (keys['arrowup'] || keys['w']) this.vy = -3;
-            if (keys['arrowdown'] || keys['s']) this.vy = 3;
+            if (pKeys['arrowup'] || pKeys['w']) this.vy = -3;
+            if (pKeys['arrowdown'] || pKeys['s']) this.vy = 3;
 
             // Jump
-            if (keys[' ']) { this.vy = JUMP_FORCE; }
+            if (pKeys[' ']) { this.vy = JUMP_FORCE; }
         } else {
             // Only apply normal physics if NOT wall jumping this frame
             if (!this.wallJumpLocked) {
@@ -152,7 +179,7 @@ class Player {
             }
 
             // Normal Jump
-            if (keys[' '] && this.grounded && !isWallSliding) {
+            if (pKeys[' '] && this.grounded && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
             }
 
@@ -166,14 +193,17 @@ class Player {
         }
 
         // Apply Shoot Input (Separate from movement)
-        if((keys['z'] || keys['j']) && shootCooldown <= 0) {
-            let isDown = keys['arrowdown'] || keys['s'];
-            let isUp = keys['arrowup'] || keys['w'];
+        if(this.shootCooldown > 0) this.shootCooldown--;
+        if(this.specialCooldown > 0) this.specialCooldown--;
+
+        if((pKeys['z'] || pKeys['j']) && this.shootCooldown <= 0) {
+            let isDown = pKeys['arrowdown'] || pKeys['s'];
+            let isUp = pKeys['arrowup'] || pKeys['w'];
             this.shoot(false, isDown, isUp);
-            shootCooldown = 15;
+            this.shootCooldown = 15;
         }
-        if((keys['x'] || keys['k']) && specialCooldown <= 0) {
-            this.shoot(true, false); specialCooldown = 120;
+        if((pKeys['x'] || pKeys['k']) && this.specialCooldown <= 0) {
+            this.shoot(true, false); this.specialCooldown = 120;
         }
 
         this.x += this.vx; this.checkCollisions(true);
