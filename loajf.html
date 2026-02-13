@@ -149,6 +149,20 @@ button {
 }
 button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.8); }
 
+#lobbyStartBtn {
+    font-size: 30px;
+    padding: 20px 60px;
+    background: linear-gradient(45deg, #00ff41, #008f11);
+    box-shadow: 0 0 20px #00ff41;
+    border-color: #fff;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(1); box-shadow: 0 0 20px #00ff41; }
+    50% { transform: scale(1.05); box-shadow: 0 0 40px #00ff41; }
+    100% { transform: scale(1); box-shadow: 0 0 20px #00ff41; }
+}
+
 #errorOverlay {
     display: none;
     position: fixed;
