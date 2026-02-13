@@ -1,16 +1,30 @@
 // --- SYSTEM FUNCTIONS ---
 
 function updateUI() {
-    if (!player) return;
-    let hearts = "❤".repeat(Math.max(0, player.health));
+    // Show P1 stats or summary
+    let p1 = window.players && window.players[0];
+    if (!p1) return;
+
+    let hearts = "❤".repeat(Math.max(0, p1.health));
+    // Append other players hearts?
+    if (window.players.length > 1) {
+        hearts += " | ";
+        for(let i=1; i<window.players.length; i++) {
+            hearts += "P" + (i+1) + ":" + "❤".repeat(Math.max(0, window.players[i].health)) + " ";
+        }
+    }
+
     document.getElementById('healthDisplay').innerText = hearts;
     document.getElementById('scoreDisplay').innerText = gameState.score;
     document.getElementById('rescueDisplay').innerText = gameState.rescues;
     document.getElementById('livesDisplay').innerText = gameState.lives;
     document.getElementById('levelDisplay').innerText = gameState.currentLevel;
-    let charName = player.charData ? player.charData.name : "UNKNOWN";
+
+    let charName = p1.charData ? p1.charData.name : "UNKNOWN";
+    if (window.players.length > 1) charName += " + TEAM";
+
     document.getElementById('charName').innerText = charName;
-    if(player.charData) document.getElementById('charName').style.color = player.charData.cSkin;
+    if(p1.charData) document.getElementById('charName').style.color = p1.charData.cSkin;
 }
 
 function winGame() {
@@ -51,6 +65,9 @@ function loop(timestamp) {
     }
     lastTime = timestamp - (deltaTime % interval);
 
+    // POLL GAMEPAD
+    if (window.pollGamepad) window.pollGamepad();
+
     // DEBUG UPDATE
     try {
         if (debugHUD) {
@@ -73,11 +90,13 @@ function loop(timestamp) {
                 gameState.hitStop--;
             } else {
                 gameState.frame++;
-                if(player) player.update();
 
-                if(shootCooldown > 0) shootCooldown--;
-                if(specialCooldown > 0) specialCooldown--;
-
+                // Update all players
+                if (window.players) {
+                    window.players.forEach(p => {
+                        if (p.health > 0) p.update();
+                    });
+                }
 
                 entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
                 entities.forEach(e => e.update());
@@ -88,11 +107,22 @@ function loop(timestamp) {
                 debris = debris.filter(d => d.life > 0); debris.forEach(d => d.update());
             }
 
-            if (player) {
-                let targetX = player.x - canvas.width * 0.3; if(targetX < 0) targetX = 0;
+            // Camera Logic: Average Position
+            let activePlayers = window.players.filter(p => p.health > 0);
+            if (activePlayers.length > 0) {
+                let avgX = 0;
+                let avgY = 0;
+                activePlayers.forEach(p => { avgX += p.x; avgY += p.y; });
+                avgX /= activePlayers.length;
+                avgY /= activePlayers.length;
+
+                let targetX = avgX - canvas.width * 0.5; // Center
+                if(targetX < 0) targetX = 0;
                 if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
                 gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
-                let targetY = player.y - canvas.height * 0.5; if (targetY < 0) targetY = 0;
+
+                let targetY = avgY - canvas.height * 0.5;
+                if (targetY < 0) targetY = 0;
                 gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
             }
 
@@ -201,7 +231,11 @@ function loop(timestamp) {
 
             debris.forEach(d => d.draw(ctx));
             entities.forEach(e => e.draw(ctx, 0, 0));
-            if(player) player.draw(ctx, 0, 0);
+            if (window.players) {
+                window.players.forEach(p => {
+                    if (p.health > 0) p.draw(ctx, 0, 0);
+                });
+            }
             particles.forEach(p => p.draw(ctx));
 
             ctx.font = "900 20px 'Segoe UI'";
@@ -257,11 +291,97 @@ function init() {
     // Show Menu UI, Hide Game UI
     document.getElementById('menuOverlay').style.display = 'flex';
     document.getElementById('rosterOverlay').style.display = 'none';
+    if(document.getElementById('lobbyOverlay')) document.getElementById('lobbyOverlay').style.display = 'none';
     document.getElementById('gameUI').style.display = 'none';
     document.getElementById('bossHealthContainer').style.display = 'none';
     document.getElementById('gameOverOverlay').style.display = 'none';
     document.getElementById('levelCompleteOverlay').style.display = 'none';
 }
+
+// LOBBY LOGIC
+window.enterLobby = function() {
+    gameState.screen = 'LOBBY';
+    document.getElementById('menuOverlay').style.display = 'none';
+    document.getElementById('lobbyOverlay').style.display = 'flex';
+
+    // Reset inputs
+    window.inputConfig = [null, null, null, null];
+
+    // Auto-assign P1 Keyboard immediately for convenience?
+    // Or make them press space. Let's make them press Space.
+    updateLobbyUI();
+};
+
+window.lobbyLoop = function() {
+    if (gameState.screen !== 'LOBBY') return;
+
+    // Check Keyboard
+    if (keys[' '] || keys['enter']) { // Space or Enter
+        // Assign to first available slot if not already assigned
+        let existing = window.inputConfig.find(c => c && c.type === 'keyboard');
+        if (!existing) {
+            let slot = window.inputConfig.findIndex(c => c === null);
+            if (slot !== -1) {
+                window.inputConfig[slot] = { type: 'keyboard' };
+                // Debounce?
+            }
+        }
+    }
+
+    // Check Gamepads
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (let i = 0; i < gamepads.length; i++) {
+        let gp = gamepads[i];
+        if (gp) {
+            // Check A (0) or Start (9)
+            if ((gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[9] && gp.buttons[9].pressed)) {
+                // Check if already assigned
+                let existing = window.inputConfig.find(c => c && c.type === 'gamepad' && c.index === gp.index);
+                if (!existing) {
+                    let slot = window.inputConfig.findIndex(c => c === null);
+                    if (slot !== -1) {
+                        window.inputConfig[slot] = { type: 'gamepad', index: gp.index };
+                    }
+                }
+            }
+        }
+    }
+
+    updateLobbyUI();
+};
+
+function updateLobbyUI() {
+    let count = 0;
+    for(let i=0; i<4; i++) {
+        let el = document.getElementById('lobbyStatus' + (i+1));
+        let slot = document.getElementById('lobbyP1'); // Just to get class if needed
+        if (window.inputConfig[i]) {
+            let type = window.inputConfig[i].type === 'keyboard' ? "KEYBOARD" : `GAMEPAD ${window.inputConfig[i].index + 1}`;
+            el.innerText = "READY\n(" + type + ")";
+            el.style.color = "#00ff41";
+            count++;
+        } else {
+            el.innerText = "PRESS A / SPACE";
+            el.style.color = "#777";
+        }
+    }
+
+    let btn = document.getElementById('lobbyStartBtn');
+    if (count > 0) {
+        btn.style.display = 'block';
+        document.getElementById('lobbyMessage').innerText = `${count} PLAYER(S) READY`;
+    } else {
+        btn.style.display = 'none';
+        document.getElementById('lobbyMessage').innerText = "WAITING FOR PLAYERS...";
+    }
+}
+
+window.startMultiplayerGame = function() {
+    // Filter out nulls but keep indices? No, players array is dense.
+    // We need to map config to players.
+    // Actually startGame will read inputConfig.
+    window.startGame();
+};
 
 // Start actual gameplay
 window.startGame = function() {
@@ -277,7 +397,7 @@ window.startGame = function() {
         // gameState.spawnPoint = { x: 100, y: 0 }; // Replaced by Heli logic below
         gameState.checkpointsHit = 0;
         // Keep score/rescues if next level, else reset
-        if (gameState.screen === 'MENU') {
+        if (gameState.screen === 'MENU' || gameState.screen === 'LOBBY') {
             gameState.score = 0;
             gameState.rescues = 0;
             gameState.lives = 3;
@@ -288,41 +408,53 @@ window.startGame = function() {
         gameState.screen = 'GAME';
         gameState.running = true;
 
-        // Select random unlocked hero
-        player = new Player();
-        let rnd = Math.floor(secureRandom() * gameState.globalUnlocked);
-        player.setCharacter(CHARACTERS[rnd].id);
+        // Spawn Players based on Config
+        window.players = [];
+        window.player = null; // Reset legacy
+
+        let activeConfigs = window.inputConfig.map((c, i) => ({config: c, slot: i})).filter(o => o.config !== null);
+
+        // Fallback for debugging if started without lobby (e.g. tests)
+        if (activeConfigs.length === 0) {
+            console.log("No inputs configured, defaulting P1 to Keyboard");
+            window.inputConfig[0] = { type: 'keyboard' };
+            activeConfigs = [{ config: { type: 'keyboard' }, slot: 0 }];
+        }
+
+        activeConfigs.forEach((obj, idx) => {
+            // We create Player with the SLOT index so it reads from playerKeys[slot]
+            let p = new Player(obj.slot);
+
+            // Pick distinct chars
+            let available = Math.min(gameState.globalUnlocked, CHARACTERS.length);
+            // Try to give unique char based on index
+            let charIdx = (Math.floor(secureRandom() * available) + idx) % available;
+            p.setCharacter(CHARACTERS[charIdx].id);
+
+            window.players.push(p);
+        });
+
+        window.player = window.players[0];
 
         // --- HELICOPTER INTRO ---
-        // Spawn Heli at start
         let startX = 2 * TILE_SIZE;
         let startY = 2 * TILE_SIZE;
-        // Ensure start area is clear of walls (handled by level gen, but let's be safe)
-
-        // Visual Heli (Just a prop or the existing class?)
-        // Existing class has update logic that might fly away or extract.
-        // We can use the existing Helicopter class but maybe trick it or just spawn it for visuals.
-        // Actually, let's just spawn player high up and simulate the drop.
-        // Or spawn a "IntroHelicopter" that flies away.
-
-        // Spawn standard Helicopter but at start
         let introHeli = new Helicopter(startX, startY);
-        // We need to modify Helicopter to NOT extract player immediately if spawned at start?
-        // Helicopter class logic: checkRectOverlap(this, player) -> levelComplete.
-        // We should make a separate IntroHelicopter or just place player slightly below it so they fall.
-
         entities.push(introHeli);
 
-        // Player starts falling from heli
-        player.x = startX + 20;
-        player.y = startY + 60;
-        player.vy = 5; // Initial drop velocity
-        gameState.spawnPoint = { x: player.x, y: player.y }; // Update spawn point
+        // Players start falling from heli
+        window.players.forEach((p, idx) => {
+            p.x = startX + 20 + (idx * 10);
+            p.y = startY + 60;
+            p.vy = 5;
+            spawnExplosion(p.x, p.y, "#fff", 1);
+        });
 
-        spawnExplosion(player.x, player.y, "#fff", 1); // "Dust off" effect
+        gameState.spawnPoint = { x: startX + 20, y: startY + 60 };
 
         // Switch UI
         document.getElementById('menuOverlay').style.display = 'none';
+        if(document.getElementById('lobbyOverlay')) document.getElementById('lobbyOverlay').style.display = 'none';
         document.getElementById('gameUI').style.display = 'flex';
         document.getElementById('levelCompleteOverlay').style.display = 'none';
         updateUI();

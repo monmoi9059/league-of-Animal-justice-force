@@ -53,12 +53,15 @@ function createExplosion(x, y, radius, damage) {
     let r = Math.floor(y / TILE_SIZE);
     destroyRadius(c, r, radius);
 
-    // Entity Damage (Player)
-    if (player) {
-        let dist = Math.sqrt(Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2));
-        // Radius is in tiles, so convert to pixels. Giving slight grace area.
-        if (dist < (radius * TILE_SIZE) + 20) {
-            player.takeDamage(damage);
+    // Entity Damage (Players)
+    if (window.players) {
+        for (let p of window.players) {
+            if (p.health > 0) {
+                let dist = Math.sqrt(Math.pow(p.x - x, 2) + Math.pow(p.y - y, 2));
+                if (dist < (radius * TILE_SIZE) + 20) {
+                    p.takeDamage(damage);
+                }
+            }
         }
     }
 
@@ -74,14 +77,27 @@ function createExplosion(x, y, radius, damage) {
     }
 }
 
-function unlockCharacter() {
-    if (gameState.globalUnlocked < CHARACTERS.length) {
-        gameState.globalUnlocked++;
-        gameState.unlockedCount = gameState.globalUnlocked;
-        spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "gold");
-        // Maybe visual effect?
-        spawnExplosion(player.x, player.y, "gold", 2);
+function unlockCharacter(sourcePlayer) {
+    let px = sourcePlayer ? sourcePlayer.x : 0;
+    let py = sourcePlayer ? sourcePlayer.y : 0;
+
+    // Check threshold: 2^(current_count) - 1
+    // We add 1 to current rescues because this function is called before the increment in TrappedBeast
+    let currentTotal = gameState.rescues + 1;
+    let requiredTotal = Math.pow(2, gameState.globalUnlocked) - 1;
+
+    if (currentTotal >= requiredTotal) {
+        if (gameState.globalUnlocked < CHARACTERS.length) {
+            gameState.globalUnlocked++;
+            gameState.unlockedCount = gameState.globalUnlocked;
+            spawnDamageNumber(px, py - 40, "NEW HERO!", "gold");
+            // Maybe visual effect?
+            spawnExplosion(px, py, "gold", 2);
+        } else {
+            spawnDamageNumber(px, py - 40, "MAX ROSTER!", "gold");
+        }
     } else {
-        spawnDamageNumber(player.x, player.y - 40, "MAX ROSTER!", "gold");
+        let needed = requiredTotal - currentTotal;
+        spawnDamageNumber(px, py - 40, `${needed} MORE`, "cyan");
     }
 }
