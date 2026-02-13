@@ -469,7 +469,15 @@ function drawRoster() {
         } else {
             ctx.fillStyle = "#222";
             ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "#555"; ctx.font = "20px Arial"; ctx.fillText("?", cx, cy+7);
+
+            let needed = i - gameState.globalUnlocked + 1;
+            ctx.fillStyle = "#555";
+            if (needed === 1) {
+                ctx.font = "10px Arial"; ctx.fillText("NEXT", cx, cy-5);
+                ctx.font = "bold 16px Arial"; ctx.fillStyle = "#00ff41"; ctx.fillText("1", cx, cy+12);
+            } else {
+                ctx.font = "16px Arial"; ctx.fillText(needed, cx, cy+6);
+            }
         }
     }
     ctx.restore();
