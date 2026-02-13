@@ -13,6 +13,7 @@ export const gameState = {
     spawnPoint: { x: 100, y: 0 },
     bossActive: false,
     hitStop: 0,
+    zoom: 1.0, // Camera zoom level
     currentLevel: 1, // Added
     levelData: {
         biome: 'forest',
