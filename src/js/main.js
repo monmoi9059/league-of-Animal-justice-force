@@ -378,7 +378,7 @@ function loop(timestamp) {
 
                 let targetX = avgX - visibleW * 0.5; // Center adjusted for zoom
                 if(targetX < 0) targetX = 0;
-                if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
+                // if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
                 gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
 
                 let targetY = avgY - visibleH * 0.5;
