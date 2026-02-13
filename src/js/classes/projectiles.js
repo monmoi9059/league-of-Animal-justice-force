@@ -7,17 +7,37 @@ import { soundManager } from '../sound.js';
 import { drawRoundedRect } from '../graphics.js';
 
 export class Bullet {
-    constructor(x, y, dir, isSpecial, charData, isDown = false, isSecondary = false, isUp = false) {
+    constructor(x, y, dir, isSpecial, configOrCharData, isDown = false, isSecondary = false, isUp = false) {
         this.x = x; this.y = y;
         this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5;
-        this.color = charData.pColor;
-        this.type = charData.pType;
-        this.isEnemy = charData.isEnemy || false;
+
+        // Legacy Support & Config Handling
+        this.behavior = configOrCharData.behavior || null;
+        this.renderer = configOrCharData.renderer || null;
+        this.owner = configOrCharData.owner || null;
+
+        // If config has damage override, use it
+        this.damage = configOrCharData.damage || (isSpecial ? 5 : 1);
+
+        // Backward compatibility properties
+        this.color = configOrCharData.pColor || '#fff';
+        this.type = configOrCharData.pType || 'normal';
+        this.isEnemy = configOrCharData.isEnemy || false;
         this.returnState = 0;
 
+        // Config Overrides for Dimensions
+        if (configOrCharData.w) this.w = configOrCharData.w;
+        if (configOrCharData.h) this.h = configOrCharData.h;
+        if (configOrCharData.life) this.life = configOrCharData.life;
+
         // DEFAULT VELOCITIES
-        this.vx = dir * 15;
-        this.vy = (secureRandom() - 0.5) * 2;
+        // Only set default velocities if behavior doesn't handle initialization logic (usually behavior is for update)
+        // But we still need initial velocity.
+        if (configOrCharData.vx !== undefined) this.vx = configOrCharData.vx;
+        else this.vx = dir * 15;
+
+        if (configOrCharData.vy !== undefined) this.vy = configOrCharData.vy;
+        else this.vy = (secureRandom() - 0.5) * 2;
 
         // DOWNWARD SHOT OVERRIDE
         if (isDown) {
@@ -33,16 +53,16 @@ export class Bullet {
             this.w = 8; this.h = 20; // Thin vertical projectile
         }
 
-        // SECONDARY THROW OVERRIDE (Melee chars)
+        // SECONDARY THROW OVERRIDE (Melee chars legacy)
         if (isSecondary) {
              this.vx = dir * 12;
-             this.vy = -5; // Arcing? No, prompt said throw forward. Gravity applied in update for grenades/rockets anyway.
+             this.vy = -5;
              this.w = 12; this.h = 12;
-             this.color = "#ccc"; // Generic projectile color
+             this.color = "#ccc";
         }
 
-        // TYPE SPECIFIC ADJUSTMENTS (Overrides defaults unless specific action like Down/Secondary)
-        if (!isDown && !isSecondary && !isUp) {
+        // TYPE SPECIFIC ADJUSTMENTS (Legacy overrides unless custom behavior set)
+        if (!this.behavior && !isDown && !isSecondary && !isUp) {
             if (this.type === 'spread') { this.w = 8; this.h = 8; this.vx = dir * 15 + (secureRandom()-0.5)*5; this.vy = (secureRandom()-0.5)*10; }
             if (this.type === 'rocket' || this.type === 'grenade') { this.w = 12; this.h = 12; this.vy = -5; }
             if (this.type === 'boomerang') { this.w = 20; this.h = 20; this.life = 100; }
@@ -50,24 +70,33 @@ export class Bullet {
             if (this.type === 'laser') { this.w = 40; this.h = 5; this.vx = dir * 25; }
             if (this.type === 'magic') { this.w = 10; this.h = 10; this.baseY = y; this.timer = 0; }
 
-            // NEW WEAPONS
+            // Existing types (kept for safety until migration complete)
             if (this.type === 'fireball') { this.w = 20; this.h = 20; this.vx = dir * 12; }
             if (this.type === 'ice_beam') { this.w = 30; this.h = 6; this.vx = dir * 20; }
             if (this.type === 'sonic_wave') { this.w = 10; this.h = 40; this.vx = dir * 8; this.life = 120; }
-            if (this.type === 'lightning') { this.w = 50; this.h = 4; this.vx = dir * 40; } // Very fast
+            if (this.type === 'lightning') { this.w = 50; this.h = 4; this.vx = dir * 40; }
             if (this.type === 'shuriken') { this.w = 15; this.h = 15; this.vx = dir * 18; this.rotation = 0; }
             if (this.type === 'water_gun') { this.w = 12; this.h = 12; this.vx = dir * 14; this.vy = (secureRandom()-0.5)*5; }
-            if (this.type === 'acid_spit') { this.w = 10; this.h = 10; this.vx = dir * 10; this.vy = -8; } // Arc
+            if (this.type === 'acid_spit') { this.w = 10; this.h = 10; this.vx = dir * 10; this.vy = -8; }
             if (this.type === 'card_throw') { this.w = 12; this.h = 4; this.vx = dir * 22; }
         }
     }
     update() {
+        // Custom Behavior
+        if (this.behavior) {
+            this.behavior(this);
+            this.life--;
+            this.checkCollisions(); // Helper to avoid code duplication
+            return;
+        }
+
+        // LEGACY LOGIC
         // MOVEMENT LOGIC
         if (this.type === 'grenade' || this.type === 'rocket' || this.type === 'acid_spit') {
             this.vy += 0.3; // Gravity
             this.x += this.vx; this.y += this.vy;
         }
-        else if (this.type === 'boomerang' && this.vx !== 0) { // Only boomerang behavior if moving horizontally (not down-shot)
+        else if (this.type === 'boomerang' && this.vx !== 0) {
             if (this.returnState === 0) {
                 this.x += this.vx; this.vx *= 0.95;
                 if (Math.abs(this.vx) < 1) { this.returnState = 1; }
@@ -89,20 +118,23 @@ export class Bullet {
              this.x += this.vx; this.w += 0.5; this.h += 1; // Grow
              this.y -= 0.5; // Center growth approx
         }
-        else { // Standard Linear (includes Down Shot)
+        else { // Standard Linear
             this.x += this.vx; this.y += this.vy;
         }
 
         this.life--;
+        this.checkCollisions();
+    }
 
+    checkCollisions() {
         // COLLISIONS
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
 
         if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             let t = tiles[r][c];
-            // Sonic wave passes through walls but eventually dies? Or just passes?
+            // Sonic wave passes through walls
             if (this.type === 'sonic_wave') {
-                 // Pass through, but maybe small visual effect?
+                 // Pass through
             }
             else if (t.type === 1 || t.type === 2) {
                 if(this.type === 'boomerang' && this.vx !== 0) {
@@ -120,7 +152,6 @@ export class Bullet {
                         tiles[r][c] = { type: 0 };
                         if(soundManager) soundManager.play('brick_break');
                     }
-                    // Reduced destroy radius from 2 to 1 for smaller destruction
                     if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.type === 'fireball' || this.vy > 0) destroyRadius(c, r, 1);
                 }
             }
@@ -132,7 +163,7 @@ export class Bullet {
                 let e = entities[i];
                 if((e.hp !== undefined && e.hp > 0)) {
                     if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
-                        if(e.takeDamage) e.takeDamage(this.isSpecial ? 5 : 1);
+                        if(e.takeDamage) e.takeDamage(this.damage); // Use stored damage
                         if (this.type !== 'boomerang') this.life = 0;
                         else this.returnState = 1;
                     }
@@ -154,21 +185,26 @@ export class Bullet {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
+        if (this.renderer) {
+            this.renderer(ctx, this, cx, cy); // Pass calculated screen coords
+            return;
+        }
+
+        // LEGACY DRAW
         if (this.type === 'boomerang') {
             ctx.save();
             ctx.translate(cx, cy);
             ctx.rotate(Date.now() * 0.2);
             ctx.fillStyle = this.color;
-            // Draw V shape
             ctx.beginPath();
             ctx.moveTo(0,0); ctx.lineTo(15, -10); ctx.lineTo(10, 0); ctx.lineTo(15, 10); ctx.fill();
             ctx.restore();
         }
         else if (this.type === 'grenade' || this.type === 'rocket') {
-             ctx.fillStyle = "#2ecc71"; // Green grenade
+             ctx.fillStyle = "#2ecc71";
              ctx.beginPath(); ctx.arc(cx+this.w/2, cy+this.h/2, 6, 0, Math.PI*2); ctx.fill();
              ctx.fillStyle = "#27ae60";
-             ctx.fillRect(cx+this.w/2-2, cy-2, 4, 4); // Pin
+             ctx.fillRect(cx+this.w/2-2, cy-2, 4, 4);
         }
         else if (this.type === 'bolt' || this.type === 'laser' || this.type === 'ice_beam' || this.type === 'lightning') {
              ctx.fillStyle = this.color;

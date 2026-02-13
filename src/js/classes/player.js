@@ -9,6 +9,7 @@ import { Bullet, MeleeHitbox } from './projectiles.js';
 import { Dumpster } from './items.js';
 import { drawAnatomicalHero } from '../graphics.js';
 import { secureRandom } from '../math.js';
+import { WEAPONS } from './weapons.js';
 
 export class Player {
     constructor(index = 0) {
@@ -275,131 +276,55 @@ export class Player {
     }
 
     performSecondary() {
-        let type = this.charData.pType;
-        let isMelee = (type === 'melee_slash' || type === 'melee_smash');
-
-        if (isMelee) {
-            entities.push(new Bullet(this.x + 15*this.facing, this.y + 10, this.facing, false, this.charData, false, true)); // isSecondary=true
-            this.attackAnim = { type: 'throw', timer: 15, max: 15 };
-        } else {
-            entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
-            // Visual
-            particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
-            this.attackAnim = { type: 'kick', timer: 15, max: 15 };
-        }
+        // Standardized Kick/Melee for all characters
+        entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
+        // Visual
+        particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
+        this.attackAnim = { type: 'kick', timer: 15, max: 15 };
     }
 
     shoot(isSpecial, isDown, isUp = false) {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
-        if(soundManager) soundManager.play('shoot');
 
-        let type = this.charData.pType;
-
-        if (isSpecial) {
-             this.attackAnim = { type: 'punch', timer: 15, max: 15 };
-             shakeCamera(10);
-
-             if(this.charData.id === 'raccoon') {
-                 entities.push(new Dumpster(this.x, this.y - 100));
+        // Generic Down/Up Shot Logic to preserve platforming mechanics
+        if (!isSpecial) {
+             if (isDown) {
+                 // Hover / Down Shot
+                 entities.push(new Bullet(this.x + this.w/2 - 5, this.y + this.h, this.facing, isSpecial, { pColor: '#fff', pType: 'normal' }, true));
+                 this.vy = -2; // Hover effect
+                 return;
              }
-             else if (type === 'spread') {
-                 // 360 degree shot
-                 for(let i=0; i<16; i++) {
-                     let angle = (i / 16) * Math.PI * 2;
-                     let b = new Bullet(this.x + 15, this.y + 15, this.facing, true, this.charData);
-                     b.vx = Math.cos(angle) * 15;
-                     b.vy = Math.sin(angle) * 15;
-                     entities.push(b);
-                 }
+             if (isUp) {
+                 // Up Shot
+                 entities.push(new Bullet(this.x + this.w/2 - 5, this.y - 20, this.facing, isSpecial, { pColor: '#fff', pType: 'normal' }, false, false, true));
+                 return;
              }
-             else if (type === 'grenade' || type === 'rocket') {
-                 // Cluster
-                 for(let i=0; i<3; i++) {
-                     let b = new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, true, this.charData);
-                     b.vy = -5 - (i*3);
-                     b.vx = this.facing * (10 + i*2);
-                     entities.push(b);
-                 }
-             }
-             else if (type === 'melee_smash') {
-                 // Shockwave
-                 entities.push(new MeleeHitbox(this.x - 100, this.y, 200 + this.w, 60, this, 5));
-                 spawnExplosion(this.x, this.y + 30, "white", 3);
-                 shakeCamera(20);
-             }
-             else {
-                 // Default special: Bigger, faster bullet
-                 let b = new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, true, this.charData);
-                 b.w = 30; b.h = 10; b.vx = this.facing * 30; // High speed
-                 entities.push(b);
-                 this.vx -= this.facing * 20; // Big recoil
-             }
-        } else {
-            if (isDown) {
-                // Downward Attack
-                if (type === 'melee_slash' || type === 'melee_smash') {
-                    // Ground Smash Hitbox
-                    entities.push(new MeleeHitbox(this.x, this.y + this.h, this.w, 40, this, 2));
-                    this.vy = -5; // Bounce up
-                    this.attackAnim = { type: 'smash_down', timer: 20, max: 20 };
-                } else {
-                    // Shoot Down
-                    entities.push(new Bullet(this.x + this.w/2 - 5, this.y + this.h, this.facing, isSpecial, this.charData, true));
-                    this.vy = -2; // Hover
-                }
-                return;
-            }
-
-            if (isUp) {
-                // Upward Attack
-                if (type === 'melee_slash' || type === 'melee_smash') {
-                    // Upward Slash (Anti-air)
-                    entities.push(new MeleeHitbox(this.x, this.y - 40, this.w, 40, this, 2));
-                    this.attackAnim = { type: 'slash', timer: 15, max: 15 }; // Reuse slash anim
-                } else {
-                    // Shoot Up
-                    entities.push(new Bullet(this.x + this.w/2 - 5, this.y - 20, this.facing, isSpecial, this.charData, false, false, true));
-                }
-                return;
-            }
-
-            if (type === 'melee_slash' || type === 'melee_smash' || type === 'smash') {
-                let range = type === 'melee_smash' ? 80 : 50; let power = type === 'melee_smash' ? 3 : 2;
-                entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-range), this.y, range, 40, this, power));
-                this.attackAnim = { type: 'slash', timer: 15, max: 15 };
-            }
-            else if (type === 'spread') {
-                for(let i=0; i<3; i++) {
-                    let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
-                    b.vy = (secureRandom() - 0.5) * 5; entities.push(b);
-                }
-                this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
-            }
-            else if (type === 'shuriken') {
-                 for(let i=0; i<3; i++) {
-                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
-                     b.vy = (i - 1) * 2;
-                     entities.push(b);
-                 }
-                 this.attackAnim = { type: 'throw', timer: 10, max: 10 };
-            }
-            else if (type === 'water_gun') {
-                 for(let i=0; i<4; i++) {
-                     let b = new Bullet(this.x + 15*this.facing, this.y+10, this.facing, false, this.charData);
-                     b.vx = this.facing * (12 + secureRandom() * 4);
-                     b.vy = (secureRandom() - 0.5) * 6;
-                     entities.push(b);
-                 }
-                 this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
-            }
-            else {
-                entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, false, this.charData));
-                this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
-            }
-            this.vx -= this.facing * 2;
         }
+
+        // UNIQUE WEAPON LOGIC
+        let weapon = WEAPONS[this.charData.id];
+        if (weapon) {
+            if (isSpecial) {
+                if (weapon.special) {
+                    weapon.special(this);
+                    this.attackAnim = { type: 'punch', timer: 15, max: 15 }; // Generic anim trigger
+                }
+            } else {
+                if (weapon.shoot) {
+                    weapon.shoot(this);
+                    this.attackAnim = { type: 'shoot', timer: 10, max: 10 }; // Generic anim trigger
+                }
+            }
+        } else {
+             // Fallback for undefined weapons
+             entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, isSpecial, this.charData));
+             this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
+        }
+
+        if (!isSpecial) this.vx -= this.facing * 2; // Recoil
     }
+
     draw(ctx, camX, camY) {
         if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
         let cx = this.x - camX + this.w/2;
