@@ -371,6 +371,7 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
 
         <!-- Touch Controls -->
         <button id="controlsToggle" class="touch-toggle">🎮</button>
+        <button id="soundToggle" class="touch-toggle" style="right: 70px;">🔊</button>
 
         <div id="touchControls" class="touch-overlay" style="display: none;">
             <div class="dpad-area">
@@ -564,6 +565,150 @@ window.CHARACTERS = [
 ];
 
 
+// --- sound.js ---
+class SoundManager {
+    constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.muted = false;
+        this.volume = 0.3; // Default volume
+        this.initialized = false;
+    }
+
+    init() {
+        if (this.initialized) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.connect(this.ctx.destination);
+            this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
+            this.initialized = true;
+            console.log("Audio Context Initialized");
+        } catch (e) {
+            console.error("Web Audio API not supported", e);
+        }
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        if (this.masterGain && this.ctx) {
+            this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
+        }
+        return this.muted;
+    }
+
+    play(type) {
+        if (!this.initialized) this.init(); // Auto-init on first play attempt
+        if (this.muted || !this.ctx) return;
+
+        // Ensure context is running (browsers suspend it until interaction)
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(e => console.error(e));
+        }
+
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        switch (type) {
+            case 'jump':
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, t);
+                osc.frequency.exponentialRampToValueAtTime(600, t + 0.1);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                osc.start(t);
+                osc.stop(t + 0.1);
+                break;
+
+            case 'shoot':
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, t);
+                osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+                osc.start(t);
+                osc.stop(t + 0.15);
+                break;
+
+            case 'enemy_shoot':
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, t);
+                osc.frequency.exponentialRampToValueAtTime(100, t + 0.2);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                osc.start(t);
+                osc.stop(t + 0.2);
+                break;
+
+            case 'explosion':
+                // Double oscillator for rumble effect
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, t);
+                osc.frequency.exponentialRampToValueAtTime(10, t + 0.4);
+
+                const osc2 = this.ctx.createOscillator();
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(80, t);
+                osc2.frequency.exponentialRampToValueAtTime(5, t + 0.4);
+                osc2.connect(gain);
+                osc2.start(t);
+                osc2.stop(t + 0.4);
+
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+                osc.start(t);
+                osc.stop(t + 0.4);
+                break;
+
+            case 'powerup':
+                osc.type = 'sine';
+                // Arpeggio
+                osc.frequency.setValueAtTime(440, t); // A4
+                osc.frequency.setValueAtTime(554, t + 0.1); // C#5
+                osc.frequency.setValueAtTime(659, t + 0.2); // E5
+                osc.frequency.setValueAtTime(880, t + 0.3); // A5
+
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.linearRampToValueAtTime(0.1, t + 0.3);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+                osc.start(t);
+                osc.stop(t + 0.6);
+                break;
+
+            case 'hurt':
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, t);
+                osc.frequency.linearRampToValueAtTime(50, t + 0.2);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                osc.start(t);
+                osc.stop(t + 0.2);
+                break;
+
+            case 'brick_break':
+                // White noise burst or low square wave crumble
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, t);
+                osc.frequency.exponentialRampToValueAtTime(20, t + 0.1);
+
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                osc.start(t);
+                osc.stop(t + 0.1);
+                break;
+        }
+    }
+}
+
+// Expose global
+window.SoundManager = SoundManager;
+
+
 // --- state.js ---
 
 window.gameState = {
@@ -644,6 +789,7 @@ function destroyRadius(cx, cy, r) {
                 if(tiles[y] && tiles[y][x] && tiles[y][x].type === 1) {
                     spawnDebris(x*TILE_SIZE, y*TILE_SIZE, C.dirtLight);
                     tiles[y][x] = { type: 0 };
+                    if(window.soundManager) window.soundManager.play('brick_break');
                 }
             }
         }
@@ -657,6 +803,7 @@ function shakeCamera(amount) {
 function createExplosion(x, y, radius, damage) {
     // Visuals
     spawnExplosion(x, y, "orange", radius);
+    if(window.soundManager) window.soundManager.play('explosion');
 
     // Terrain Destruction
     let c = Math.floor(x / TILE_SIZE);
@@ -704,6 +851,7 @@ function unlockCharacter(sourcePlayer) {
             spawnDamageNumber(px, py - 40, "NEW HERO!", "gold");
             // Maybe visual effect?
             spawnExplosion(px, py, "gold", 2);
+            if(window.soundManager) window.soundManager.play('powerup');
         } else {
             spawnDamageNumber(px, py - 40, "MAX ROSTER!", "gold");
         }
@@ -1062,12 +1210,16 @@ class Bullet {
                     if (t.type === 1) {
                         spawnExplosion(this.x, this.y, C.dirtLight, 1);
                         tiles[r][c] = { type: 0 };
+                        if(window.soundManager) window.soundManager.play('brick_break');
                     }
                 }
                 else {
                     spawnExplosion(this.x, this.y, C.dirtLight, 1);
                     this.life = 0;
-                    if (t.type === 1) { tiles[r][c] = { type: 0 }; }
+                    if (t.type === 1) {
+                        tiles[r][c] = { type: 0 };
+                        if(window.soundManager) window.soundManager.play('brick_break');
+                    }
                     // Reduced destroy radius from 2 to 1 for smaller destruction
                     if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.type === 'fireball' || this.vy > 0) destroyRadius(c, r, 1);
                 }
@@ -1716,6 +1868,7 @@ class Enemy {
         b.vx = Math.cos(angle) * 8;
         b.vy = Math.sin(angle) * 8;
         entities.push(b);
+        if(window.soundManager) window.soundManager.play('enemy_shoot');
     }
 
     takeDamage(amt, sourceX) {
@@ -1727,6 +1880,7 @@ class Enemy {
 
         if (this.hp <= 0) {
             spawnExplosion(this.x + this.w/2, this.y + this.h/2, "red", 1);
+            if(window.soundManager) window.soundManager.play('explosion');
             this.x = -9999;
         }
     }
@@ -2000,6 +2154,7 @@ class HeavyGunner extends Enemy {
         b.vx = Math.cos(angle) * 10;
         b.vy = Math.sin(angle) * 10;
         entities.push(b);
+        if(window.soundManager) window.soundManager.play('enemy_shoot');
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
@@ -2093,6 +2248,7 @@ class SniperEnemy extends Enemy {
         b.vx = Math.cos(angle) * 20;
         b.vy = Math.sin(angle) * 20;
         entities.push(b);
+        if(window.soundManager) window.soundManager.play('enemy_shoot');
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
@@ -2184,6 +2340,7 @@ class ShieldBearer extends Enemy {
         if (this.hp <= 0) {
              this.x = -9999;
              spawnExplosion(this.x, this.y, "red", 3);
+             if(window.soundManager) window.soundManager.play('explosion');
         }
     }
     draw(ctx, camX, camY) {
@@ -2265,7 +2422,22 @@ class CaptainEnemy extends Enemy {
         }
     }
     shootBurst(target) {
-        // Disabled
+        if (!target) return;
+        for(let i=0; i<3; i++) {
+            setTimeout(() => {
+                if(this.hp <= 0) return;
+                // Re-validate target (simple check)
+                if (target.health <= 0) return;
+
+                let angle = Math.atan2(target.y - this.y, target.x - this.x);
+                let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
+                b.vx = Math.cos(angle) * 12;
+                b.vy = Math.sin(angle) * 12;
+                b.color = "gold";
+                entities.push(b);
+                if(window.soundManager) window.soundManager.play('enemy_shoot');
+            }, i * 100);
+        }
     }
     takeDamage(amt, sourceX) {
         this.hp -= amt;
@@ -2274,6 +2446,7 @@ class CaptainEnemy extends Enemy {
              let deathX = this.x;
              let deathY = this.y;
              spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
+             if(window.soundManager) window.soundManager.play('explosion');
              this.x = -9999;
              entities.push(new Helicopter(deathX, deathY - 50));
         }
@@ -2381,6 +2554,7 @@ class Boss {
             b.vx = Math.cos(angle) * speed;
             b.vy = Math.sin(angle) * speed;
             entities.push(b);
+            if(window.soundManager) window.soundManager.play('enemy_shoot');
 
             // Attack 2: Spread (Level 3+)
             if (difficulty >= 3) {
@@ -2395,6 +2569,7 @@ class Boss {
 
                  entities.push(b1);
                  entities.push(b2);
+                 if(window.soundManager) window.soundManager.play('enemy_shoot');
             }
 
             // Attack 3: Shotgun (Level 6+)
@@ -2409,6 +2584,7 @@ class Boss {
                  b4.vx = Math.cos(angle + spread) * speed;
                  b4.vy = Math.sin(angle + spread) * speed;
                  entities.push(b4);
+                 if(window.soundManager) window.soundManager.play('enemy_shoot');
             }
 
             // Attack 4: Explosive (Level 10+)
@@ -2433,6 +2609,7 @@ class Boss {
         if (this.hp <= 0) {
             shakeCamera(50);
             spawnExplosion(this.x + 60, this.y + 60, "#ff00de", 5);
+            if(window.soundManager) window.soundManager.play('explosion');
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
 
@@ -2561,6 +2738,7 @@ class HelicopterBoss {
              b.vx = Math.cos(angle) * 15;
              b.vy = Math.sin(angle) * 15;
              entities.push(b);
+             if(window.soundManager) window.soundManager.play('enemy_shoot');
         }
 
         // Attack 2: Bomb Drop (Every 3s)
@@ -2593,6 +2771,7 @@ class HelicopterBoss {
         if (this.hp <= 0) {
             shakeCamera(100);
             spawnExplosion(this.x + 75, this.y + 40, "orange", 10);
+            if(window.soundManager) window.soundManager.play('explosion');
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
             this.x = -9999;
@@ -2674,6 +2853,7 @@ class Player {
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
         spawnExplosion(this.x, this.y, "#00ff41", 2);
+        if(window.soundManager) window.soundManager.play('powerup'); // Respawn sound
     }
 
     // --- WALL DETECTION ---
@@ -2774,6 +2954,7 @@ class Player {
             // We check jump key here directly to override normal jump behavior
             if (pKeys[' '] && !this.wallJumpLocked) {
                 this.vy = JUMP_FORCE;
+                if(window.soundManager) window.soundManager.play('jump');
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
                 this.facing = -wallDir; // Face away
@@ -2805,7 +2986,7 @@ class Player {
             if (pKeys['arrowdown'] || pKeys['s']) this.vy = 3;
 
             // Jump
-            if (pKeys[' ']) { this.vy = JUMP_FORCE; }
+            if (pKeys[' ']) { this.vy = JUMP_FORCE; if(window.soundManager) window.soundManager.play('jump'); }
         } else {
             // Only apply normal physics if NOT wall jumping this frame
             if (!this.wallJumpLocked) {
@@ -2822,6 +3003,7 @@ class Player {
             // Normal Jump
             if (pKeys[' '] && this.grounded && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
+                if(window.soundManager) window.soundManager.play('jump');
             }
 
             this.vy += GRAVITY;
@@ -2912,6 +3094,7 @@ class Player {
     takeDamage(amt = 1) {
         if(this.invincible > 0) return;
         this.health -= amt; shakeCamera(15); this.invincible = 60; spawnExplosion(this.x, this.y, "red");
+        if(window.soundManager) window.soundManager.play('hurt');
         if(this.health <= 0) this.respawn();
         updateUI();
     }
@@ -2936,6 +3119,7 @@ class Player {
     shoot(isSpecial, isDown, isUp = false) {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
+        if(window.soundManager) window.soundManager.play('shoot');
 
         let type = this.charData.pType;
 
@@ -4167,9 +4351,35 @@ function init() {
     console.log("INIT() CALLED");
     lastTime = 0;
 
+    if (!window.soundManager) {
+        window.soundManager = new window.SoundManager();
+    }
+
     // Resize setup
     window.addEventListener('resize', handleResize);
     handleResize();
+
+    // Sound Toggle
+    const soundBtn = document.getElementById('soundToggle');
+    if (soundBtn) {
+        // Remove old listeners to prevent duplicates if init called multiple times
+        let newBtn = soundBtn.cloneNode(true);
+        soundBtn.parentNode.replaceChild(newBtn, soundBtn);
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent touch-through
+            if (window.soundManager) {
+                const muted = window.soundManager.toggleMute();
+                newBtn.innerText = muted ? "🔇" : "🔊";
+                // Ensure init on interaction
+                window.soundManager.init();
+            }
+        });
+        // Set initial state
+        if (window.soundManager) {
+             newBtn.innerText = window.soundManager.muted ? "🔇" : "🔊";
+        }
+    }
 
     // Set to MENU initially
     gameState.screen = 'MENU';

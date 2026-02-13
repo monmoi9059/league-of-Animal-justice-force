@@ -140,6 +140,7 @@ class Enemy {
         b.vx = Math.cos(angle) * 8;
         b.vy = Math.sin(angle) * 8;
         entities.push(b);
+        if(window.soundManager) window.soundManager.play('enemy_shoot');
     }
 
     takeDamage(amt, sourceX) {
@@ -151,6 +152,7 @@ class Enemy {
 
         if (this.hp <= 0) {
             spawnExplosion(this.x + this.w/2, this.y + this.h/2, "red", 1);
+            if(window.soundManager) window.soundManager.play('explosion');
             this.x = -9999;
         }
     }
@@ -424,6 +426,7 @@ class HeavyGunner extends Enemy {
         b.vx = Math.cos(angle) * 10;
         b.vy = Math.sin(angle) * 10;
         entities.push(b);
+        if(window.soundManager) window.soundManager.play('enemy_shoot');
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
@@ -517,6 +520,7 @@ class SniperEnemy extends Enemy {
         b.vx = Math.cos(angle) * 20;
         b.vy = Math.sin(angle) * 20;
         entities.push(b);
+        if(window.soundManager) window.soundManager.play('enemy_shoot');
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
@@ -608,6 +612,7 @@ class ShieldBearer extends Enemy {
         if (this.hp <= 0) {
              this.x = -9999;
              spawnExplosion(this.x, this.y, "red", 3);
+             if(window.soundManager) window.soundManager.play('explosion');
         }
     }
     draw(ctx, camX, camY) {
@@ -689,7 +694,22 @@ class CaptainEnemy extends Enemy {
         }
     }
     shootBurst(target) {
-        // Disabled
+        if (!target) return;
+        for(let i=0; i<3; i++) {
+            setTimeout(() => {
+                if(this.hp <= 0) return;
+                // Re-validate target (simple check)
+                if (target.health <= 0) return;
+
+                let angle = Math.atan2(target.y - this.y, target.x - this.x);
+                let b = new Bullet(this.x + this.w/2, this.y + 20, 1, false, { pColor: this.color, pType: 'normal', isEnemy: true });
+                b.vx = Math.cos(angle) * 12;
+                b.vy = Math.sin(angle) * 12;
+                b.color = "gold";
+                entities.push(b);
+                if(window.soundManager) window.soundManager.play('enemy_shoot');
+            }, i * 100);
+        }
     }
     takeDamage(amt, sourceX) {
         this.hp -= amt;
@@ -698,6 +718,7 @@ class CaptainEnemy extends Enemy {
              let deathX = this.x;
              let deathY = this.y;
              spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
+             if(window.soundManager) window.soundManager.play('explosion');
              this.x = -9999;
              entities.push(new Helicopter(deathX, deathY - 50));
         }
@@ -805,6 +826,7 @@ class Boss {
             b.vx = Math.cos(angle) * speed;
             b.vy = Math.sin(angle) * speed;
             entities.push(b);
+            if(window.soundManager) window.soundManager.play('enemy_shoot');
 
             // Attack 2: Spread (Level 3+)
             if (difficulty >= 3) {
@@ -819,6 +841,7 @@ class Boss {
 
                  entities.push(b1);
                  entities.push(b2);
+                 if(window.soundManager) window.soundManager.play('enemy_shoot');
             }
 
             // Attack 3: Shotgun (Level 6+)
@@ -833,6 +856,7 @@ class Boss {
                  b4.vx = Math.cos(angle + spread) * speed;
                  b4.vy = Math.sin(angle + spread) * speed;
                  entities.push(b4);
+                 if(window.soundManager) window.soundManager.play('enemy_shoot');
             }
 
             // Attack 4: Explosive (Level 10+)
@@ -857,6 +881,7 @@ class Boss {
         if (this.hp <= 0) {
             shakeCamera(50);
             spawnExplosion(this.x + 60, this.y + 60, "#ff00de", 5);
+            if(window.soundManager) window.soundManager.play('explosion');
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
 
@@ -985,6 +1010,7 @@ class HelicopterBoss {
              b.vx = Math.cos(angle) * 15;
              b.vy = Math.sin(angle) * 15;
              entities.push(b);
+             if(window.soundManager) window.soundManager.play('enemy_shoot');
         }
 
         // Attack 2: Bomb Drop (Every 3s)
@@ -1017,6 +1043,7 @@ class HelicopterBoss {
         if (this.hp <= 0) {
             shakeCamera(100);
             spawnExplosion(this.x + 75, this.y + 40, "orange", 10);
+            if(window.soundManager) window.soundManager.play('explosion');
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
             this.x = -9999;

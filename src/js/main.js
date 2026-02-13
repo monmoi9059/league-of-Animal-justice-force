@@ -279,9 +279,35 @@ function init() {
     console.log("INIT() CALLED");
     lastTime = 0;
 
+    if (!window.soundManager) {
+        window.soundManager = new window.SoundManager();
+    }
+
     // Resize setup
     window.addEventListener('resize', handleResize);
     handleResize();
+
+    // Sound Toggle
+    const soundBtn = document.getElementById('soundToggle');
+    if (soundBtn) {
+        // Remove old listeners to prevent duplicates if init called multiple times
+        let newBtn = soundBtn.cloneNode(true);
+        soundBtn.parentNode.replaceChild(newBtn, soundBtn);
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent touch-through
+            if (window.soundManager) {
+                const muted = window.soundManager.toggleMute();
+                newBtn.innerText = muted ? "🔇" : "🔊";
+                // Ensure init on interaction
+                window.soundManager.init();
+            }
+        });
+        // Set initial state
+        if (window.soundManager) {
+             newBtn.innerText = window.soundManager.muted ? "🔇" : "🔊";
+        }
+    }
 
     // Set to MENU initially
     gameState.screen = 'MENU';
