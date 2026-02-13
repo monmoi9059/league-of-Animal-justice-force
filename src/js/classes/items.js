@@ -15,6 +15,8 @@ export class PropaneTank {
         this.hp = 10;
         this.vx = 0; this.vy = 0;
         this.type = 'prop';
+        this.burning = false;
+        this.burnTimer = 0;
     }
     update() {
         this.vy += GRAVITY;
@@ -30,12 +32,35 @@ export class PropaneTank {
              this.vx = 0;
         }
         this.x += this.vx;
+
+        if (this.burning) {
+            this.burnTimer--;
+            if (Math.random() < 0.3) {
+                spawnExplosion(this.x + this.w/2 + (Math.random()-0.5)*10, this.y + this.h/2 + (Math.random()-0.5)*10, "orange", 0.2);
+                spawnExplosion(this.x + this.w/2 + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*10, "grey", 0.1); // Smoke
+            }
+            if (this.burnTimer <= 0) {
+                this.hp = 0;
+                createExplosion(this.x + this.w/2, this.y + this.h/2, 2, 50);
+                this.x = -9999;
+            }
+        }
     }
     takeDamage(amt, sourceX) {
-        this.hp -= amt;
         // Do not move when hit
         this.vx = 0;
         this.vy = 0;
+
+        if (!this.burning) {
+            this.burning = true;
+            this.burnTimer = 60; // 1 second fuse
+            spawnDamageNumber(this.x, this.y, "WARNING!", "orange");
+        } else {
+            // Accelerate explosion
+            this.burnTimer -= 20;
+            this.hp -= amt;
+        }
+
         if(this.hp <= 0) {
             createExplosion(this.x + this.w/2, this.y + this.h/2, 2, 50);
             this.x = -9999;
@@ -44,7 +69,13 @@ export class PropaneTank {
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
         let cy = this.y - camY;
-        ctx.fillStyle = "#e74c3c"; // Red tank
+
+        if (this.burning && Math.floor(Date.now() / 100) % 2 === 0) {
+             ctx.fillStyle = "#e67e22"; // Flashing orange
+        } else {
+             ctx.fillStyle = "#e74c3c"; // Red tank
+        }
+
         drawRoundedRect(ctx, cx + 5, cy + 5, this.w - 10, this.h - 5, 5);
         ctx.fillStyle = "#bdc3c7"; // Valve
         ctx.fillRect(cx + 12, cy, 16, 5);
