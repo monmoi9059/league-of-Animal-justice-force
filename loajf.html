@@ -2412,11 +2412,12 @@ class CaptainEnemy extends Enemy {
         if (target) {
             if (minDist < 600) {
                 this.facing = target.x < this.x ? -1 : 1;
-                this.shootTimer++;
-                if (this.shootTimer > 90) {
-                     this.shootBurst(target);
-                     this.shootTimer = 0;
-                }
+                // No shooting for now
+                // this.shootTimer++;
+                // if (this.shootTimer > 90) {
+                //      this.shootBurst(target);
+                //      this.shootTimer = 0;
+                // }
             }
         }
     }
@@ -2454,27 +2455,47 @@ class CaptainEnemy extends Enemy {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
-        // CAPTAIN ROBOT
-        // Gold Plating
-        ctx.fillStyle = "#f1c40f"; // Gold
-        drawRoundedRect(ctx, cx, cy, this.w, this.h, 10);
-
-        // Trim
-        ctx.fillStyle = "#8e44ad"; // Purple Royal
-        ctx.fillRect(cx + 20, cy, 10, this.h);
+        // GAMER CAPTAIN
+        // Fat Body
+        ctx.fillStyle = "#333"; // Dark hoodie
+        // Bigger body than normal
+        drawRoundedRect(ctx, cx, cy + 10, 50, 50, 10);
 
         // Head
-        ctx.fillStyle = "#f39c12";
-        ctx.beginPath(); ctx.arc(cx + 25, cy - 10, 15, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#FFE4C4"; // Pale skin
+        drawRoundedRect(ctx, cx + 10, cy - 10, 30, 30, 8);
 
-        // Crown/Antenna
-        ctx.fillStyle = "gold";
-        ctx.beginPath(); ctx.moveTo(cx+15, cy-20); ctx.lineTo(cx+25, cy-35); ctx.lineTo(cx+35, cy-20); ctx.fill();
+        // Headset
+        ctx.strokeStyle = "#111"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx + 25, cy - 5, 18, Math.PI, 0); ctx.stroke(); // Band
+        ctx.fillStyle = "#222";
+        ctx.fillRect(cx + 5, cy - 8, 8, 12); ctx.fillRect(cx + 37, cy - 8, 8, 12); // Cans
+        // Mic
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx+37, cy); ctx.lineTo(cx+42, cy+5); ctx.lineTo(cx+30, cy+10); ctx.stroke();
+        ctx.fillStyle = "#555"; ctx.beginPath(); ctx.arc(cx+30, cy+10, 2, 0, Math.PI*2); ctx.fill();
 
-        // Eyes
-        ctx.fillStyle = "red";
-        ctx.beginPath(); ctx.arc(cx + 20, cy - 10, 3, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(cx + 30, cy - 10, 3, 0, Math.PI*2); ctx.fill();
+        // Eyes (Tired)
+        ctx.fillStyle = "#000";
+        ctx.beginPath(); ctx.arc(cx + 20, cy, 2, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 30, cy, 2, 0, Math.PI*2); ctx.fill();
+        // Bags under eyes
+        ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.arc(cx+20, cy+2, 3, 0, Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx+30, cy+2, 3, 0, Math.PI); ctx.stroke();
+
+        // Controller in hands
+        ctx.fillStyle = "#222";
+        ctx.save();
+        ctx.translate(cx + 25, cy + 40);
+        // Hands holding it
+        ctx.fillStyle = "#FFE4C4";
+        ctx.beginPath(); ctx.arc(-10, 0, 5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, 0, 5, 0, Math.PI*2); ctx.fill();
+        // Controller body
+        ctx.fillStyle = "#444";
+        drawRoundedRect(ctx, -12, -4, 24, 12, 4);
+        ctx.restore();
     }
 }
 
