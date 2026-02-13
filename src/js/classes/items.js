@@ -315,6 +315,12 @@ export class TrappedBeast {
             unlockCharacter(touchingPlayer);
             gameState.rescues++;
 
+            // Extra Life
+            gameState.lives++;
+            spawnDamageNumber(this.x, this.y - 40, "1 UP!", "gold");
+            if(soundManager) soundManager.play('powerup');
+            updateUI();
+
             // Switch Character Logic
             if (touchingPlayer) {
                 // Pick random unlocked character
