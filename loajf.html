@@ -683,14 +683,24 @@ function createExplosion(x, y, radius, damage) {
 }
 
 function unlockCharacter() {
-    if (gameState.globalUnlocked < CHARACTERS.length) {
-        gameState.globalUnlocked++;
-        gameState.unlockedCount = gameState.globalUnlocked;
-        spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "gold");
-        // Maybe visual effect?
-        spawnExplosion(player.x, player.y, "gold", 2);
+    // Check threshold: 2^(current_count) - 1
+    // We add 1 to current rescues because this function is called before the increment in TrappedBeast
+    let currentTotal = gameState.rescues + 1;
+    let requiredTotal = Math.pow(2, gameState.globalUnlocked) - 1;
+
+    if (currentTotal >= requiredTotal) {
+        if (gameState.globalUnlocked < CHARACTERS.length) {
+            gameState.globalUnlocked++;
+            gameState.unlockedCount = gameState.globalUnlocked;
+            spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "gold");
+            // Maybe visual effect?
+            spawnExplosion(player.x, player.y, "gold", 2);
+        } else {
+            spawnDamageNumber(player.x, player.y - 40, "MAX ROSTER!", "gold");
+        }
     } else {
-        spawnDamageNumber(player.x, player.y - 40, "MAX ROSTER!", "gold");
+        let needed = requiredTotal - currentTotal;
+        spawnDamageNumber(player.x, player.y - 40, `${needed} MORE`, "cyan");
     }
 }
 
@@ -3497,13 +3507,17 @@ function drawRoster() {
             ctx.fillStyle = "#222";
             ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI*2); ctx.fill();
 
-            let needed = i - gameState.globalUnlocked + 1;
+            let totalReq = Math.pow(2, i) - 1;
+            let remaining = totalReq - gameState.rescues;
+            if (remaining < 0) remaining = 0;
+
             ctx.fillStyle = "#555";
-            if (needed === 1) {
+            if (i === gameState.globalUnlocked) {
                 ctx.font = "10px Arial"; ctx.fillText("NEXT", cx, cy-5);
-                ctx.font = "bold 16px Arial"; ctx.fillStyle = "#00ff41"; ctx.fillText("1", cx, cy+12);
+                ctx.font = "bold 16px Arial"; ctx.fillStyle = "#00ff41"; ctx.fillText(remaining, cx, cy+12);
             } else {
-                ctx.font = "16px Arial"; ctx.fillText(needed, cx, cy+6);
+                ctx.font = "10px Arial"; ctx.fillText("NEED", cx, cy-5);
+                ctx.font = "16px Arial"; ctx.fillText(remaining, cx, cy+12);
             }
         }
     }

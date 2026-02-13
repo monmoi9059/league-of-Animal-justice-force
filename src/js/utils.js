@@ -75,13 +75,23 @@ function createExplosion(x, y, radius, damage) {
 }
 
 function unlockCharacter() {
-    if (gameState.globalUnlocked < CHARACTERS.length) {
-        gameState.globalUnlocked++;
-        gameState.unlockedCount = gameState.globalUnlocked;
-        spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "gold");
-        // Maybe visual effect?
-        spawnExplosion(player.x, player.y, "gold", 2);
+    // Check threshold: 2^(current_count) - 1
+    // We add 1 to current rescues because this function is called before the increment in TrappedBeast
+    let currentTotal = gameState.rescues + 1;
+    let requiredTotal = Math.pow(2, gameState.globalUnlocked) - 1;
+
+    if (currentTotal >= requiredTotal) {
+        if (gameState.globalUnlocked < CHARACTERS.length) {
+            gameState.globalUnlocked++;
+            gameState.unlockedCount = gameState.globalUnlocked;
+            spawnDamageNumber(player.x, player.y - 40, "NEW HERO!", "gold");
+            // Maybe visual effect?
+            spawnExplosion(player.x, player.y, "gold", 2);
+        } else {
+            spawnDamageNumber(player.x, player.y - 40, "MAX ROSTER!", "gold");
+        }
     } else {
-        spawnDamageNumber(player.x, player.y - 40, "MAX ROSTER!", "gold");
+        let needed = requiredTotal - currentTotal;
+        spawnDamageNumber(player.x, player.y - 40, `${needed} MORE`, "cyan");
     }
 }
