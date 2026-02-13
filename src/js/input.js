@@ -5,8 +5,27 @@
 if (!window.playerKeys) window.playerKeys = [{}, {}, {}, {}];
 window.keys = window.playerKeys[0]; // Alias P1
 
-window.addEventListener('keydown', e => window.playerKeys[0][e.key.toLowerCase()] = true);
-window.addEventListener('keyup', e => window.playerKeys[0][e.key.toLowerCase()] = false);
+// Config: [ { type: 'keyboard' }, { type: 'gamepad', index: 0 }, ... ]
+window.inputConfig = [null, null, null, null];
+
+window.addEventListener('keydown', e => {
+    // Find which player has keyboard
+    let pIndex = window.inputConfig.findIndex(c => c && c.type === 'keyboard');
+    if (pIndex === -1) {
+        // Default to P1 if not assigned yet (or separate Keyboard player)
+        // For lobby simplicity, we assume Keyboard is always available for P1 initially or claimable
+        // We'll handle assignment in Lobby.
+        // For now, update global buffer if P1 is keyboard OR if no one is assigned (default)
+        window.playerKeys[0][e.key.toLowerCase()] = true;
+    } else {
+        window.playerKeys[pIndex][e.key.toLowerCase()] = true;
+    }
+});
+window.addEventListener('keyup', e => {
+    let pIndex = window.inputConfig.findIndex(c => c && c.type === 'keyboard');
+    if (pIndex !== -1) window.playerKeys[pIndex][e.key.toLowerCase()] = false;
+    else window.playerKeys[0][e.key.toLowerCase()] = false;
+});
 
 // --- TOUCH CONTROLS ---
 (function() {
@@ -116,17 +135,23 @@ window.pollGamepad = function() {
     // Store previous state to handle release per player
     if (!window.lastGamepadState) window.lastGamepadState = [{}, {}, {}, {}];
 
-    for(let i=0; i<4; i++) {
+    // Iterate over CONNECTED gamepads, not just 0-3
+    for (let i = 0; i < gamepads.length; i++) {
         let gp = gamepads[i];
         if(!gp) continue;
 
-        // Map Gamepad 0 to Player 0 (Shared with Keyboard)
-        // Map Gamepad 1 to Player 1, etc.
-        // Wait, standard is P1 = Keyboard + GP0?
-        // Let's stick to: GP[i] -> PlayerKeys[i]
+        // Find which player slot owns this gamepad
+        let pSlot = window.inputConfig.findIndex(c => c && c.type === 'gamepad' && c.index === gp.index);
 
-        let pKeys = window.playerKeys[i];
-        let pLast = window.lastGamepadState[i];
+        // If not assigned, skip (Lobby handles assignment)
+        // EXCEPTION: If we are in-game and strict mode is off, maybe default?
+        // No, let's rely on config.
+        if (pSlot === -1) continue;
+
+        let pKeys = window.playerKeys[pSlot];
+        let pLast = window.lastGamepadState[pSlot];
+
+        if (!pKeys || !pLast) continue;
 
         const handleBtn = (btnId, key) => {
             let pressed = (gp.buttons[btnId] && gp.buttons[btnId].pressed);

@@ -291,11 +291,97 @@ function init() {
     // Show Menu UI, Hide Game UI
     document.getElementById('menuOverlay').style.display = 'flex';
     document.getElementById('rosterOverlay').style.display = 'none';
+    if(document.getElementById('lobbyOverlay')) document.getElementById('lobbyOverlay').style.display = 'none';
     document.getElementById('gameUI').style.display = 'none';
     document.getElementById('bossHealthContainer').style.display = 'none';
     document.getElementById('gameOverOverlay').style.display = 'none';
     document.getElementById('levelCompleteOverlay').style.display = 'none';
 }
+
+// LOBBY LOGIC
+window.enterLobby = function() {
+    gameState.screen = 'LOBBY';
+    document.getElementById('menuOverlay').style.display = 'none';
+    document.getElementById('lobbyOverlay').style.display = 'flex';
+
+    // Reset inputs
+    window.inputConfig = [null, null, null, null];
+
+    // Auto-assign P1 Keyboard immediately for convenience?
+    // Or make them press space. Let's make them press Space.
+    updateLobbyUI();
+};
+
+window.lobbyLoop = function() {
+    if (gameState.screen !== 'LOBBY') return;
+
+    // Check Keyboard
+    if (keys[' '] || keys['enter']) { // Space or Enter
+        // Assign to first available slot if not already assigned
+        let existing = window.inputConfig.find(c => c && c.type === 'keyboard');
+        if (!existing) {
+            let slot = window.inputConfig.findIndex(c => c === null);
+            if (slot !== -1) {
+                window.inputConfig[slot] = { type: 'keyboard' };
+                // Debounce?
+            }
+        }
+    }
+
+    // Check Gamepads
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (let i = 0; i < gamepads.length; i++) {
+        let gp = gamepads[i];
+        if (gp) {
+            // Check A (0) or Start (9)
+            if ((gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[9] && gp.buttons[9].pressed)) {
+                // Check if already assigned
+                let existing = window.inputConfig.find(c => c && c.type === 'gamepad' && c.index === gp.index);
+                if (!existing) {
+                    let slot = window.inputConfig.findIndex(c => c === null);
+                    if (slot !== -1) {
+                        window.inputConfig[slot] = { type: 'gamepad', index: gp.index };
+                    }
+                }
+            }
+        }
+    }
+
+    updateLobbyUI();
+};
+
+function updateLobbyUI() {
+    let count = 0;
+    for(let i=0; i<4; i++) {
+        let el = document.getElementById('lobbyStatus' + (i+1));
+        let slot = document.getElementById('lobbyP1'); // Just to get class if needed
+        if (window.inputConfig[i]) {
+            let type = window.inputConfig[i].type === 'keyboard' ? "KEYBOARD" : `GAMEPAD ${window.inputConfig[i].index + 1}`;
+            el.innerText = "READY\n(" + type + ")";
+            el.style.color = "#00ff41";
+            count++;
+        } else {
+            el.innerText = "PRESS A / SPACE";
+            el.style.color = "#777";
+        }
+    }
+
+    let btn = document.getElementById('lobbyStartBtn');
+    if (count > 0) {
+        btn.style.display = 'block';
+        document.getElementById('lobbyMessage').innerText = `${count} PLAYER(S) READY`;
+    } else {
+        btn.style.display = 'none';
+        document.getElementById('lobbyMessage').innerText = "WAITING FOR PLAYERS...";
+    }
+}
+
+window.startMultiplayerGame = function() {
+    // Filter out nulls but keep indices? No, players array is dense.
+    // We need to map config to players.
+    // Actually startGame will read inputConfig.
+    window.startGame();
+};
 
 // Start actual gameplay
 window.startGame = function() {
@@ -311,7 +397,7 @@ window.startGame = function() {
         // gameState.spawnPoint = { x: 100, y: 0 }; // Replaced by Heli logic below
         gameState.checkpointsHit = 0;
         // Keep score/rescues if next level, else reset
-        if (gameState.screen === 'MENU') {
+        if (gameState.screen === 'MENU' || gameState.screen === 'LOBBY') {
             gameState.score = 0;
             gameState.rescues = 0;
             gameState.lives = 3;
@@ -322,34 +408,33 @@ window.startGame = function() {
         gameState.screen = 'GAME';
         gameState.running = true;
 
-        // Spawn Players
+        // Spawn Players based on Config
         window.players = [];
         window.player = null; // Reset legacy
 
-        // Always spawn P1
-        let p1 = new Player(0);
-        window.players.push(p1);
-        window.player = p1; // Legacy ref just in case
+        let activeConfigs = window.inputConfig.map((c, i) => ({config: c, slot: i})).filter(o => o.config !== null);
 
-        // Check for gamepads for P2-P4
-        // Note: pollGamepad might not have run yet if fresh start, but navigator object exists
-        let gps = navigator.getGamepads ? navigator.getGamepads() : [];
-        // If GP 1 connected -> P2. GP 2 -> P3.
-        // We assume GP0 is P1 (or shared).
-        for(let i=1; i<4; i++) {
-            if (gps[i]) {
-                window.players.push(new Player(i));
-            }
+        // Fallback for debugging if started without lobby (e.g. tests)
+        if (activeConfigs.length === 0) {
+            console.log("No inputs configured, defaulting P1 to Keyboard");
+            window.inputConfig[0] = { type: 'keyboard' };
+            activeConfigs = [{ config: { type: 'keyboard' }, slot: 0 }];
         }
 
-        // Set Characters
-        window.players.forEach((p, idx) => {
-            // Pick distinct if possible
+        activeConfigs.forEach((obj, idx) => {
+            // We create Player with the SLOT index so it reads from playerKeys[slot]
+            let p = new Player(obj.slot);
+
+            // Pick distinct chars
             let available = Math.min(gameState.globalUnlocked, CHARACTERS.length);
-            let rnd = Math.floor(secureRandom() * available);
-            // Simple random for now
-            p.setCharacter(CHARACTERS[rnd].id);
+            // Try to give unique char based on index
+            let charIdx = (Math.floor(secureRandom() * available) + idx) % available;
+            p.setCharacter(CHARACTERS[charIdx].id);
+
+            window.players.push(p);
         });
+
+        window.player = window.players[0];
 
         // --- HELICOPTER INTRO ---
         let startX = 2 * TILE_SIZE;
@@ -369,6 +454,7 @@ window.startGame = function() {
 
         // Switch UI
         document.getElementById('menuOverlay').style.display = 'none';
+        if(document.getElementById('lobbyOverlay')) document.getElementById('lobbyOverlay').style.display = 'none';
         document.getElementById('gameUI').style.display = 'flex';
         document.getElementById('levelCompleteOverlay').style.display = 'none';
         updateUI();
