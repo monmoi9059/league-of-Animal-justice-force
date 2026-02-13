@@ -9,9 +9,11 @@ export function initInput() {
     window.addEventListener('keydown', e => {
         // Find which player has keyboard
         let pIndex = inputConfig.findIndex(c => c && c.type === 'keyboard');
+        console.log("Keydown:", e.key, "pIndex:", pIndex);
         if (pIndex === -1) {
             // Default to P1 if not assigned yet
             playerKeys[0][e.key.toLowerCase()] = true;
+            console.log("Assigned to P1 keys:", playerKeys[0]);
         } else {
             playerKeys[pIndex][e.key.toLowerCase()] = true;
         }

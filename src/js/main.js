@@ -1,5 +1,5 @@
 import { INTERVAL, CANVAS, CTX, TILE_SIZE, LEVEL_WIDTH, LEVEL_HEIGHT, CHARACTERS, DEBUG_HUD } from './constants.js';
-import { gameState, entities, setEntities, players, setPlayers, particles, setParticles, damageNumbers, setDamageNumbers, debris, setDebris, setTiles, tiles, player, setPlayer, lastTime, setLastTime } from './state.js';
+import { gameState, entities, setEntities, players, setPlayers, particles, setParticles, damageNumbers, setDamageNumbers, debris, setDebris, setTiles, tiles, player, setPlayer, lastTime, setLastTime, playerKeys } from './state.js';
 import { updateUI } from './ui.js';
 import { winGame, endGame } from './game-flow.js';
 import { SoundManager, soundManager } from './sound.js';
@@ -87,64 +87,38 @@ window.enterLobby = function() {
 };
 
 window.lobbyLoop = function() {
-    // This function is not called by the loop?
-    // In original code, it was called? No, it was defined.
-    // Ah, it should be called in the main loop if screen is LOBBY.
-    // The original main loop had:
-    // if(gameState.screen === 'MENU' || gameState.screen === 'ROSTER') {}
-    // It didn't explicitly call lobbyLoop in the loop provided in the prompt?
-    // Let me check the original loop.
-    // The original loop:
-    // if(gameState.screen === 'MENU' || gameState.screen === 'ROSTER') {}
-    // else if (gameState.running) { ... }
-
-    // But `window.lobbyLoop` was defined.
-    // Maybe `lobbyLoop` should be called in the loop if `gameState.screen === 'LOBBY'`.
-    // I'll add that.
-
     if (gameState.screen !== 'LOBBY') return;
 
-    // We need access to keys to check for Space/Enter assignment.
-    // But input.js handles keys.
-    // `inputConfig` is exported.
-
-    // Ideally lobby logic should be in input.js or a lobby.js?
-    // Since it's small, I'll keep it here, but I need access to raw input.
-    // `playerKeys` are available. But for unassigned inputs?
-    // `input.js` logic was: "Assign to first available slot if not already assigned".
-    // But `window.addEventListener` in `input.js` only updates `playerKeys`.
-
-    // I'll re-implement lobby logic here using `playerKeys`? No, we need to know WHICH device was pressed.
-    // `input.js` maps keyboard to P1 default if unassigned.
-    // I might need to improve `input.js` to expose raw events or handle lobby assignment.
-
-    // For now, let's just stick to the original behavior:
-    // Keyboard always P1 (slot 0) if pressed?
-    // `lobbyLoop` in original code checked `keys`.
-
-    // I'll assume keyboard is always P1 for simplicity in this refactor, as per original code's "defaulting P1 to Keyboard".
-
-    // Check P1 keys (Keyboard default)
-    if (playerKeys[0][' '] || playerKeys[0]['enter']) {
-        if (!inputConfig[0]) inputConfig[0] = { type: 'keyboard' };
+    // KEYBOARD JOIN
+    // If no keyboard player is assigned, we listen to P1 keys (default target for unassigned keyboard)
+    let keyboardAssigned = inputConfig.some(c => c && c.type === 'keyboard');
+    // console.log("Lobby Check. KB Assigned:", keyboardAssigned, "P1 Keys:", JSON.stringify(playerKeys[0]));
+    if (!keyboardAssigned) {
+        if (playerKeys[0][' '] || playerKeys[0]['enter']) {
+             let slot = inputConfig.findIndex(c => c === null);
+             if (slot !== -1) {
+                 console.log("Keyboard joined at slot", slot);
+                 inputConfig[slot] = { type: 'keyboard' };
+                 // Clear key to prevent instant start if button used for both
+                 playerKeys[0][' '] = false;
+                 playerKeys[0]['enter'] = false;
+             }
+        }
     }
 
-    // Gamepads are polled in `loop()`. `input.js` handles mapping to playerKeys.
-    // But for lobby assignment, we need to know if an unassigned gamepad pressed a button.
-    // `pollGamepad` in `input.js` iterates gamepads.
-    // Maybe `pollGamepad` should return info or handle assignment if in lobby?
-    // Since I refactored `pollGamepad`, it only updates `playerKeys` if assigned.
-
-    // I'll modify `pollGamepad` in `input.js`? Or just iterate gamepads here.
+    // GAMEPAD JOIN
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (let i = 0; i < gamepads.length; i++) {
         let gp = gamepads[i];
         if (gp) {
+            // Check A (0) or Start (9)
             if ((gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[9] && gp.buttons[9].pressed)) {
+                // Check if already assigned
                 let existing = inputConfig.find(c => c && c.type === 'gamepad' && c.index === gp.index);
                 if (!existing) {
                     let slot = inputConfig.findIndex(c => c === null);
                     if (slot !== -1) {
+                        console.log("Gamepad", gp.index, "joined at slot", slot);
                         inputConfig[slot] = { type: 'gamepad', index: gp.index };
                     }
                 }
