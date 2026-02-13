@@ -15,17 +15,32 @@ function generateLevel() {
     let captainSpawned = false;
 
     // Helper: Spawn Enemy Squad
-    function spawnSquad(x, y) {
+    function spawnSquad(x, y, forceCaptain = false) {
         let type = secureRandom();
-        // Squad Composition based on Difficulty
-        if (difficulty >= 5 && type < 0.1 && !captainSpawned) {
-             // Captain/Lieutenant Squad (Unique per level)
-             // Spawns a rescue helicopter on death
+
+        // Force Captain Spawn if requested or by random chance (if not already spawned)
+        // Captain is critical for level completion
+        if ((forceCaptain || (type < 0.15)) && !captainSpawned) {
              newEntities.push(new CaptainEnemy(x * TILE_SIZE, y * TILE_SIZE));
-             newEntities.push(new ShieldBearer((x-1) * TILE_SIZE, y * TILE_SIZE));
-             newEntities.push(new ShieldBearer((x+1) * TILE_SIZE, y * TILE_SIZE));
              captainSpawned = true;
-        } else if (difficulty >= 5 && type < 0.25) {
+
+             // Guards scale with difficulty
+             if (difficulty >= 5) {
+                 newEntities.push(new ShieldBearer((x-1) * TILE_SIZE, y * TILE_SIZE));
+                 newEntities.push(new ShieldBearer((x+1) * TILE_SIZE, y * TILE_SIZE));
+             } else if (difficulty >= 3) {
+                 newEntities.push(new ShieldBearer((x-1) * TILE_SIZE, y * TILE_SIZE));
+                 newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             } else {
+                 // Level 1-2: Just Grunts
+                 newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+                 newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             }
+             return; // Squad spawned, exit
+        }
+
+        // Squad Composition based on Difficulty
+        if (difficulty >= 5 && type < 0.25) {
              // Specialist Squad: 1 Shield + 2 Grunts
              newEntities.push(new ShieldBearer(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
@@ -229,9 +244,14 @@ function generateLevel() {
         let encounterDist = 30 - difficulty;
         if (encounterDist < 12) encounterDist = 12;
 
-        if (x - lastEncounterX > encounterDist) { // More frequent in hard levels
-             if (secureRandom() < 0.4) {
-                 spawnSquad(x, y-1);
+        // Force Captain near end of level if not spawned yet
+        // Check if we are in the last 15% of the level (e.g. x > 340 for width 400)
+        let isEndZone = (x > LEVEL_WIDTH - 60);
+
+        if (x - lastEncounterX > encounterDist || (isEndZone && !captainSpawned)) {
+             let chance = (isEndZone && !captainSpawned) ? 1.0 : 0.4;
+             if (secureRandom() < chance) {
+                 spawnSquad(x, y-1, (isEndZone && !captainSpawned)); // Pass forceCaptain flag
                  lastEncounterX = x;
              }
         }
