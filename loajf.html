@@ -2882,8 +2882,9 @@ class Player {
                             }
                         } else {
                             if(this.vy > 0) {
-                                // Only land if feet were previously above the block
-                                if (this.lastY + this.h <= row * TILE_SIZE + 15) {
+                                // Only land if feet were previously above the block (with a small margin)
+                                // The +15 was causing snapping from too low, visually embedding. reducing to +5
+                                if (this.lastY + this.h <= row * TILE_SIZE + 5) {
                                     this.y = (row * TILE_SIZE) - this.h;
                                     this.vy = 0;
                                     if(!this.grounded) { this.stretchX = 1.4; this.stretchY = 0.6; }
@@ -3295,38 +3296,41 @@ function generateLevel() {
     }
 
     // Boss Spawning Logic
-    if (difficulty < 20) {
-         // Spawn Boss in normal terrain (Last 30% of map)
-         let spawnRangeStart = Math.floor(LEVEL_WIDTH * 0.7);
-         let bossX = spawnRangeStart + Math.floor(secureRandom() * (LEVEL_WIDTH - spawnRangeStart - 5));
+    // No boss until level 10, then every 5 levels (10, 15, 20, 25...)
+    if (difficulty >= 10 && difficulty % 5 === 0) {
+         // Level 20+: Special Room Arena
+         if (difficulty >= 20) {
+             // Boss is in the arena at the end
+             newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
 
-         // Find ground Y
-         let bossY = 10;
-         if (surfaceMap[bossX]) bossY = surfaceMap[bossX] - 5;
-
-         // Safety check
-         if (bossY > LEVEL_HEIGHT - 5) bossY = 10;
-
-         let bossType = (difficulty >= 4 && difficulty % 2 === 0) ? 'heli' : 'ground';
-
-         if (bossType === 'heli') {
-             newEntities.push(new HelicopterBoss(bossX * TILE_SIZE, (bossY - 10) * TILE_SIZE));
-         } else {
-             newEntities.push(new Boss(bossX * TILE_SIZE, bossY * TILE_SIZE));
+             // Traps/Turrets in arena?
+             newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
+             newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
          }
+         else {
+             // Spawn Boss in normal terrain (Last 30% of map)
+             let spawnRangeStart = Math.floor(LEVEL_WIDTH * 0.7);
+             let bossX = spawnRangeStart + Math.floor(secureRandom() * (LEVEL_WIDTH - spawnRangeStart - 5));
 
-         // Boss Entourage
-         spawnSquad(bossX - 5, bossY);
-         spawnSquad(bossX + 5, bossY);
+             // Find ground Y
+             let bossY = 10;
+             if (surfaceMap[bossX]) bossY = surfaceMap[bossX] - 5;
 
-    } else {
-         // Level 20+: Special Room
-         // Boss is in the arena at the end
-         newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
+             // Safety check
+             if (bossY > LEVEL_HEIGHT - 5) bossY = 10;
 
-         // Traps/Turrets in arena?
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
+             let bossType = (difficulty >= 14 && difficulty % 2 === 0) ? 'heli' : 'ground';
+
+             if (bossType === 'heli') {
+                 newEntities.push(new HelicopterBoss(bossX * TILE_SIZE, (bossY - 10) * TILE_SIZE));
+             } else {
+                 newEntities.push(new Boss(bossX * TILE_SIZE, bossY * TILE_SIZE));
+             }
+
+             // Boss Entourage
+             spawnSquad(bossX - 5, bossY);
+             spawnSquad(bossX + 5, bossY);
+         }
     }
 
     entities = newEntities;

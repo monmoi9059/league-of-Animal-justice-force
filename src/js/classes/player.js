@@ -249,8 +249,9 @@ class Player {
                             }
                         } else {
                             if(this.vy > 0) {
-                                // Only land if feet were previously above the block
-                                if (this.lastY + this.h <= row * TILE_SIZE + 15) {
+                                // Only land if feet were previously above the block (with a small margin)
+                                // The +15 was causing snapping from too low, visually embedding. reducing to +5
+                                if (this.lastY + this.h <= row * TILE_SIZE + 5) {
                                     this.y = (row * TILE_SIZE) - this.h;
                                     this.vy = 0;
                                     if(!this.grounded) { this.stretchX = 1.4; this.stretchY = 0.6; }
