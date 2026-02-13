@@ -3,6 +3,7 @@ export const gameState = {
     running: false,
     score: 0,
     cameraX: 0, cameraY: 0,
+    zoom: 1.0,
     shake: 0,
     frame: 0,
     checkpointsHit: 0,

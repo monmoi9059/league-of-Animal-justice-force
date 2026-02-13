@@ -103,10 +103,13 @@ export function drawGame() {
     drawBackground(CTX, gameState.cameraX + sx, gameState.cameraY + sy);
 
     CTX.save();
+    CTX.scale(gameState.zoom, gameState.zoom);
     CTX.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
 
-    let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (CANVAS.width / TILE_SIZE) + 4;
-    let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (CANVAS.height / TILE_SIZE) + 4;
+    let startCol = Math.floor(gameState.cameraX / TILE_SIZE);
+    let endCol = startCol + ((CANVAS.width / gameState.zoom) / TILE_SIZE) + 4;
+    let startRow = Math.floor(gameState.cameraY / TILE_SIZE);
+    let endRow = startRow + ((CANVAS.height / gameState.zoom) / TILE_SIZE) + 4;
 
     for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
         for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) { // Use constant LEVEL_WIDTH for loop bound if array is large enough, or better check array length?

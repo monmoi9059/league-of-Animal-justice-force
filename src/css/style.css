@@ -277,6 +277,31 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
     border-color: rgba(255, 0, 222, 0.5);
 }
 
+/* LOBBY */
+.lobby-slot {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #555;
+    border-radius: 10px;
+    padding: 15px;
+    width: 150px;
+    text-align: center;
+    transition: border-color 0.2s, background 0.2s;
+}
+.lobby-slot h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    color: #aaa;
+}
+.lobby-status {
+    font-size: 14px;
+    font-weight: bold;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: pre-wrap;
+}
+
 /* Landscape adjustments for mobile */
 @media (max-height: 500px) {
     .touch-btn {
@@ -297,5 +322,9 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
     }
     .dpad-area {
         margin-left: 50px;
+    }
+    .lobby-slot {
+        width: 100px;
+        padding: 10px;
     }
 }

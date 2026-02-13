@@ -6,7 +6,8 @@ import { SoundManager, soundManager } from './sound.js';
 import { initInput, inputConfig, pollGamepad } from './input.js';
 import { generateLevel } from './level.js';
 import { drawMenu, drawRoster, drawGame, drawBackground } from './render.js';
-import { secureRandom, spawnExplosion } from './utils.js';
+import { spawnExplosion } from './utils.js';
+import { secureRandom } from './math.js';
 import { setupErrorHandler } from './errorhandler.js';
 import { Player } from './classes/player.js';
 import { Helicopter } from './classes/items.js';
@@ -124,8 +125,6 @@ window.lobbyLoop = function() {
     // I'll assume keyboard is always P1 for simplicity in this refactor, as per original code's "defaulting P1 to Keyboard".
 
     // Check P1 keys (Keyboard default)
-    import { playerKeys } from './state.js'; // Wait, I already imported it.
-
     if (playerKeys[0][' '] || playerKeys[0]['enter']) {
         if (!inputConfig[0]) inputConfig[0] = { type: 'keyboard' };
     }
@@ -364,22 +363,55 @@ function loop(timestamp) {
                 debris.forEach(d => d.update());
             }
 
-            // Camera Logic: Average Position
+            // Camera Logic: Average Position & Zoom
             let activePlayers = players.filter(p => p.health > 0);
             if (activePlayers.length > 0) {
-                let avgX = 0;
-                let avgY = 0;
-                activePlayers.forEach(p => { avgX += p.x; avgY += p.y; });
-                avgX /= activePlayers.length;
-                avgY /= activePlayers.length;
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
 
-                let targetX = avgX - CANVAS.width * 0.5; // Center
-                if(targetX < 0) targetX = 0;
-                if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
-                gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
+                activePlayers.forEach(p => {
+                    if (p.x < minX) minX = p.x;
+                    if (p.x + p.w > maxX) maxX = p.x + p.w;
+                    if (p.y < minY) minY = p.y;
+                    if (p.y + p.h > maxY) maxY = p.y + p.h;
+                });
 
-                let targetY = avgY - CANVAS.height * 0.5;
+                // Add padding
+                const paddingX = 200;
+                const paddingY = 150;
+                const widthNeeded = Math.max(CANVAS.width, (maxX - minX) + paddingX);
+                const heightNeeded = Math.max(CANVAS.height, (maxY - minY) + paddingY);
+
+                // Calculate Zoom
+                let targetZoom = Math.min(CANVAS.width / widthNeeded, CANVAS.height / heightNeeded);
+                // Clamp Zoom
+                targetZoom = Math.max(0.5, Math.min(1.0, targetZoom));
+
+                // Smooth Zoom
+                gameState.zoom += (targetZoom - gameState.zoom) * 0.05;
+
+                // Center Camera
+                let centerX = (minX + maxX) / 2;
+                let centerY = (minY + maxY) / 2;
+
+                // Calculate top-left based on center and zoom
+                // Viewport size in world units = CANVAS.size / zoom
+                let viewW = CANVAS.width / gameState.zoom;
+                let viewH = CANVAS.height / gameState.zoom;
+
+                let targetX = centerX - viewW * 0.5;
+                let targetY = centerY - viewH * 0.5;
+
+                // Limits
+                if (targetX < 0) targetX = 0;
+                if (gameState.bossActive) {
+                    let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE;
+                    if (targetX < bossArenaX) targetX = bossArenaX;
+                }
                 if (targetY < 0) targetY = 0;
+
+                // Smooth Pan
+                gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
                 gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
             }
 
