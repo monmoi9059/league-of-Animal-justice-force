@@ -3584,12 +3584,6 @@ function loop(timestamp) {
                 if(shootCooldown > 0) shootCooldown--;
                 if(specialCooldown > 0) specialCooldown--;
 
-                if((keys['z'] || keys['j']) && shootCooldown <= 0) {
-                    let isDown = keys['arrowdown'] || keys['s'];
-                    if(player) player.shoot(false, isDown);
-                    shootCooldown = 15;
-                }
-                if((keys['x'] || keys['k']) && specialCooldown <= 0 && player) { player.shoot(true, false); specialCooldown = 120; }
 
                 entities = entities.filter(e => (e.hp > 0) || (e.life > 0));
                 entities.forEach(e => e.update());
