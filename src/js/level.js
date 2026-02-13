@@ -12,20 +12,29 @@ function generateLevel() {
     gameState.levelData.biome = biome;
     gameState.levelData.difficulty = difficulty;
 
+    let captainSpawned = false;
+
     // Helper: Spawn Enemy Squad
     function spawnSquad(x, y) {
         let type = secureRandom();
         // Squad Composition based on Difficulty
-        if (difficulty >= 5 && type < 0.2) {
+        if (difficulty >= 5 && type < 0.1 && !captainSpawned) {
+             // Captain/Lieutenant Squad (Unique per level)
+             // Spawns a rescue helicopter on death
+             newEntities.push(new CaptainEnemy(x * TILE_SIZE, y * TILE_SIZE));
+             newEntities.push(new ShieldBearer((x-1) * TILE_SIZE, y * TILE_SIZE));
+             newEntities.push(new ShieldBearer((x+1) * TILE_SIZE, y * TILE_SIZE));
+             captainSpawned = true;
+        } else if (difficulty >= 5 && type < 0.25) {
              // Specialist Squad: 1 Shield + 2 Grunts
              newEntities.push(new ShieldBearer(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-        } else if (difficulty >= 7 && type < 0.3) {
+        } else if (difficulty >= 7 && type < 0.35) {
              // Heavy Squad: 1 Heavy + 1 Shield
              newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE));
              newEntities.push(new ShieldBearer((x+2) * TILE_SIZE, y * TILE_SIZE));
-        } else if (difficulty >= 3 && type < 0.4) {
+        } else if (difficulty >= 3 && type < 0.45) {
              // Suicide Squad: 3 Kamikazes
              newEntities.push(new KamikazeEnemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x+1) * TILE_SIZE, y * TILE_SIZE));
