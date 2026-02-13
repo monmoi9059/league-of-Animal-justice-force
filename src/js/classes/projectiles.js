@@ -103,12 +103,16 @@ class Bullet {
                     if (t.type === 1) {
                         spawnExplosion(this.x, this.y, C.dirtLight, 1);
                         tiles[r][c] = { type: 0 };
+                        if(window.soundManager) window.soundManager.play('brick_break');
                     }
                 }
                 else {
                     spawnExplosion(this.x, this.y, C.dirtLight, 1);
                     this.life = 0;
-                    if (t.type === 1) { tiles[r][c] = { type: 0 }; }
+                    if (t.type === 1) {
+                        tiles[r][c] = { type: 0 };
+                        if(window.soundManager) window.soundManager.play('brick_break');
+                    }
                     // Reduced destroy radius from 2 to 1 for smaller destruction
                     if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.type === 'fireball' || this.vy > 0) destroyRadius(c, r, 1);
                 }

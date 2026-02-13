@@ -16,6 +16,7 @@ def main():
     # Scripts to be concatenated inside the IIFE
     js_files = [
         'src/js/constants.js',
+        'src/js/sound.js',
         'src/js/state.js',
         'src/js/utils.js',
         'src/js/input.js',

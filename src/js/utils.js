@@ -34,6 +34,7 @@ function destroyRadius(cx, cy, r) {
                 if(tiles[y] && tiles[y][x] && tiles[y][x].type === 1) {
                     spawnDebris(x*TILE_SIZE, y*TILE_SIZE, C.dirtLight);
                     tiles[y][x] = { type: 0 };
+                    if(window.soundManager) window.soundManager.play('brick_break');
                 }
             }
         }
@@ -47,6 +48,7 @@ function shakeCamera(amount) {
 function createExplosion(x, y, radius, damage) {
     // Visuals
     spawnExplosion(x, y, "orange", radius);
+    if(window.soundManager) window.soundManager.play('explosion');
 
     // Terrain Destruction
     let c = Math.floor(x / TILE_SIZE);
@@ -94,6 +96,7 @@ function unlockCharacter(sourcePlayer) {
             spawnDamageNumber(px, py - 40, "NEW HERO!", "gold");
             // Maybe visual effect?
             spawnExplosion(px, py, "gold", 2);
+            if(window.soundManager) window.soundManager.play('powerup');
         } else {
             spawnDamageNumber(px, py - 40, "MAX ROSTER!", "gold");
         }

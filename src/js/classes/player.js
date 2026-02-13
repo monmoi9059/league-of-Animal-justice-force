@@ -33,6 +33,7 @@ class Player {
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
         spawnExplosion(this.x, this.y, "#00ff41", 2);
+        if(window.soundManager) window.soundManager.play('powerup'); // Respawn sound
     }
 
     // --- WALL DETECTION ---
@@ -133,6 +134,7 @@ class Player {
             // We check jump key here directly to override normal jump behavior
             if (pKeys[' '] && !this.wallJumpLocked) {
                 this.vy = JUMP_FORCE;
+                if(window.soundManager) window.soundManager.play('jump');
                 this.vx = -wallDir * 10; // Kick off away from wall
                 this.wallJumpLocked = true; // Prevent spam
                 this.facing = -wallDir; // Face away
@@ -164,7 +166,7 @@ class Player {
             if (pKeys['arrowdown'] || pKeys['s']) this.vy = 3;
 
             // Jump
-            if (pKeys[' ']) { this.vy = JUMP_FORCE; }
+            if (pKeys[' ']) { this.vy = JUMP_FORCE; if(window.soundManager) window.soundManager.play('jump'); }
         } else {
             // Only apply normal physics if NOT wall jumping this frame
             if (!this.wallJumpLocked) {
@@ -181,6 +183,7 @@ class Player {
             // Normal Jump
             if (pKeys[' '] && this.grounded && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
+                if(window.soundManager) window.soundManager.play('jump');
             }
 
             this.vy += GRAVITY;
@@ -271,6 +274,7 @@ class Player {
     takeDamage(amt = 1) {
         if(this.invincible > 0) return;
         this.health -= amt; shakeCamera(15); this.invincible = 60; spawnExplosion(this.x, this.y, "red");
+        if(window.soundManager) window.soundManager.play('hurt');
         if(this.health <= 0) this.respawn();
         updateUI();
     }
@@ -295,6 +299,7 @@ class Player {
     shoot(isSpecial, isDown, isUp = false) {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
+        if(window.soundManager) window.soundManager.play('shoot');
 
         let type = this.charData.pType;
 
