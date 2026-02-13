@@ -318,8 +318,8 @@ export class TrappedBeast {
             // Extra Life
             gameState.lives++;
             spawnDamageNumber(this.x, this.y - 40, "1 UP!", "gold");
-            if(soundManager) soundManager.play('powerup');
-            updateUI();
+            if(typeof soundManager !== 'undefined' && soundManager) soundManager.play('powerup');
+            try { updateUI(); } catch(e) {}
 
             // Switch Character Logic
             if (touchingPlayer) {
