@@ -1,5 +1,12 @@
+import { GRAVITY, TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH } from '../constants.js';
+import { tiles, players, entities, gameState } from '../state.js';
+import { Bullet } from './projectiles.js';
+import { PropaneTank, Helicopter } from './items.js';
+import { spawnDamageNumber, spawnExplosion, createExplosion, shakeCamera } from '../utils.js';
+import { drawRoundedRect } from '../graphics.js';
+import { soundManager } from '../sound.js';
 
-class Enemy {
+export class Enemy {
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -41,8 +48,8 @@ class Enemy {
             // Find nearest player
             let target = null;
             let minDist = 9999;
-            if (window.players) {
-                for (let p of window.players) {
+            if (players) {
+                for (let p of players) {
                     if (p.health > 0) {
                         let d = Math.hypot(p.x - this.x, p.y - this.y);
                         if (d < minDist) { minDist = d; target = p; }
@@ -140,7 +147,7 @@ class Enemy {
         b.vx = Math.cos(angle) * 8;
         b.vy = Math.sin(angle) * 8;
         entities.push(b);
-        if(window.soundManager) window.soundManager.play('enemy_shoot');
+        if(soundManager) soundManager.play('enemy_shoot');
     }
 
     takeDamage(amt, sourceX) {
@@ -152,7 +159,7 @@ class Enemy {
 
         if (this.hp <= 0) {
             spawnExplosion(this.x + this.w/2, this.y + this.h/2, "red", 1);
-            if(window.soundManager) window.soundManager.play('explosion');
+            if(soundManager) soundManager.play('explosion');
             this.x = -9999;
         }
     }
@@ -203,7 +210,7 @@ class Enemy {
     }
 }
 
-class FlyingEnemy extends Enemy {
+export class FlyingEnemy extends Enemy {
     constructor(x, y) {
         super(x, y);
         this.type = 'fly';
@@ -214,8 +221,8 @@ class FlyingEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (window.players) {
-            for (let p of window.players) {
+        if (players) {
+            for (let p of players) {
                 if (p.health > 0) {
                     let d = Math.hypot(p.x - this.x, p.y - this.y);
                     if (d < minDist) { minDist = d; target = p; }
@@ -298,7 +305,7 @@ class FlyingEnemy extends Enemy {
     }
 }
 
-class KamikazeEnemy extends Enemy {
+export class KamikazeEnemy extends Enemy {
     constructor(x, y) {
         super(x, y);
         this.hp = 1;
@@ -314,8 +321,8 @@ class KamikazeEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (window.players) {
-            for (let p of window.players) {
+        if (players) {
+            for (let p of players) {
                 if (p.health > 0) {
                     let d = Math.hypot(p.x - this.x, p.y - this.y);
                     if (d < minDist) { minDist = d; target = p; }
@@ -374,7 +381,7 @@ class KamikazeEnemy extends Enemy {
     }
 }
 
-class HeavyGunner extends Enemy {
+export class HeavyGunner extends Enemy {
     constructor(x, y) {
         super(x, y);
         this.hp = 10;
@@ -398,8 +405,8 @@ class HeavyGunner extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (window.players) {
-            for (let p of window.players) {
+        if (players) {
+            for (let p of players) {
                 if (p.health > 0) {
                     let d = Math.hypot(p.x - this.x, p.y - this.y);
                     if (d < minDist) { minDist = d; target = p; }
@@ -426,7 +433,7 @@ class HeavyGunner extends Enemy {
         b.vx = Math.cos(angle) * 10;
         b.vy = Math.sin(angle) * 10;
         entities.push(b);
-        if(window.soundManager) window.soundManager.play('enemy_shoot');
+        if(soundManager) soundManager.play('enemy_shoot');
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
@@ -462,7 +469,7 @@ class HeavyGunner extends Enemy {
     }
 }
 
-class SniperEnemy extends Enemy {
+export class SniperEnemy extends Enemy {
     constructor(x, y) {
         super(x, y);
         this.hp = 2;
@@ -488,8 +495,8 @@ class SniperEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (window.players) {
-            for (let p of window.players) {
+        if (players) {
+            for (let p of players) {
                 if (p.health > 0) {
                     let d = Math.abs(p.x - this.x);
                     if (d < minDist) { minDist = d; target = p; }
@@ -520,7 +527,7 @@ class SniperEnemy extends Enemy {
         b.vx = Math.cos(angle) * 20;
         b.vy = Math.sin(angle) * 20;
         entities.push(b);
-        if(window.soundManager) window.soundManager.play('enemy_shoot');
+        if(soundManager) soundManager.play('enemy_shoot');
     }
     draw(ctx, camX, camY) {
         let cx = this.x - camX;
@@ -570,7 +577,7 @@ class SniperEnemy extends Enemy {
     }
 }
 
-class ShieldBearer extends Enemy {
+export class ShieldBearer extends Enemy {
     constructor(x, y) {
         super(x, y);
         this.hp = 8;
@@ -585,8 +592,8 @@ class ShieldBearer extends Enemy {
         // Find nearest player for shield logic
         let target = null;
         let minDist = 9999;
-        if (window.players) {
-            for (let p of window.players) {
+        if (players) {
+            for (let p of players) {
                 if (p.health > 0) {
                     let d = Math.abs(p.x - this.x);
                     if (d < minDist) { minDist = d; target = p; }
@@ -612,7 +619,7 @@ class ShieldBearer extends Enemy {
         if (this.hp <= 0) {
              this.x = -9999;
              spawnExplosion(this.x, this.y, "red", 3);
-             if(window.soundManager) window.soundManager.play('explosion');
+             if(soundManager) soundManager.play('explosion');
         }
     }
     draw(ctx, camX, camY) {
@@ -651,7 +658,7 @@ class ShieldBearer extends Enemy {
     }
 }
 
-class CaptainEnemy extends Enemy {
+export class CaptainEnemy extends Enemy {
     constructor(x, y) {
         super(x, y);
         this.hp = 15 + (gameState.currentLevel * 2);
@@ -672,8 +679,8 @@ class CaptainEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (window.players) {
-            for (let p of window.players) {
+        if (players) {
+            for (let p of players) {
                 if (p.health > 0) {
                     let d = Math.abs(p.x - this.x);
                     if (d < minDist) { minDist = d; target = p; }
@@ -707,7 +714,7 @@ class CaptainEnemy extends Enemy {
                 b.vy = Math.sin(angle) * 12;
                 b.color = "gold";
                 entities.push(b);
-                if(window.soundManager) window.soundManager.play('enemy_shoot');
+                if(soundManager) soundManager.play('enemy_shoot');
             }, i * 100);
         }
     }
@@ -718,7 +725,7 @@ class CaptainEnemy extends Enemy {
              let deathX = this.x;
              let deathY = this.y;
              spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
-             if(window.soundManager) window.soundManager.play('explosion');
+             if(soundManager) soundManager.play('explosion');
              this.x = -9999;
              entities.push(new Helicopter(deathX, deathY - 50));
         }
@@ -771,7 +778,7 @@ class CaptainEnemy extends Enemy {
     }
 }
 
-class Boss {
+export class Boss {
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -784,7 +791,23 @@ class Boss {
         this.dirY = 1;
     }
     update() {
-        if (!gameState.bossActive && Math.abs(player.x - this.x) < 800) {
+        // Player is imported as 'player' which is an array in state.js? No 'player' var is null mostly.
+        // I need to use 'players' array.
+        // Wait, Boss logic in original code used `player.x`.
+        // I need to use a valid target.
+        // Let's find nearest player.
+        let target = null;
+        let minDist = 9999;
+        if (players) {
+            for (let p of players) {
+                if (p.health > 0) {
+                    let d = Math.abs(p.x - this.x);
+                    if (d < minDist) { minDist = d; target = p; }
+                }
+            }
+        }
+
+        if (!gameState.bossActive && target && minDist < 800) {
             gameState.bossActive = true;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'block';
         }
@@ -804,18 +827,7 @@ class Boss {
         if (difficulty >= 15) fireRate = 40;
 
         if (this.timer > fireRate) {
-            // Find nearest player
-            let target = null;
-            let minDist = 9999;
-            if (window.players) {
-                for (let p of window.players) {
-                    if (p.health > 0) {
-                        let d = Math.hypot(p.x - this.x, p.y - this.y);
-                        if (d < minDist) { minDist = d; target = p; }
-                    }
-                }
-            }
-
+            // Target acquisition logic repeated?
             if (!target) return; // No targets
 
             let angle = Math.atan2(target.y - this.y, target.x - this.x);
@@ -826,7 +838,7 @@ class Boss {
             b.vx = Math.cos(angle) * speed;
             b.vy = Math.sin(angle) * speed;
             entities.push(b);
-            if(window.soundManager) window.soundManager.play('enemy_shoot');
+            if(soundManager) soundManager.play('enemy_shoot');
 
             // Attack 2: Spread (Level 3+)
             if (difficulty >= 3) {
@@ -841,7 +853,7 @@ class Boss {
 
                  entities.push(b1);
                  entities.push(b2);
-                 if(window.soundManager) window.soundManager.play('enemy_shoot');
+                 if(soundManager) soundManager.play('enemy_shoot');
             }
 
             // Attack 3: Shotgun (Level 6+)
@@ -856,7 +868,7 @@ class Boss {
                  b4.vx = Math.cos(angle + spread) * speed;
                  b4.vy = Math.sin(angle + spread) * speed;
                  entities.push(b4);
-                 if(window.soundManager) window.soundManager.play('enemy_shoot');
+                 if(soundManager) soundManager.play('enemy_shoot');
             }
 
             // Attack 4: Explosive (Level 10+)
@@ -881,7 +893,7 @@ class Boss {
         if (this.hp <= 0) {
             shakeCamera(50);
             spawnExplosion(this.x + 60, this.y + 60, "#ff00de", 5);
-            if(window.soundManager) window.soundManager.play('explosion');
+            if(soundManager) soundManager.play('explosion');
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
 
@@ -956,10 +968,12 @@ class Boss {
     }
 }
 
-class HelicopterBoss {
+export class HelicopterBoss {
     constructor(x, y) {
-        this.x = x; this.y = y;
-        this.w = 150; this.h = 80;
+        this.x = x;
+        this.y = y;
+        this.w = 150;
+        this.h = 80;
         this.hp = 200 + (gameState.currentLevel * 20);
         this.maxHp = this.hp;
         this.state = 'fly';
@@ -971,8 +985,8 @@ class HelicopterBoss {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (window.players) {
-            for (let p of window.players) {
+        if (players) {
+            for (let p of players) {
                 if (p.health > 0) {
                     let d = Math.hypot(p.x - this.x, p.y - this.y);
                     if (d < minDist) { minDist = d; target = p; }
@@ -1010,7 +1024,7 @@ class HelicopterBoss {
              b.vx = Math.cos(angle) * 15;
              b.vy = Math.sin(angle) * 15;
              entities.push(b);
-             if(window.soundManager) window.soundManager.play('enemy_shoot');
+             if(soundManager) soundManager.play('enemy_shoot');
         }
 
         // Attack 2: Bomb Drop (Every 3s)
@@ -1043,7 +1057,7 @@ class HelicopterBoss {
         if (this.hp <= 0) {
             shakeCamera(100);
             spawnExplosion(this.x + 75, this.y + 40, "orange", 10);
-            if(window.soundManager) window.soundManager.play('explosion');
+            if(soundManager) soundManager.play('explosion');
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
             this.x = -9999;
@@ -1085,5 +1099,3 @@ class HelicopterBoss {
         ctx.fillRect(cx+80, cy+20, 40, 30);
     }
 }
-
-// Expose for testing

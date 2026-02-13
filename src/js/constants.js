@@ -1,28 +1,25 @@
-// --- CONSTANTS ---
-window.canvas = document.getElementById('gameCanvas');
-window.ctx = canvas.getContext('2d');
-window.debugHUD = document.getElementById('debugHUD');
-window.TILE_SIZE = 40;
-window.GRAVITY = 0.6;
-window.FRICTION = 0.85;
-window.ACCELERATION = 0.8;
-window.JUMP_FORCE = -13;
-window.TERMINAL_VELOCITY = 15;
-window.LEVEL_WIDTH = 400;
-window.LEVEL_HEIGHT = 60;
-window.FPS = 60;
-window.INTERVAL = 1000 / FPS;
+export const CANVAS = document.getElementById('gameCanvas');
+export const CTX = CANVAS.getContext('2d');
+export const DEBUG_HUD = document.getElementById('debugHUD');
+export const TILE_SIZE = 40;
+export const GRAVITY = 0.6;
+export const FRICTION = 0.85;
+export const ACCELERATION = 0.8;
+export const JUMP_FORCE = -13;
+export const TERMINAL_VELOCITY = 15;
+export const LEVEL_WIDTH = 400; // This might need to be mutable if it changes per level, but currently it's a const default
+export const LEVEL_HEIGHT = 60;
+export const FPS = 60;
+export const INTERVAL = 1000 / FPS;
 
-// --- ASSETS ---
-window.C = {
+export const ASSETS = {
     dirtBase: "#5d4037", dirtLight: "#8d6e63", grassTop: "#4caf50",
     stoneBase: "#546e7a", stoneLight: "#78909c",
     skyTop: "#1e3c72", skyBot: "#2a5298",
     checkpoint: "#00ff41", leash: "#555", tank: "#e74c3c", ladder: "#d35400"
 };
 
-// --- ROSTER ---
-window.CHARACTERS = [
+export const CHARACTERS = [
     { id: 'pug', name: 'IRON MUTT', type: 'dog_flat', cSkin: '#f3cf98', cDark: '#3b302a', cSuit: '#b0c4de', pType: 'laser', pColor: '#a020f0' },
     { id: 'raccoon', name: 'CPT TRASH', type: 'raccoon', cSkin: '#888', cDark: '#444', cSuit: '#555', pType: 'boomerang', pColor: '#aaa' },
     { id: 'cat', name: 'BAT CAT', type: 'cat', cSkin: '#222', cDark: '#000', cSuit: '#111', pType: 'boomerang', pColor: '#ff69b4' },

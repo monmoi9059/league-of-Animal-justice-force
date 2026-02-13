@@ -1,5 +1,4 @@
-
-window.gameState = {
+export const gameState = {
     screen: 'MENU',
     running: false,
     score: 0,
@@ -25,16 +24,48 @@ window.gameState = {
     levelCompleteStats: { kills: 0, rescues: 0, time: 0 }
 };
 
-window.tiles = [];
-window.entities = [];
-window.particles = [];
-window.damageNumbers = [];
-window.debris = [];
-window.players = [];
-window.player = null; // Deprecated, kept for legacy reference if needed temporarily
+export let tiles = [];
+export let entities = [];
+export let particles = [];
+export let damageNumbers = [];
+export let debris = [];
+export let players = [];
+export let player = null; // Deprecated, kept for legacy reference if needed temporarily
 
 // Global Cooldowns
-window.lastTime = 0;
+export let lastTime = 0;
 
 // Inputs
-window.playerKeys = [{}, {}, {}, {}];
+export let playerKeys = [{}, {}, {}, {}];
+
+export function setTiles(newTiles) {
+    tiles = newTiles;
+}
+
+export function setEntities(newEntities) {
+    entities = newEntities;
+}
+
+export function setParticles(newParticles) {
+    particles = newParticles;
+}
+
+export function setDamageNumbers(newDamageNumbers) {
+    damageNumbers = newDamageNumbers;
+}
+
+export function setDebris(newDebris) {
+    debris = newDebris;
+}
+
+export function setPlayers(newPlayers) {
+    players = newPlayers;
+}
+
+export function setPlayer(newPlayer) {
+    player = newPlayer;
+}
+
+export function setLastTime(time) {
+    lastTime = time;
+}

@@ -1,4 +1,12 @@
-class Bullet {
+import { secureRandom } from '../math.js';
+import { rectIntersect } from '../physics.js';
+import { spawnExplosion, destroyRadius } from '../utils.js';
+import { tiles, entities, player } from '../state.js';
+import { TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH, ASSETS } from '../constants.js';
+import { soundManager } from '../sound.js';
+import { drawRoundedRect } from '../graphics.js';
+
+export class Bullet {
     constructor(x, y, dir, isSpecial, charData, isDown = false, isSecondary = false, isUp = false) {
         this.x = x; this.y = y;
         this.life = 80; this.isSpecial = isSpecial; this.w = 15; this.h = 5;
@@ -89,7 +97,6 @@ class Bullet {
 
         // COLLISIONS
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
-        let hitWall = false;
 
         if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             let t = tiles[r][c];
@@ -101,17 +108,17 @@ class Bullet {
                 if(this.type === 'boomerang' && this.vx !== 0) {
                     this.returnState = 1;
                     if (t.type === 1) {
-                        spawnExplosion(this.x, this.y, C.dirtLight, 1);
+                        spawnExplosion(this.x, this.y, ASSETS.dirtLight, 1);
                         tiles[r][c] = { type: 0 };
-                        if(window.soundManager) window.soundManager.play('brick_break');
+                        if(soundManager) soundManager.play('brick_break');
                     }
                 }
                 else {
-                    spawnExplosion(this.x, this.y, C.dirtLight, 1);
+                    spawnExplosion(this.x, this.y, ASSETS.dirtLight, 1);
                     this.life = 0;
                     if (t.type === 1) {
                         tiles[r][c] = { type: 0 };
-                        if(window.soundManager) window.soundManager.play('brick_break');
+                        if(soundManager) soundManager.play('brick_break');
                     }
                     // Reduced destroy radius from 2 to 1 for smaller destruction
                     if (this.isSpecial || this.type === 'rocket' || this.type === 'grenade' || this.type === 'fireball' || this.vy > 0) destroyRadius(c, r, 1);
@@ -207,7 +214,7 @@ class Bullet {
     }
 }
 
-class MeleeHitbox {
+export class MeleeHitbox {
     constructor(x, y, w, h, owner, power=1) {
         this.x = x; this.y = y; this.w = w; this.h = h;
         this.life = 15; this.power = power;
@@ -237,7 +244,7 @@ class MeleeHitbox {
     takeDamage() {}
 }
 
-class Package {
+export class Package {
     constructor(x, y, vx, vy) { this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.w = 20; this.h = 20; this.life = 120; this.hp = 1; }
     update() {
         this.x += this.vx; this.y += this.vy; this.vy += 0.3; this.life--;
@@ -267,7 +274,7 @@ class Package {
     }
 }
 
-class DebrisProjectile {
+export class DebrisProjectile {
     constructor(x, y, vx, vy) { this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.life = 120; this.w = 20; this.h = 20; this.hp = 1; }
     update() {
         this.x += this.vx; this.y += this.vy; this.life--;

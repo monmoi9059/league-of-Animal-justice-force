@@ -1,10 +1,14 @@
-// --- CLASSES ---
-class Particle {
+import { secureRandom } from '../math.js';
+import { tiles } from '../state.js';
+import { TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH } from '../constants.js';
+
+export class Particle {
     constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.life=1.0; this.vx = (secureRandom()-0.5)*8; this.vy = (secureRandom()-0.5)*8; this.size = secureRandom()*6+3; }
     update() { this.x+=this.vx; this.y+=this.vy; this.vy+=0.4; this.life-=0.05; }
     draw(ctx) { ctx.save(); ctx.fillStyle=this.color; ctx.globalAlpha=Math.max(0,this.life); ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); ctx.restore(); }
 }
-class RockChunk {
+
+export class RockChunk {
     constructor(x, y, color) { this.x=x; this.y=y; this.color=color; this.vx=(secureRandom()-0.5)*8; this.vy=-secureRandom()*5-2; this.life=120; this.angle=secureRandom(); this.rotSpeed=(secureRandom()-0.5)*0.5; this.size=secureRandom()*8+4; }
     update() {
         this.x+=this.vx; this.y+=this.vy; this.vy+=0.5; this.angle+=this.rotSpeed; this.life--;
