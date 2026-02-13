@@ -16,25 +16,30 @@ function generateLevel() {
     function spawnSquad(x, y) {
         let type = secureRandom();
         // Squad Composition based on Difficulty
-        if (difficulty >= 3 && type < 0.2) {
+        if (difficulty >= 5 && type < 0.2) {
              // Specialist Squad: 1 Shield + 2 Grunts
              newEntities.push(new ShieldBearer(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-        } else if (difficulty >= 5 && type < 0.3) {
+        } else if (difficulty >= 7 && type < 0.3) {
              // Heavy Squad: 1 Heavy + 1 Shield
              newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE));
              newEntities.push(new ShieldBearer((x+2) * TILE_SIZE, y * TILE_SIZE));
-        } else if (type < 0.4) {
+        } else if (difficulty >= 3 && type < 0.4) {
              // Suicide Squad: 3 Kamikazes
              newEntities.push(new KamikazeEnemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x+1) * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x-1) * TILE_SIZE, y * TILE_SIZE));
         } else {
-             // Standard Patrol: 2-3 Grunts
+             // Standard Patrol: 1-3 Grunts
              newEntities.push(new Enemy(x * TILE_SIZE, y * TILE_SIZE));
-             newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-             if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+             if (difficulty >= 2) {
+                 newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+                 if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+             } else {
+                 // Level 1: Occasional second enemy
+                 if (secureRandom() < 0.3) newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             }
         }
     }
 
@@ -68,7 +73,7 @@ function generateLevel() {
         }
         else if (x > 15) {
             // Roughness increases with difficulty
-            let roughness = 0.2 + (difficulty * 0.05);
+            let roughness = (difficulty <= 2) ? 0.1 : 0.2 + (difficulty * 0.05);
             if (secureRandom() < roughness) {
                 currentHeight += secureRandom() > 0.5 ? -1 : 1;
             }
@@ -76,7 +81,7 @@ function generateLevel() {
             if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
 
             // Pit Chance (More pits in later levels)
-            let pitChance = 0.02 + (difficulty * 0.01);
+            let pitChance = (difficulty === 1) ? 0 : 0.005 + (difficulty * 0.01);
             if (secureRandom() < pitChance && x > 20) {
                 for(let y=0; y<LEVEL_HEIGHT; y++) {
                     if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 };
@@ -172,7 +177,8 @@ function generateLevel() {
                             beastsPlaced++;
                             lastBeastX = tx;
                             // Cave Guard
-                            newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
+                            if (difficulty >= 5) newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
+                            else newEntities.push(new Enemy((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
                         }
                     }
                 }
@@ -201,7 +207,7 @@ function generateLevel() {
 
             // Checkpoints are safe zones, no enemies *directly* on them usually
             // Spawn Mech nearby occasionally
-            if (difficulty >= 2 && secureRandom() < 0.3) {
+            if (difficulty >= 3 && secureRandom() < 0.3) {
                  newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
             }
         }
@@ -211,7 +217,10 @@ function generateLevel() {
 
         // ENEMY ENCOUNTERS (Clusters)
         // Spawn a squad every ~15-25 tiles, with some randomness
-        if (x - lastEncounterX > (15 - difficulty)) { // More frequent in hard levels
+        let encounterDist = 30 - difficulty;
+        if (encounterDist < 12) encounterDist = 12;
+
+        if (x - lastEncounterX > encounterDist) { // More frequent in hard levels
              if (secureRandom() < 0.4) {
                  spawnSquad(x, y-1);
                  lastEncounterX = x;
@@ -220,9 +229,9 @@ function generateLevel() {
 
         // Occasional Sniper on high ground or random flyer
         if (secureRandom() < 0.02) {
-             if (difficulty >= 2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
+             if (difficulty >= 3) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        if (secureRandom() < 0.02) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        if (secureRandom() < 0.02 && difficulty >= 2) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
