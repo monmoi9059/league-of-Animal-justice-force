@@ -410,8 +410,11 @@ class Player {
         ctx.save();
         ctx.translate(cx, cy);
         ctx.scale(this.facing * this.stretchX, this.stretchY);
-        // Shadow
-        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 25, 20, 5, 0, 0, Math.PI*2); ctx.fill();
+        // Shadow (At ground level)
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 15, 20, 5, 0, 0, Math.PI*2); ctx.fill();
+
+        // Offset sprite up so feet align with shadow/ground
+        ctx.translate(0, -22);
         drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim);
         ctx.restore();
     }

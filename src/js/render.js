@@ -470,7 +470,8 @@ function drawRoster() {
             ctx.fillStyle = "#222";
             ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI*2); ctx.fill();
 
-            let totalReq = Math.pow(2, i) - 1;
+            // Linear progression (+2 per hero)
+            let totalReq = (i === 0) ? 0 : (2 * i - 1);
             let remaining = totalReq - gameState.rescues;
             if (remaining < 0) remaining = 0;
 

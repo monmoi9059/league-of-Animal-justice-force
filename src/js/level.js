@@ -12,29 +12,73 @@ function generateLevel() {
     gameState.levelData.biome = biome;
     gameState.levelData.difficulty = difficulty;
 
+    // Scale Level Width with Difficulty
+    // Start smaller (200) and grow to max (400) by level 5
+    let dynamicWidth = 200;
+    if (difficulty >= 2) dynamicWidth = 250;
+    if (difficulty >= 3) dynamicWidth = 300;
+    if (difficulty >= 4) dynamicWidth = 350;
+    if (difficulty >= 5) dynamicWidth = 400;
+
+    // Update Global for other systems
+    window.LEVEL_WIDTH = dynamicWidth;
+
+    let captainSpawned = false;
+
     // Helper: Spawn Enemy Squad
-    function spawnSquad(x, y) {
+    function spawnSquad(x, y, forceCaptain = false) {
         let type = secureRandom();
+
+        // Check if spawning location is "underground" (depth > 20)
+        // Captains must always spawn on surface
+        let isUnderground = (y > 20);
+
+        // Force Captain Spawn if requested or by random chance (if not already spawned)
+        // Captain is critical for level completion
+        if (((forceCaptain || (type < 0.15)) && !captainSpawned) && !isUnderground) {
+             newEntities.push(new CaptainEnemy(x * TILE_SIZE, y * TILE_SIZE));
+             captainSpawned = true;
+
+             // Guards scale with difficulty
+             if (difficulty >= 5) {
+                 newEntities.push(new ShieldBearer((x-1) * TILE_SIZE, y * TILE_SIZE));
+                 newEntities.push(new ShieldBearer((x+1) * TILE_SIZE, y * TILE_SIZE));
+             } else if (difficulty >= 3) {
+                 newEntities.push(new ShieldBearer((x-1) * TILE_SIZE, y * TILE_SIZE));
+                 newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             } else {
+                 // Level 1-2: Just Grunts
+                 newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+                 newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             }
+             return; // Squad spawned, exit
+        }
+
         // Squad Composition based on Difficulty
-        if (difficulty >= 3 && type < 0.2) {
+        if (difficulty >= 5 && type < 0.25) {
              // Specialist Squad: 1 Shield + 2 Grunts
              newEntities.push(new ShieldBearer(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-        } else if (difficulty >= 5 && type < 0.3) {
+        } else if (difficulty >= 7 && type < 0.35) {
              // Heavy Squad: 1 Heavy + 1 Shield
              newEntities.push(new HeavyGunner(x * TILE_SIZE, (y-1) * TILE_SIZE));
              newEntities.push(new ShieldBearer((x+2) * TILE_SIZE, y * TILE_SIZE));
-        } else if (type < 0.4) {
+        } else if (difficulty >= 3 && type < 0.45) {
              // Suicide Squad: 3 Kamikazes
              newEntities.push(new KamikazeEnemy(x * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x+1) * TILE_SIZE, y * TILE_SIZE));
              newEntities.push(new KamikazeEnemy((x-1) * TILE_SIZE, y * TILE_SIZE));
         } else {
-             // Standard Patrol: 2-3 Grunts
+             // Standard Patrol: 1-3 Grunts
              newEntities.push(new Enemy(x * TILE_SIZE, y * TILE_SIZE));
-             newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-             if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+             if (difficulty >= 2) {
+                 newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+                 if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+             } else {
+                 // Level 1: Occasional second enemy
+                 if (secureRandom() < 0.3) newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+             }
         }
     }
 
@@ -68,7 +112,7 @@ function generateLevel() {
         }
         else if (x > 15) {
             // Roughness increases with difficulty
-            let roughness = 0.2 + (difficulty * 0.05);
+            let roughness = (difficulty <= 2) ? 0.1 : 0.2 + (difficulty * 0.05);
             if (secureRandom() < roughness) {
                 currentHeight += secureRandom() > 0.5 ? -1 : 1;
             }
@@ -76,7 +120,7 @@ function generateLevel() {
             if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
 
             // Pit Chance (More pits in later levels)
-            let pitChance = 0.02 + (difficulty * 0.01);
+            let pitChance = (difficulty === 1) ? 0 : 0.005 + (difficulty * 0.01);
             if (secureRandom() < pitChance && x > 20) {
                 for(let y=0; y<LEVEL_HEIGHT; y++) {
                     if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 };
@@ -172,7 +216,8 @@ function generateLevel() {
                             beastsPlaced++;
                             lastBeastX = tx;
                             // Cave Guard
-                            newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
+                            if (difficulty >= 5) newEntities.push(new HeavyGunner((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
+                            else newEntities.push(new Enemy((tx+2) * TILE_SIZE, (beastY + 1) * TILE_SIZE));
                         }
                     }
                 }
@@ -201,7 +246,7 @@ function generateLevel() {
 
             // Checkpoints are safe zones, no enemies *directly* on them usually
             // Spawn Mech nearby occasionally
-            if (difficulty >= 2 && secureRandom() < 0.3) {
+            if (difficulty >= 3 && secureRandom() < 0.3) {
                  newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
             }
         }
@@ -211,18 +256,26 @@ function generateLevel() {
 
         // ENEMY ENCOUNTERS (Clusters)
         // Spawn a squad every ~15-25 tiles, with some randomness
-        if (x - lastEncounterX > (15 - difficulty)) { // More frequent in hard levels
-             if (secureRandom() < 0.4) {
-                 spawnSquad(x, y-1);
+        let encounterDist = 30 - difficulty;
+        if (encounterDist < 12) encounterDist = 12;
+
+        // Force Captain near end of level if not spawned yet
+        // Check if we are in the last 15% of the level (e.g. x > 340 for width 400)
+        let isEndZone = (x > LEVEL_WIDTH - 60);
+
+        if (x - lastEncounterX > encounterDist || (isEndZone && !captainSpawned)) {
+             let chance = (isEndZone && !captainSpawned) ? 1.0 : 0.4;
+             if (secureRandom() < chance) {
+                 spawnSquad(x, y-1, (isEndZone && !captainSpawned)); // Pass forceCaptain flag
                  lastEncounterX = x;
              }
         }
 
         // Occasional Sniper on high ground or random flyer
         if (secureRandom() < 0.02) {
-             if (difficulty >= 2) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
+             if (difficulty >= 3) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        if (secureRandom() < 0.02) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        if (secureRandom() < 0.02 && difficulty >= 2) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
@@ -232,38 +285,41 @@ function generateLevel() {
     }
 
     // Boss Spawning Logic
-    if (difficulty < 20) {
-         // Spawn Boss in normal terrain (Last 30% of map)
-         let spawnRangeStart = Math.floor(LEVEL_WIDTH * 0.7);
-         let bossX = spawnRangeStart + Math.floor(secureRandom() * (LEVEL_WIDTH - spawnRangeStart - 5));
+    // No boss until level 10, then every 5 levels (10, 15, 20, 25...)
+    if (difficulty >= 10 && difficulty % 5 === 0) {
+         // Level 20+: Special Room Arena
+         if (difficulty >= 20) {
+             // Boss is in the arena at the end
+             newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
 
-         // Find ground Y
-         let bossY = 10;
-         if (surfaceMap[bossX]) bossY = surfaceMap[bossX] - 5;
-
-         // Safety check
-         if (bossY > LEVEL_HEIGHT - 5) bossY = 10;
-
-         let bossType = (difficulty >= 4 && difficulty % 2 === 0) ? 'heli' : 'ground';
-
-         if (bossType === 'heli') {
-             newEntities.push(new HelicopterBoss(bossX * TILE_SIZE, (bossY - 10) * TILE_SIZE));
-         } else {
-             newEntities.push(new Boss(bossX * TILE_SIZE, bossY * TILE_SIZE));
+             // Traps/Turrets in arena?
+             newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
+             newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
          }
+         else {
+             // Spawn Boss in normal terrain (Last 30% of map)
+             let spawnRangeStart = Math.floor(LEVEL_WIDTH * 0.7);
+             let bossX = spawnRangeStart + Math.floor(secureRandom() * (LEVEL_WIDTH - spawnRangeStart - 5));
 
-         // Boss Entourage
-         spawnSquad(bossX - 5, bossY);
-         spawnSquad(bossX + 5, bossY);
+             // Find ground Y
+             let bossY = 10;
+             if (surfaceMap[bossX]) bossY = surfaceMap[bossX] - 5;
 
-    } else {
-         // Level 20+: Special Room
-         // Boss is in the arena at the end
-         newEntities.push(new Boss((LEVEL_WIDTH - 20) * TILE_SIZE, 8 * TILE_SIZE));
+             // Safety check
+             if (bossY > LEVEL_HEIGHT - 5) bossY = 10;
 
-         // Traps/Turrets in arena?
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 35) * TILE_SIZE, 8 * TILE_SIZE));
-         newEntities.push(new HeavyGunner((LEVEL_WIDTH - 5) * TILE_SIZE, 8 * TILE_SIZE));
+             let bossType = (difficulty >= 14 && difficulty % 2 === 0) ? 'heli' : 'ground';
+
+             if (bossType === 'heli') {
+                 newEntities.push(new HelicopterBoss(bossX * TILE_SIZE, (bossY - 10) * TILE_SIZE));
+             } else {
+                 newEntities.push(new Boss(bossX * TILE_SIZE, bossY * TILE_SIZE));
+             }
+
+             // Boss Entourage
+             spawnSquad(bossX - 5, bossY);
+             spawnSquad(bossX + 5, bossY);
+         }
     }
 
     entities = newEntities;

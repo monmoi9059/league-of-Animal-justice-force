@@ -81,10 +81,11 @@ function unlockCharacter(sourcePlayer) {
     let px = sourcePlayer ? sourcePlayer.x : 0;
     let py = sourcePlayer ? sourcePlayer.y : 0;
 
-    // Check threshold: 2^(current_count) - 1
+    // Check threshold: Linear progression (+2 per hero) instead of exponential
     // We add 1 to current rescues because this function is called before the increment in TrappedBeast
     let currentTotal = gameState.rescues + 1;
-    let requiredTotal = Math.pow(2, gameState.globalUnlocked) - 1;
+    // Formula: 2 * i - 1 for i >= 1. For i=0, it's 0.
+    let requiredTotal = (gameState.globalUnlocked === 0) ? 0 : (2 * gameState.globalUnlocked - 1);
 
     if (currentTotal >= requiredTotal) {
         if (gameState.globalUnlocked < CHARACTERS.length) {
