@@ -1,4 +1,4 @@
-import { playerKeys } from './state.js';
+import { playerKeys, gameState } from './state.js';
 
 // Config: [ { type: 'keyboard' }, { type: 'gamepad', index: 0 }, ... ]
 export const inputConfig = [null, null, null, null];
@@ -131,6 +131,9 @@ function setupTouchControls() {
 
 // --- GAMEPAD SUPPORT ---
 export function pollGamepad() {
+    // If in lobby, do NOT map gamepad to playerKeys to avoid conflict with lobby logic
+    if (gameState.screen === 'LOBBY') return;
+
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
 
     // Iterate over CONNECTED gamepads, not just 0-3

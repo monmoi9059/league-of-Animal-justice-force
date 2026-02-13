@@ -2,7 +2,7 @@ import { gameState, setEntities } from './state.js';
 import { LEVEL_WIDTH, LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
 import { secureRandom } from './math.js';
 import { Enemy, CaptainEnemy, ShieldBearer, HeavyGunner, KamikazeEnemy, SniperEnemy, FlyingEnemy, Boss, HelicopterBoss } from './classes/enemies.js';
-import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast } from './classes/items.js';
+import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast, Helicopter } from './classes/items.js';
 
 // --- LEVEL GENERATOR ---
 export function generateLevel() {
@@ -301,6 +301,20 @@ export function generateLevel() {
     for(let y=0; y<LEVEL_HEIGHT; y++) {
         newTiles[y][0] = { type: 2 };
         newTiles[y][currentLevelWidth-1] = { type: 2 };
+    }
+
+    // Spawn Extraction at the end if NO boss
+    if (difficulty < 10 || difficulty % 5 !== 0) {
+        let endX = (currentLevelWidth - 10) * TILE_SIZE;
+        // Find ground height at endX
+        let endTileX = currentLevelWidth - 10;
+        let groundY = surfaceMap[endTileX] || (LEVEL_HEIGHT - 2);
+        let endY = (groundY - 5) * TILE_SIZE;
+
+        // Ensure it's not underground if map generation was weird
+        if (endY > (LEVEL_HEIGHT - 5) * TILE_SIZE) endY = 5 * TILE_SIZE;
+
+        newEntities.push(new Helicopter(endX, endY));
     }
 
     // Boss Spawning Logic
