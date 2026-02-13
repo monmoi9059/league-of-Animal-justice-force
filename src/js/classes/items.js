@@ -32,8 +32,9 @@ export class PropaneTank {
     }
     takeDamage(amt, sourceX) {
         this.hp -= amt;
-        // this.vx = (this.x - sourceX) > 0 ? 5 : -5;
-        // this.vy = -5;
+        // Do not move when hit
+        this.vx = 0;
+        this.vy = 0;
         if(this.hp <= 0) {
             createExplosion(this.x + this.w/2, this.y + this.h/2, 2, 50);
             this.x = -9999;
