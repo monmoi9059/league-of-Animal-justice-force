@@ -18,9 +18,13 @@ function generateLevel() {
     function spawnSquad(x, y, forceCaptain = false) {
         let type = secureRandom();
 
+        // Check if spawning location is "underground" (depth > 20)
+        // Captains must always spawn on surface
+        let isUnderground = (y > 20);
+
         // Force Captain Spawn if requested or by random chance (if not already spawned)
         // Captain is critical for level completion
-        if ((forceCaptain || (type < 0.15)) && !captainSpawned) {
+        if (((forceCaptain || (type < 0.15)) && !captainSpawned) && !isUnderground) {
              newEntities.push(new CaptainEnemy(x * TILE_SIZE, y * TILE_SIZE));
              captainSpawned = true;
 
