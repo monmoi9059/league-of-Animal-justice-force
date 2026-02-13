@@ -126,15 +126,15 @@ class Player {
 
             // Allow lateral movement to get off
             if (input !== 0) {
-                this.x += input * 3;
+                this.vx = input * 3;
             } else {
                 // Smooth snap to center
                 let targetX = cx * TILE_SIZE + (TILE_SIZE - this.w) / 2;
-                this.x += (targetX - this.x) * 0.2;
+                this.vx = (targetX - this.x) * 0.2;
             }
 
-            if (keys['arrowup'] || keys['w']) this.y -= 3;
-            if (keys['arrowdown'] || keys['s']) this.y += 3;
+            if (keys['arrowup'] || keys['w']) this.vy = -3;
+            if (keys['arrowdown'] || keys['s']) this.vy = 3;
 
             // Jump
             if (keys[' ']) { this.vy = JUMP_FORCE; }
