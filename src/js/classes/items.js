@@ -25,7 +25,12 @@ export class PropaneTank {
         // Simple floor collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) { // Changed .solid check to .type !== 0 because tiles are {type: N} objects
+
+        // Use dynamic width check from tiles array if available
+        let maxW = tiles && tiles[0] ? tiles[0].length : LEVEL_WIDTH;
+        let maxH = tiles ? tiles.length : LEVEL_HEIGHT;
+
+        if (r >= 0 && r < maxH && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
              // Stop sideways movement on ground
@@ -101,7 +106,10 @@ export class FallingBlock {
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+        let maxW = tiles && tiles[0] ? tiles[0].length : LEVEL_WIDTH;
+        let maxH = tiles ? tiles.length : LEVEL_HEIGHT;
+
+        if (r >= 0 && r < maxH && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
         }
