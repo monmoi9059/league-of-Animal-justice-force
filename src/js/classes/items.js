@@ -26,7 +26,8 @@ export class PropaneTank {
         if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) { // Changed .solid check to .type !== 0 because tiles are {type: N} objects
              this.y = r * TILE_SIZE - this.h;
              this.vy = 0;
-             this.vx *= 0.8;
+             // Stop sideways movement on ground
+             this.vx = 0;
         }
         this.x += this.vx;
     }
