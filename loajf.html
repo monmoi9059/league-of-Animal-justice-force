@@ -707,7 +707,7 @@ function unlockCharacter() {
 
 // --- input.js ---
 // --- INPUT ---
-const keys = {};
+window.keys = {};
 window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
@@ -811,6 +811,97 @@ window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
         updateToggleBtn();
     }
 })();
+
+// --- GAMEPAD SUPPORT ---
+window.pollGamepad = function() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = gamepads[0]; // Use first gamepad
+
+    if (!gp) return;
+
+    // Helper to map buttons to keys
+    const mapBtn = (btnIndex, keyName) => {
+        if (gp.buttons[btnIndex] && gp.buttons[btnIndex].pressed) {
+            keys[keyName] = true;
+        } else {
+            if (window.lastGamepadState[keyName]) {
+                keys[keyName] = false;
+                window.lastGamepadState[keyName] = false;
+            }
+        }
+    };
+
+    // Store previous state to handle release
+    if (!window.lastGamepadState) window.lastGamepadState = {};
+
+    function handleBtn(btnId, key) {
+        let pressed = (gp.buttons[btnId] && gp.buttons[btnId].pressed);
+
+        if (pressed) {
+            keys[key] = true;
+            window.lastGamepadState[key] = true;
+        } else {
+            // Only release if WE set it previously
+            if (window.lastGamepadState[key]) {
+                keys[key] = false;
+                window.lastGamepadState[key] = false;
+            }
+        }
+    }
+
+    // A (0) -> Jump (Space)
+    handleBtn(0, ' ');
+    // B (1) -> Special (x)
+    handleBtn(1, 'x');
+    // X (2) -> Shoot (z)
+    handleBtn(2, 'z');
+    // Y (3) -> Secondary (c)
+    handleBtn(3, 'c');
+    // LB (4) -> Sprint
+    handleBtn(4, 'shift');
+    // RB (5) -> Sprint
+    handleBtn(5, 'shift');
+
+    // D-PAD
+    handleBtn(12, 'arrowup');
+    handleBtn(13, 'arrowdown');
+    handleBtn(14, 'arrowleft');
+    handleBtn(15, 'arrowright');
+
+    // Axes (Thumbsticks)
+    // Threshold
+    const dz = 0.5;
+
+    // Left Stick X (Axis 0)
+    let axisX = gp.axes[0];
+    let right = axisX > dz;
+    let left = axisX < -dz;
+
+    if(right) { keys['arrowright'] = true; window.lastGamepadState['stick_x'] = 1; }
+    else if(left) { keys['arrowleft'] = true; window.lastGamepadState['stick_x'] = -1; }
+    else if(window.lastGamepadState['stick_x']) {
+        // Release both to be safe
+        keys['arrowright'] = false;
+        keys['arrowleft'] = false;
+        window.lastGamepadState['stick_x'] = 0;
+    }
+
+    // Left Stick Y (Axis 1)
+    let axisY = gp.axes[1];
+    let down = axisY > dz;
+    let up = axisY < -dz;
+
+    if(down) { keys['arrowdown'] = true; window.lastGamepadState['stick_y'] = 1; }
+    else if(up) { keys['arrowup'] = true; window.lastGamepadState['stick_y'] = -1; }
+    else if(window.lastGamepadState['stick_y']) {
+        keys['arrowdown'] = false;
+        keys['arrowup'] = false;
+        window.lastGamepadState['stick_y'] = 0;
+    }
+
+    // Start -> Flex (F)
+    handleBtn(9, 'f');
+};
 
 
 // --- particles.js ---
@@ -3578,6 +3669,9 @@ function loop(timestamp) {
         return;
     }
     lastTime = timestamp - (deltaTime % interval);
+
+    // POLL GAMEPAD
+    if (window.pollGamepad) window.pollGamepad();
 
     // DEBUG UPDATE
     try {

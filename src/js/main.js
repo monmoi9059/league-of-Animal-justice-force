@@ -51,6 +51,9 @@ function loop(timestamp) {
     }
     lastTime = timestamp - (deltaTime % interval);
 
+    // POLL GAMEPAD
+    if (window.pollGamepad) window.pollGamepad();
+
     // DEBUG UPDATE
     try {
         if (debugHUD) {
