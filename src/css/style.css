@@ -164,3 +164,138 @@ button:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 222, 0.
     pointer-events: none;
     display: none; /* Hide unless needed */
 }
+
+/* --- TOUCH CONTROLS --- */
+.touch-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    margin-top: 0; /* Override generic button */
+    box-shadow: none;
+}
+
+.touch-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through empty space */
+    z-index: 90;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.touch-btn {
+    pointer-events: auto; /* Enable clicks on buttons */
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+    font-weight: bold;
+    user-select: none;
+    touch-action: manipulation;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+    padding: 0; /* Reset */
+    backdrop-filter: blur(2px);
+    transition: transform 0.1s, background 0.1s;
+    box-shadow: none; /* Reset */
+    text-shadow: 1px 1px 0 #000;
+}
+
+.touch-btn:active, .touch-btn.active {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+}
+
+.touch-btn.toggle-btn.active {
+    background: rgba(0, 255, 65, 0.5);
+    border-color: #00ff41;
+}
+
+/* D-PAD */
+.dpad-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    margin-left: 20px;
+}
+.dpad-row {
+    display: flex;
+}
+.dpad-spacer {
+    width: 60px;
+    height: 60px;
+    margin: 5px;
+}
+
+/* ACTIONS */
+.action-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    margin-right: 20px;
+}
+
+.action-group-main {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+.action-group-sub {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    max-width: 280px; /* Force wrap if needed */
+}
+
+.action-btn.large {
+    width: 80px;
+    height: 80px;
+    font-size: 24px;
+    background: rgba(255, 0, 222, 0.2);
+    border-color: rgba(255, 0, 222, 0.5);
+}
+
+/* Landscape adjustments for mobile */
+@media (max-height: 500px) {
+    .touch-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 16px;
+    }
+    .touch-btn.large {
+        width: 70px;
+        height: 70px;
+    }
+    .dpad-spacer {
+        width: 50px;
+        height: 50px;
+    }
+    .action-area {
+        margin-right: 50px; /* Give thumb space */
+    }
+    .dpad-area {
+        margin-left: 50px;
+    }
+}

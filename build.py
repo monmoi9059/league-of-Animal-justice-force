@@ -1,4 +1,5 @@
 import os
+import shutil
 
 def read_file(filepath):
     with open(filepath, 'r') as f:
@@ -59,6 +60,11 @@ def main():
 
     with open('loajf.html', 'w') as f:
         f.write(final_html)
+
+    # Copy manifest
+    if os.path.exists('src/manifest.json'):
+        shutil.copy('src/manifest.json', 'manifest.json')
+        print("Copied manifest.json")
 
     print("Build complete: loajf.html updated.")
 
