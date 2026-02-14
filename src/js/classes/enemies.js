@@ -727,7 +727,7 @@ export class CaptainEnemy extends Enemy {
              spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
              if(soundManager) soundManager.play('explosion');
              this.x = -9999;
-             entities.push(new Helicopter(deathX, deathY - 50));
+             entities.push(new Helicopter(deathX, deathY - 50, false));
         }
     }
     draw(ctx, camX, camY) {
@@ -898,7 +898,7 @@ export class Boss {
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
 
             // Spawn Extraction
-            entities.push(new Helicopter(this.x, this.y));
+            entities.push(new Helicopter(this.x, this.y, false));
 
             this.x = -9999;
             gameState.slowMo = 0.2;
@@ -1061,7 +1061,7 @@ export class HelicopterBoss {
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
             this.x = -9999;
-            entities.push(new Helicopter((LEVEL_WIDTH - 15) * TILE_SIZE, 8 * TILE_SIZE)); // Extraction Heli
+            entities.push(new Helicopter((LEVEL_WIDTH - 15) * TILE_SIZE, 8 * TILE_SIZE, false)); // Extraction Heli
             gameState.slowMo = 0.1;
             setTimeout(() => gameState.slowMo = 1.0, 3000);
         }

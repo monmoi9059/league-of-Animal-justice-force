@@ -239,7 +239,7 @@ window.startGame = function() {
         // --- HELICOPTER INTRO ---
         let startX = 2 * TILE_SIZE;
         let startY = 2 * TILE_SIZE;
-        let introHeli = new Helicopter(startX, startY);
+        let introHeli = new Helicopter(startX, startY, true);
         entities.push(introHeli);
 
         // Players start falling from heli
