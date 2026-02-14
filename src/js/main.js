@@ -78,6 +78,8 @@ function handleResize() {
 }
 
 // LOBBY LOGIC
+let lobbyCooldown = 0;
+
 window.enterLobby = function() {
     gameState.screen = 'LOBBY';
     document.getElementById('menuOverlay').style.display = 'none';
@@ -85,6 +87,7 @@ window.enterLobby = function() {
 
     // Reset inputs - Assuming inputConfig is mutable array
     for(let i=0; i<4; i++) inputConfig[i] = null;
+    lobbyCooldown = 30; // Prevent instant interactions
 
     updateLobbyUI();
 };
@@ -127,9 +130,22 @@ window.lobbyLoop = function() {
 
     // I'll assume keyboard is always P1 for simplicity in this refactor, as per original code's "defaulting P1 to Keyboard".
 
+    if (lobbyCooldown > 0) {
+        lobbyCooldown--;
+        // Clear keys to prevent hold-over actions
+        if(lobbyCooldown > 0) return;
+    }
+
     // Check P1 keys (Keyboard default)
     if (playerKeys[0][' '] || playerKeys[0]['enter']) {
-        if (!inputConfig[0]) inputConfig[0] = { type: 'keyboard' };
+        if (!inputConfig[0]) {
+            inputConfig[0] = { type: 'keyboard' };
+            lobbyCooldown = 20; // Debounce join vs start
+        } else {
+            // Already ready, Space starts game
+            window.startGame();
+            return;
+        }
     }
 
     // Gamepads are polled in `loop()`. `input.js` handles mapping to playerKeys.
@@ -149,6 +165,17 @@ window.lobbyLoop = function() {
                     let slot = inputConfig.findIndex(c => c === null);
                     if (slot !== -1) {
                         inputConfig[slot] = { type: 'gamepad', index: gp.index };
+                        // If P1 just joined via gamepad, debounce
+                        if (slot === 0) lobbyCooldown = 20;
+                    }
+                } else {
+                    // Existing player pressed A/Start
+                    // If it's Player 1, start game
+                    // We need to know which slot owns this gamepad
+                    let slot = inputConfig.findIndex(c => c && c.type === 'gamepad' && c.index === gp.index);
+                    if (slot === 0) {
+                        window.startGame();
+                        return;
                     }
                 }
             }
@@ -179,7 +206,7 @@ function updateLobbyUI() {
     if (btn) {
         if (count > 0) {
             btn.style.display = 'block';
-            document.getElementById('lobbyMessage').innerText = `${count} PLAYER(S) READY`;
+            document.getElementById('lobbyMessage').innerText = `PRESS SPACE / A TO START`;
         } else {
             btn.style.display = 'none';
             document.getElementById('lobbyMessage').innerText = "WAITING FOR PLAYERS...";
