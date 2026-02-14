@@ -54,7 +54,7 @@ export function generateLevel() {
 
         // Force Captain Spawn if requested (Must be End Zone)
         // Removed random chance to prevent early spawns
-        if ((forceCaptain && !captainSpawned) && !isUnderground) {
+        if ((forceCaptain && !captainSpawned)) {
              newEntities.push(new CaptainEnemy(x * TILE_SIZE, y * TILE_SIZE));
              captainSpawned = true;
 
