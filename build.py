@@ -43,6 +43,11 @@ def main():
         shutil.copy('src/manifest.json', 'manifest.json')
         print("Copied manifest.json")
 
+    # Capacitor support: copy to www/index.html
+    os.makedirs('www', exist_ok=True)
+    shutil.copy('loajf.html', 'www/index.html')
+    print("Copied loajf.html to www/index.html")
+
     print("Build complete: loajf.html updated.")
 
 if __name__ == "__main__":
