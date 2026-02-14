@@ -225,14 +225,32 @@ window.startGame = function() {
         }
 
         let newPlayers = [];
+        // Ensure Unique Characters for all players
+        // 1. Create a pool of available indices (unlocked)
+        let availableCount = Math.min(gameState.globalUnlocked, CHARACTERS.length);
+        let pool = [];
+        for(let i=0; i<availableCount; i++) pool.push(i);
+
+        // 2. If we need more characters than unlocked, add locked ones sequentially
+        let needed = activeConfigs.length;
+        if (pool.length < needed) {
+            for(let i=availableCount; i<CHARACTERS.length && pool.length < needed; i++) {
+                pool.push(i);
+            }
+        }
+
+        // 3. Shuffle Pool
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(secureRandom() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+
         activeConfigs.forEach((obj, idx) => {
             // We create Player with the SLOT index so it reads from playerKeys[slot]
             let p = new Player(obj.slot);
 
-            // Pick distinct chars
-            let available = Math.min(gameState.globalUnlocked, CHARACTERS.length);
-            // Try to give unique char based on index
-            let charIdx = (Math.floor(secureRandom() * available) + idx) % available;
+            // Assign from shuffled pool. If pool exhausted (rare if CHARACTERS > 4), loop back.
+            let charIdx = pool[idx % pool.length];
             p.setCharacter(CHARACTERS[charIdx].id);
 
             newPlayers.push(p);
