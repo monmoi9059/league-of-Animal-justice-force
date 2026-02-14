@@ -34,6 +34,11 @@ export class Player {
         this.specialCooldown = 0;
         this.attackAnim = { type: null, timer: 0, max: 0 };
         this.wallJumpLocked = false;
+
+        // Travel Ability Stats
+        this.stamina = 100;
+        this.maxStamina = 100;
+        this.staminaRecharge = 1;
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
@@ -45,6 +50,7 @@ export class Player {
 
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
+        this.stamina = 100;
         spawnExplosion(this.x, this.y, "#00ff41", 2);
         if(soundManager) soundManager.play('powerup'); // Respawn sound
     }
@@ -72,6 +78,11 @@ export class Player {
         this.lastY = this.y;
         if(this.secondaryCooldown > 0) this.secondaryCooldown--;
         if(this.attackAnim.timer > 0) this.attackAnim.timer--;
+
+        // Stamina Recharge
+        if (this.grounded) {
+            if (this.stamina < this.maxStamina) this.stamina += this.staminaRecharge;
+        }
 
         // INPUT SOURCE
         let pKeys = playerKeys[this.index] || {};
@@ -118,9 +129,32 @@ export class Player {
         if (this.checkWall(1)) wallDir = 1;
 
         let isWallSliding = false;
+        let isClimbing = false;
 
-        // Must be airborne, pressing against a wall, moving downwards, and pressing INTO the wall
-        if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
+        // --- CLIMB ABILITY ---
+        if (this.charData.trait === 'climb' && wallDir !== 0 && !this.grounded) {
+             // Full Climbing Control
+             isClimbing = true;
+             this.vx = 0;
+             this.vy = 0; // Stick to wall
+
+             // Up/Down Movement
+             if (pKeys['arrowup'] || pKeys['w']) this.vy = -4;
+             if (pKeys['arrowdown'] || pKeys['s']) this.vy = 4;
+
+             // Wall Jump
+             if (pKeys[' '] && !this.wallJumpLocked) {
+                 this.vy = JUMP_FORCE;
+                 if(soundManager) soundManager.play('jump');
+                 this.vx = -wallDir * 10;
+                 this.wallJumpLocked = true;
+                 this.facing = -wallDir;
+                 spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, ASSETS.dirtLight, 0.5);
+                 isClimbing = false;
+             }
+        }
+        else if (!this.grounded && wallDir !== 0 && input === wallDir && this.vy > 0) {
+            // Standard Wall Slide (for non-climbers)
             isWallSliding = true;
 
             // Wall Slide Physics (Slow fall)
@@ -163,7 +197,7 @@ export class Player {
 
             // Jump
             if (pKeys[' ']) { this.vy = JUMP_FORCE; if(soundManager) soundManager.play('jump'); }
-        } else {
+        } else if (!isClimbing) { // Only apply normal physics if NOT climbing
             // Only apply normal physics if NOT wall jumping this frame
             if (!this.wallJumpLocked) {
                 if (input !== 0) {
@@ -182,12 +216,26 @@ export class Player {
                 if(soundManager) soundManager.play('jump');
             }
 
+            // --- FLY ABILITY ---
+            if (this.charData.trait === 'fly') {
+                if (pKeys[' '] && this.stamina > 0) {
+                    this.vy -= 1.5; // Thrust
+                    if(this.vy < -7) this.vy = -7; // Cap ascent
+                    this.stamina -= 1;
+                    this.grounded = false;
+                    // Jetpack Particles
+                    if (gameState.frame % 3 === 0) {
+                        particles.push(new Particle(this.x + this.w/2, this.y + this.h, "#fff", 0, 2));
+                    }
+                }
+            }
+
             this.vy += GRAVITY;
             if(this.vy > TERMINAL_VELOCITY) this.vy = TERMINAL_VELOCITY;
         }
 
-        // Dust particles for wall slide
-        if (isWallSliding && gameState.frame % 5 === 0) {
+        // Dust particles for wall slide/climb
+        if ((isWallSliding || isClimbing) && gameState.frame % 5 === 0) {
              particles.push(new Particle(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h, "#fff"));
         }
 
@@ -199,7 +247,8 @@ export class Player {
             let isDown = pKeys['arrowdown'] || pKeys['s'];
             let isUp = pKeys['arrowup'] || pKeys['w'];
             this.shoot(false, isDown, isUp);
-            this.shootCooldown = 15;
+            // SHOOTING SPEED BUFF for non-travelers
+            this.shootCooldown = this.charData.trait ? 15 : 10;
         }
         if((pKeys['x'] || pKeys['k']) && this.specialCooldown <= 0) {
             this.shoot(true, false); this.specialCooldown = 120;
@@ -340,5 +389,13 @@ export class Player {
         ctx.translate(0, -22);
         drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim);
         ctx.restore();
+
+        // DRAW STAMINA BAR
+        if (this.charData.trait === 'fly') {
+            ctx.fillStyle = "black";
+            ctx.fillRect(cx - 15, cy - 60, 30, 6);
+            ctx.fillStyle = "#00ffff";
+            ctx.fillRect(cx - 14, cy - 59, 28 * (this.stamina/this.maxStamina), 4);
+        }
     }
 }

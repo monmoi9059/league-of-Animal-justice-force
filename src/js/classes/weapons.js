@@ -8,6 +8,27 @@ import { drawRoundedRect } from '../graphics.js';
 // --- HELPER FUNCTIONS ---
 
 function createBullet(player, config) {
+    // Clone config to prevent mutation of shared objects
+    config = { ...config };
+
+    // BUFF LOGIC for non-travelers
+    if (!player.charData.trait) {
+        // 1. DAMAGE BUFF
+        if(config.damage) config.damage = Math.ceil(config.damage * 1.5);
+
+        // 2. SIZE BUFF
+        if(config.w) config.w *= 1.3; // Slightly reduced from 1.5 for better balance
+        if(config.h) config.h *= 1.3;
+
+        // 3. VELOCITY BUFF
+        if (config.vx) config.vx *= 1.3;
+        if (config.vy) config.vy *= 1.3;
+
+        // Extra Bazaze Visuals
+        spawnExplosion(player.x + (player.facing*20), player.y, player.charData.pColor || "white", 1);
+        shakeCamera(2);
+    }
+
     config.owner = player; // Set owner for behaviors
     let b = new Bullet(
         player.x + (player.facing > 0 ? player.w : 0),
@@ -21,6 +42,16 @@ function createBullet(player, config) {
 }
 
 function createMelee(player, range, power, height=40, offset=0) {
+    // BUFF LOGIC for non-travelers
+    if (!player.charData.trait) {
+        power = Math.ceil(power * 1.5);
+        range *= 1.3;
+        height *= 1.3;
+        // Extra Bazaze Visuals
+        spawnExplosion(player.x + (player.facing*range), player.y, "white", 1);
+        shakeCamera(3);
+    }
+
     let hitbox = new MeleeHitbox(
         player.x + (player.facing === 1 ? player.w + offset : -range - offset),
         player.y + (player.h - height)/2,
