@@ -1,4 +1,4 @@
-import { playerKeys } from './state.js';
+import { playerKeys, gameState } from './state.js';
 
 // Config: [ { type: 'keyboard' }, { type: 'gamepad', index: 0 }, ... ]
 export const inputConfig = [null, null, null, null];
@@ -110,8 +110,10 @@ function setupTouchControls() {
             e.preventDefault();
             if (controlsDiv.style.display === 'none') {
                 controlsDiv.style.display = 'flex';
+                gameState.zoom = 0.5; // Zoom out
             } else {
                 controlsDiv.style.display = 'none';
+                gameState.zoom = 1.0; // Reset
             }
             updateToggleBtn();
         });
@@ -119,9 +121,11 @@ function setupTouchControls() {
         // Auto-show on touch devices
         if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
             controlsDiv.style.display = 'flex';
+            gameState.zoom = 0.5;
         } else {
             // Hide by default on desktop
             controlsDiv.style.display = 'none';
+            gameState.zoom = 1.0;
         }
         updateToggleBtn();
     }

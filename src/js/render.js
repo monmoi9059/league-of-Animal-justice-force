@@ -103,10 +103,17 @@ export function drawGame() {
     drawBackground(CTX, gameState.cameraX + sx, gameState.cameraY + sy);
 
     CTX.save();
+    // Apply zoom
+    let zoom = gameState.zoom || 1.0;
+    CTX.scale(zoom, zoom);
     CTX.translate(-gameState.cameraX + sx, -gameState.cameraY + sy);
 
-    let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (CANVAS.width / TILE_SIZE) + 4;
-    let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (CANVAS.height / TILE_SIZE) + 4;
+    // Calc visible area adjusted for zoom
+    let visibleW = CANVAS.width / zoom;
+    let visibleH = CANVAS.height / zoom;
+
+    let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (visibleW / TILE_SIZE) + 4;
+    let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (visibleH / TILE_SIZE) + 4;
 
     for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
         for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) { // Use constant LEVEL_WIDTH for loop bound if array is large enough, or better check array length?
@@ -169,6 +176,18 @@ export function drawGame() {
                     CTX.strokeStyle = ASSETS.stoneLight; CTX.lineWidth = 2; CTX.beginPath();
                     CTX.moveTo(tx, ty+20); CTX.lineTo(tx+TILE_SIZE, ty+20);
                     CTX.stroke();
+                }
+                else if (t.type === 3) {
+                    // Metal / Skyscraper
+                    CTX.fillStyle = "#34495e"; // Dark Blue-Grey
+                    CTX.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                    // Windows
+                    CTX.fillStyle = (Math.floor(Date.now() / 1000) + c + r) % 3 === 0 ? "yellow" : "#2c3e50";
+                    CTX.fillRect(tx+10, ty+10, 8, 12);
+                    CTX.fillRect(tx+22, ty+10, 8, 12);
+                    // Border
+                    CTX.strokeStyle = "#2c3e50"; CTX.lineWidth = 2;
+                    CTX.strokeRect(tx, ty, TILE_SIZE, TILE_SIZE);
                 }
                 else if (t.type === 9) {
                     CTX.fillStyle = "gold"; CTX.shadowBlur=30; CTX.shadowColor="gold";

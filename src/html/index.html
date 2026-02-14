@@ -35,13 +35,38 @@
              <h1 style="font-size: 32px; color: #00ff41; margin-bottom: 40px; text-align: center; max-width: 80%;">
                 LEAGUE OF ANIMAL JUSTICE<br>AVENGER FORCE
             </h1>
-            <button onclick="window.startGame()">DEPLOY SQUAD</button>
+            <button onclick="window.enterLobby()">DEPLOY SQUAD</button>
             <button onclick="window.viewRoster()">VIEW TEAM</button>
         </div>
 
         <!-- ROSTER MENU -->
         <div id="rosterOverlay" class="overlay-screen">
             <button onclick="window.returnToMenu()" style="position: absolute; bottom: 30px;">BACK</button>
+        </div>
+
+        <!-- LOBBY MENU -->
+        <div id="lobbyOverlay" class="overlay-screen" style="display: none;">
+            <h2 style="color: #00ff41; margin-bottom: 20px;">SQUAD SETUP</h2>
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <div class="stat-box" style="width: 150px; height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <div>PLAYER 1</div>
+                    <div id="lobbyStatus1" style="color: #777; margin-top: 10px;">PRESS A / SPACE</div>
+                </div>
+                <div class="stat-box" style="width: 150px; height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <div>PLAYER 2</div>
+                    <div id="lobbyStatus2" style="color: #777; margin-top: 10px;">PRESS A</div>
+                </div>
+                <div class="stat-box" style="width: 150px; height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <div>PLAYER 3</div>
+                    <div id="lobbyStatus3" style="color: #777; margin-top: 10px;">PRESS A</div>
+                </div>
+                <div class="stat-box" style="width: 150px; height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <div>PLAYER 4</div>
+                    <div id="lobbyStatus4" style="color: #777; margin-top: 10px;">PRESS A</div>
+                </div>
+            </div>
+            <p id="lobbyMessage" style="color: #aaa; margin-bottom: 20px;">WAITING FOR PLAYERS...</p>
+            <button id="lobbyStartBtn" onclick="window.startGame()" style="display: none;">START MISSION</button>
         </div>
 
         <!-- LEVEL COMPLETE -->

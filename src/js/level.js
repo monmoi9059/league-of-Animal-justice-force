@@ -52,9 +52,9 @@ export function generateLevel() {
         // Captains must always spawn on surface
         let isUnderground = (y > 20);
 
-        // Force Captain Spawn if requested or by random chance (if not already spawned)
-        // Captain is critical for level completion
-        if (((forceCaptain || (type < 0.15)) && !captainSpawned) && !isUnderground) {
+        // Force Captain Spawn if requested (Must be End Zone)
+        // Removed random chance to prevent early spawns
+        if ((forceCaptain && !captainSpawned) && !isUnderground) {
              newEntities.push(new CaptainEnemy(x * TILE_SIZE, y * TILE_SIZE));
              captainSpawned = true;
 
@@ -301,6 +301,24 @@ export function generateLevel() {
     for(let y=0; y<LEVEL_HEIGHT; y++) {
         newTiles[y][0] = { type: 2 };
         newTiles[y][currentLevelWidth-1] = { type: 2 };
+    }
+
+    // Force Captain Spawn at End Zone (Building Top)
+    if (!captainSpawned) {
+        let capX = currentLevelWidth - 25;
+        let capY = 10;
+        // Find ground
+        if (surfaceMap[capX]) capY = surfaceMap[capX];
+
+        // Build Skyscraper
+        for(let h=0; h<10; h++) {
+            if(capY - h > 0) newTiles[capY-h][capX] = { type: 3 }; // Metal
+        }
+        // Platform
+        newTiles[capY-10][capX-1] = { type: 3 };
+        newTiles[capY-10][capX+1] = { type: 3 };
+
+        spawnSquad(capX, capY - 11, true); // Force Spawn
     }
 
     // Boss Spawning Logic

@@ -1,12 +1,13 @@
 import { INTERVAL, CANVAS, CTX, TILE_SIZE, LEVEL_WIDTH, LEVEL_HEIGHT, CHARACTERS, DEBUG_HUD } from './constants.js';
-import { gameState, entities, setEntities, players, setPlayers, particles, setParticles, damageNumbers, setDamageNumbers, debris, setDebris, setTiles, tiles, player, setPlayer, lastTime, setLastTime } from './state.js';
+import { gameState, entities, setEntities, players, setPlayers, particles, setParticles, damageNumbers, setDamageNumbers, debris, setDebris, setTiles, tiles, player, setPlayer, lastTime, setLastTime, playerKeys } from './state.js';
 import { updateUI } from './ui.js';
 import { winGame, endGame } from './game-flow.js';
 import { SoundManager, soundManager } from './sound.js';
 import { initInput, inputConfig, pollGamepad } from './input.js';
 import { generateLevel } from './level.js';
 import { drawMenu, drawRoster, drawGame, drawBackground } from './render.js';
-import { secureRandom, spawnExplosion } from './utils.js';
+import { spawnExplosion } from './utils.js';
+import { secureRandom } from './math.js';
 import { setupErrorHandler } from './errorhandler.js';
 import { Player } from './classes/player.js';
 import { Helicopter } from './classes/items.js';
@@ -124,8 +125,6 @@ window.lobbyLoop = function() {
     // I'll assume keyboard is always P1 for simplicity in this refactor, as per original code's "defaulting P1 to Keyboard".
 
     // Check P1 keys (Keyboard default)
-    import { playerKeys } from './state.js'; // Wait, I already imported it.
-
     if (playerKeys[0][' '] || playerKeys[0]['enter']) {
         if (!inputConfig[0]) inputConfig[0] = { type: 'keyboard' };
     }
@@ -373,12 +372,16 @@ function loop(timestamp) {
                 avgX /= activePlayers.length;
                 avgY /= activePlayers.length;
 
-                let targetX = avgX - CANVAS.width * 0.5; // Center
+                let zoom = gameState.zoom || 1.0;
+                let visibleW = CANVAS.width / zoom;
+                let visibleH = CANVAS.height / zoom;
+
+                let targetX = avgX - visibleW * 0.5; // Center adjusted for zoom
                 if(targetX < 0) targetX = 0;
-                if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
+                // if(gameState.bossActive) { let bossArenaX = (LEVEL_WIDTH - 25) * TILE_SIZE; if(targetX < bossArenaX) targetX = bossArenaX; }
                 gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
 
-                let targetY = avgY - CANVAS.height * 0.5;
+                let targetY = avgY - visibleH * 0.5;
                 if (targetY < 0) targetY = 0;
                 gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
             }
