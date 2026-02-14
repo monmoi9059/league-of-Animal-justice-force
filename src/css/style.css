@@ -221,9 +221,9 @@ button:active {
     border: 2px solid rgba(255, 255, 255, 0.5);
     color: white;
     border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    font-size: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 18px;
     font-weight: bold;
     user-select: none;
     touch-action: manipulation;
@@ -260,8 +260,8 @@ button:active {
     display: flex;
 }
 .dpad-spacer {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     margin: 5px;
 }
 
@@ -287,9 +287,9 @@ button:active {
 }
 
 .action-btn.large {
-    width: 80px;
-    height: 80px;
-    font-size: 24px;
+    width: 70px;
+    height: 70px;
+    font-size: 22px;
     background: rgba(255, 0, 222, 0.2);
     border-color: rgba(255, 0, 222, 0.5);
 }
@@ -297,17 +297,17 @@ button:active {
 /* Landscape adjustments for mobile */
 @media (max-height: 500px) {
     .touch-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 16px;
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
     }
     .touch-btn.large {
-        width: 70px;
-        height: 70px;
+        width: 60px;
+        height: 60px;
     }
     .dpad-spacer {
-        width: 50px;
-        height: 50px;
+        width: 40px;
+        height: 40px;
     }
     .action-area {
         margin-right: 50px; /* Give thumb space */
