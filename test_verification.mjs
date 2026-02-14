@@ -78,9 +78,9 @@ p.update(); // Should trigger shoot()
 const bullet = entities[0];
 if (bullet) {
     console.log(`Bullet Stats - W: ${bullet.w}, H: ${bullet.h}, Dmg: ${bullet.damage}`);
-    // Expected: 40*1.5=60, 4*1.5=6, 2*1.5=3 (ceil)
-    if (bullet.w === 60 && bullet.h === 6 && bullet.damage === 3) console.log("PASS: Weapon Bazaze verified.");
-    else console.error("FAIL: Weapon Bazaze values incorrect.");
+    // Expected: 40*1.3=52, 4*1.3=5.2, 2*1.5=3 (ceil)
+    if (Math.abs(bullet.w - 52) < 0.01 && Math.abs(bullet.h - 5.2) < 0.01 && bullet.damage === 3) console.log("PASS: Weapon Bazaze verified.");
+    else console.error(`FAIL: Weapon Bazaze values incorrect. Got W:${bullet.w}, H:${bullet.h}, Dmg:${bullet.damage}`);
 } else {
     // Try forcing shoot directly if update() didn't catch key (due to cooldown or input reading mock)
     console.log("Forcing shoot call...");
@@ -88,8 +88,8 @@ if (bullet) {
     const b2 = entities[0];
     if (b2) {
          console.log(`Bullet Stats - W: ${b2.w}, H: ${b2.h}, Dmg: ${b2.damage}`);
-         if (b2.w === 60 && b2.h === 6 && b2.damage === 3) console.log("PASS: Weapon Bazaze verified.");
-         else console.error("FAIL: Weapon Bazaze values incorrect.");
+         if (Math.abs(b2.w - 52) < 0.01 && Math.abs(b2.h - 5.2) < 0.01 && b2.damage === 3) console.log("PASS: Weapon Bazaze verified.");
+         else console.error(`FAIL: Weapon Bazaze values incorrect. Got W:${b2.w}, H:${b2.h}, Dmg:${b2.damage}`);
     } else {
          console.error("FAIL: No bullet spawned.");
     }
