@@ -2,10 +2,12 @@
   "name": "loajf",
   "version": "1.0.0",
   "description": "League of Animal Justice Avenger Force: Operation Dumpster Fire",
+  "type": "module",
   "main": "src/js/main.js",
   "scripts": {
     "build": "rollup -c",
-    "dev": "rollup -c -w"
+    "dev": "rollup -c -w",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",
