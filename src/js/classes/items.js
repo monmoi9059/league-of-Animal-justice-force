@@ -217,10 +217,10 @@ export class MechSuit {
 }
 
 export class Helicopter {
-    constructor(x, y) {
+    constructor(x, y, isIntro = false) {
         this.x = x; this.y = y; this.w = 120; this.h = 60;
         this.timer = 0;
-        this.isIntro = (x < 1000); // Hacky check if it's at start of level
+        this.isIntro = isIntro;
         this.hp = 1000;
     }
     update() {
