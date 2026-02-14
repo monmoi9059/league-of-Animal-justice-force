@@ -16,7 +16,6 @@ export class SoundManager {
             this.masterGain.connect(this.ctx.destination);
             this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
             this.initialized = true;
-            console.log("Audio Context Initialized");
         } catch (e) {
             console.error("Web Audio API not supported", e);
         }

@@ -14,7 +14,6 @@ import { Helicopter } from './classes/items.js';
 
 // --- MAIN INIT FUNCTION ---
 function init() {
-    console.log("INIT() CALLED");
     setLastTime(0);
 
     if (!soundManager.initialized) {
@@ -186,10 +185,8 @@ function updateLobbyUI() {
 
 // Start actual gameplay
 window.startGame = function() {
-    console.log("STARTGAME() CALLED");
     try {
         setTiles(generateLevel());
-        console.log("LEVEL GENERATED. TILES:", tiles.length);
         setParticles([]);
         setDamageNumbers([]);
         setDebris([]);
@@ -215,7 +212,6 @@ window.startGame = function() {
 
         // Fallback for debugging if started without lobby (e.g. tests)
         if (activeConfigs.length === 0) {
-            console.log("No inputs configured, defaulting P1 to Keyboard");
             inputConfig[0] = { type: 'keyboard' };
             activeConfigs = [{ config: { type: 'keyboard' }, slot: 0 }];
         }
