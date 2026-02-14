@@ -1,6 +1,5 @@
 import { gameState, setEntities } from './state.js';
-import { LEVEL_WIDTH, LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
-import { secureRandom } from './math.js';
+import { LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
 import { Enemy, CaptainEnemy, ShieldBearer, HeavyGunner, KamikazeEnemy, SniperEnemy, FlyingEnemy, Boss, HelicopterBoss } from './classes/enemies.js';
 import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast } from './classes/items.js';
 
@@ -46,7 +45,7 @@ export function generateLevel() {
 
     // Helper: Spawn Enemy Squad
     function spawnSquad(x, y, forceCaptain = false) {
-        let type = secureRandom();
+        let type = Math.random();
 
         // Check if spawning location is "underground" (depth > 20)
         // Captains must always spawn on surface
@@ -93,10 +92,10 @@ export function generateLevel() {
              newEntities.push(new Enemy(x * TILE_SIZE, y * TILE_SIZE));
              if (difficulty >= 2) {
                  newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
-                 if (secureRandom() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
+                 if (Math.random() < 0.5) newEntities.push(new Enemy((x-1) * TILE_SIZE, y * TILE_SIZE));
              } else {
                  // Level 1: Occasional second enemy
-                 if (secureRandom() < 0.3) newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
+                 if (Math.random() < 0.3) newEntities.push(new Enemy((x+1) * TILE_SIZE, y * TILE_SIZE));
              }
         }
     }
@@ -132,15 +131,15 @@ export function generateLevel() {
         else if (x > 15) {
             // Roughness increases with difficulty
             let roughness = (difficulty <= 2) ? 0.1 : 0.2 + (difficulty * 0.05);
-            if (secureRandom() < roughness) {
-                currentHeight += secureRandom() > 0.5 ? -1 : 1;
+            if (Math.random() < roughness) {
+                currentHeight += Math.random() > 0.5 ? -1 : 1;
             }
             if (currentHeight < 6) currentHeight = 6;
             if (currentHeight > LEVEL_HEIGHT - 10) currentHeight = LEVEL_HEIGHT - 10;
 
             // Pit Chance (More pits in later levels)
             let pitChance = (difficulty === 1) ? 0 : 0.005 + (difficulty * 0.01);
-            if (secureRandom() < pitChance && x > 20) {
+            if (Math.random() < pitChance && x > 20) {
                 for(let y=0; y<LEVEL_HEIGHT; y++) {
                     if(y >= 0 && y < LEVEL_HEIGHT) newTiles[y][x] = { type: 0 };
                 }
@@ -155,7 +154,7 @@ export function generateLevel() {
                 surfaceMap[x] = LEVEL_HEIGHT + 10;
 
                 // Bridge?
-                if (secureRandom() < 0.5) {
+                if (Math.random() < 0.5) {
                     newEntities.push(new BridgeBlock(x * TILE_SIZE, (currentHeight-1) * TILE_SIZE));
                 }
 
@@ -164,7 +163,7 @@ export function generateLevel() {
 
             // DECIDE RESCUE TYPE (Broforce: Often on high ground/cages)
             // Increase frequency (beastsPlaced < 8) and reduce distance check (30)
-            if (beastsPlaced < 8 && (x - lastBeastX > 30) && secureRandom() < 0.08) {
+            if (beastsPlaced < 8 && (x - lastBeastX > 30) && Math.random() < 0.08) {
                 // Place directly on ground
                 let groundY = currentHeight - 1;
                 if (groundY > 0) {
@@ -195,7 +194,7 @@ export function generateLevel() {
 
     // 3. PASS 2: UNDERGROUND TUNNEL NETWORK
     for (let x = 40; x < currentLevelWidth - 60; x += 40) {
-        if (secureRandom() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
+        if (Math.random() < 0.7 && surfaceMap[x] < LEVEL_HEIGHT - 15) {
             let startY = surfaceMap[x];
             let bottomY = LEVEL_HEIGHT - 5;
 
@@ -205,11 +204,11 @@ export function generateLevel() {
             }
 
             // 2. Horizontal Tunnels
-            let numTunnels = Math.floor(secureRandom() * 3) + 2;
+            let numTunnels = Math.floor(Math.random() * 3) + 2;
             for (let i = 0; i < numTunnels; i++) {
-                let tunnelY = startY + 10 + Math.floor(secureRandom() * (bottomY - startY - 15));
-                let tunnelLen = 10 + Math.floor(secureRandom() * 15);
-                let dir = secureRandom() > 0.5 ? 1 : -1;
+                let tunnelY = startY + 10 + Math.floor(Math.random() * (bottomY - startY - 15));
+                let tunnelLen = 10 + Math.floor(Math.random() * 15);
+                let dir = Math.random() > 0.5 ? 1 : -1;
 
                 for (let j = 0; j < tunnelLen; j++) {
                     let tx = x + (j * dir);
@@ -220,14 +219,14 @@ export function generateLevel() {
                     }
 
                     // Enemies in tunnels (Ambush style)
-                    if (secureRandom() < 0.1 && j > 5 && (j % 5 === 0)) {
-                        let rand = secureRandom();
+                    if (Math.random() < 0.1 && j > 5 && (j % 5 === 0)) {
+                        let rand = Math.random();
                         if (difficulty >= 3 && rand < 0.3) newEntities.push(new KamikazeEnemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
                         else newEntities.push(new Enemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
                     }
 
                     // Hostage Check (Hidden in caves)
-                    if (beastsPlaced < 8 && (tx - lastBeastX > 30 || lastBeastX - tx > 30) && secureRandom() < 0.05) {
+                    if (beastsPlaced < 8 && (tx - lastBeastX > 30 || lastBeastX - tx > 30) && Math.random() < 0.05) {
                         let beastY = tunnelY;
                         if (beastY > 0 && newTiles[beastY-1][tx].type !== 0) {
                             newTiles[beastY-1][tx] = { type: 1 };
@@ -265,11 +264,11 @@ export function generateLevel() {
 
             // Checkpoints are safe zones, no enemies *directly* on them usually
             // Spawn Mech nearby occasionally
-            if (difficulty >= 3 && secureRandom() < 0.3) {
+            if (difficulty >= 3 && Math.random() < 0.3) {
                  newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
             }
         }
-        else if (secureRandom() < 0.03 + (difficulty*0.01)) {
+        else if (Math.random() < 0.03 + (difficulty*0.01)) {
             if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
 
@@ -284,17 +283,17 @@ export function generateLevel() {
 
         if (x - lastEncounterX > encounterDist || (isEndZone && !captainSpawned)) {
              let chance = (isEndZone && !captainSpawned) ? 1.0 : 0.4;
-             if (secureRandom() < chance) {
+             if (Math.random() < chance) {
                  spawnSquad(x, y-1, (isEndZone && !captainSpawned)); // Pass forceCaptain flag
                  lastEncounterX = x;
              }
         }
 
         // Occasional Sniper on high ground or random flyer
-        if (secureRandom() < 0.02) {
+        if (Math.random() < 0.02) {
              if (difficulty >= 3) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
-        if (secureRandom() < 0.02 && difficulty >= 2) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+        if (Math.random() < 0.02 && difficulty >= 2) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
     }
 
     // 5. FINISH
@@ -336,7 +335,7 @@ export function generateLevel() {
          else {
              // Spawn Boss in normal terrain (Last 30% of map)
              let spawnRangeStart = Math.floor(currentLevelWidth * 0.7);
-             let bossX = spawnRangeStart + Math.floor(secureRandom() * (currentLevelWidth - spawnRangeStart - 5));
+             let bossX = spawnRangeStart + Math.floor(Math.random() * (currentLevelWidth - spawnRangeStart - 5));
 
              // Find ground Y
              let bossY = 10;

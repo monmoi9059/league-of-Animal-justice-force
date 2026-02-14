@@ -1,4 +1,4 @@
-import { TILE_SIZE, GRAVITY, LEVEL_HEIGHT, LEVEL_WIDTH, CHARACTERS } from '../constants.js';
+import { TILE_SIZE, GRAVITY, LEVEL_HEIGHT, CHARACTERS } from '../constants.js';
 import { tiles, players, gameState } from '../state.js';
 import { checkRectOverlap } from '../physics.js';
 import { spawnExplosion, createExplosion, unlockCharacter, spawnDamageNumber } from '../utils.js';
@@ -6,7 +6,6 @@ import { drawRoundedRect } from '../graphics.js';
 import { playerKeys } from '../state.js';
 import { winGame } from '../game-flow.js';
 import { updateUI } from '../ui.js';
-import { secureRandom } from '../math.js';
 import { entities } from '../state.js'; // TrappedBeast needs access to entities list implicitly? No, generated in level.js. But TrappedBeast adds to gameState via unlockCharacter.
 
 export class PropaneTank {
@@ -27,7 +26,7 @@ export class PropaneTank {
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
         // Use dynamic width check from tiles array if available
-        let maxW = tiles && tiles[0] ? tiles[0].length : LEVEL_WIDTH;
+        let maxW = tiles && tiles[0] ? tiles[0].length : gameState.levelData.width;
         let maxH = tiles ? tiles.length : LEVEL_HEIGHT;
 
         if (r >= 0 && r < maxH && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
@@ -106,7 +105,7 @@ export class FallingBlock {
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        let maxW = tiles && tiles[0] ? tiles[0].length : LEVEL_WIDTH;
+        let maxW = tiles && tiles[0] ? tiles[0].length : gameState.levelData.width;
         let maxH = tiles ? tiles.length : LEVEL_HEIGHT;
 
         if (r >= 0 && r < maxH && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
@@ -166,7 +165,7 @@ export class MechSuit {
             this.y += 5; // Simple gravity
              let r = Math.floor((this.y + this.h) / TILE_SIZE);
              let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < gameState.levelData.width && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
                  this.y = r * TILE_SIZE - this.h;
              }
 
@@ -279,7 +278,7 @@ export class Dumpster {
         this.y += 5;
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < gameState.levelData.width && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
              this.y = r * TILE_SIZE - this.h;
         }
     }
@@ -325,7 +324,7 @@ export class TrappedBeast {
             if (touchingPlayer) {
                 // Pick random unlocked character
                 let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
-                let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
+                let newCharIndex = Math.floor(Math.random() * unlockedChars.length);
                 let newCharId = unlockedChars[newCharIndex].id;
 
                 // Ensure switch if possible (optional, but good for UX)
