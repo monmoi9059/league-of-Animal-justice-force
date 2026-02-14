@@ -101,6 +101,16 @@ export function unlockCharacter(sourcePlayer) {
             gameState.globalUnlocked++;
             gameState.unlockedCount = gameState.globalUnlocked;
             localStorage.setItem('loajf_unlocked', gameState.globalUnlocked);
+
+            // Switch source player to the new character
+            if (sourcePlayer) {
+                // globalUnlocked is now the count, so index is globalUnlocked - 1
+                sourcePlayer.setCharacter(CHARACTERS[gameState.globalUnlocked - 1].id);
+                // Reset health or give invincibility on unlock? Usually good practice.
+                sourcePlayer.health = 3;
+                sourcePlayer.invincible = 60;
+            }
+
             spawnDamageNumber(px, py - 40, "NEW HERO!", "gold");
             // Maybe visual effect?
             spawnExplosion(px, py, "gold", 2);
