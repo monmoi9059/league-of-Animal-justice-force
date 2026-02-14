@@ -197,6 +197,7 @@ window.startGame = function() {
         gameState.checkpointsHit = 0;
         // Keep score/rescues if next level, else reset
         if (gameState.screen === 'MENU' || gameState.screen === 'LOBBY') {
+            gameState.levelCompleteStats.kills = 0;
             gameState.score = 0;
             gameState.rescues = 0;
             gameState.lives = 3;

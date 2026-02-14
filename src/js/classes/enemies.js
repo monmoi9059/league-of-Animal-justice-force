@@ -151,6 +151,7 @@ export class Enemy {
     }
 
     takeDamage(amt, sourceX) {
+        if (this.hp <= 0) return;
         this.hp -= amt;
         spawnDamageNumber(this.x, this.y, amt * 10);
         this.vx = (this.x - sourceX) > 0 ? 5 : -5;
@@ -158,6 +159,7 @@ export class Enemy {
         this.blockedTimer = 10; // Stun briefly
 
         if (this.hp <= 0) {
+            gameState.levelCompleteStats.kills++;
             spawnExplosion(this.x + this.w/2, this.y + this.h/2, "red", 1);
             if(soundManager) soundManager.play('explosion');
             this.x = -9999;
@@ -606,6 +608,7 @@ export class ShieldBearer extends Enemy {
         }
     }
     takeDamage(amt, sourceX) {
+        if (this.hp <= 0) return;
         let hitFromFront = (sourceX < this.x && this.facing === -1) || (sourceX > this.x && this.facing === 1);
         if (this.shieldUp && hitFromFront) {
             spawnExplosion(this.x + 20, this.y + 20, "blue", 1);
@@ -617,6 +620,7 @@ export class ShieldBearer extends Enemy {
             spawnDamageNumber(this.x, this.y, amt * 10);
         }
         if (this.hp <= 0) {
+             gameState.levelCompleteStats.kills++;
              this.x = -9999;
              spawnExplosion(this.x, this.y, "red", 3);
              if(soundManager) soundManager.play('explosion');
@@ -719,9 +723,11 @@ export class CaptainEnemy extends Enemy {
         }
     }
     takeDamage(amt, sourceX) {
+        if (this.hp <= 0) return;
         this.hp -= amt;
         spawnDamageNumber(this.x, this.y, amt * 10, "gold");
         if (this.hp <= 0) {
+             gameState.levelCompleteStats.kills++;
              let deathX = this.x;
              let deathY = this.y;
              spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
@@ -891,6 +897,7 @@ export class Boss {
         if(document.getElementById('bossHealthBar')) document.getElementById('bossHealthBar').style.width = pct + "%";
         spawnDamageNumber(this.x + 60, this.y + 60, amt * 10);
         if (this.hp <= 0) {
+            gameState.levelCompleteStats.kills++;
             shakeCamera(50);
             spawnExplosion(this.x + 60, this.y + 60, "#ff00de", 5);
             if(soundManager) soundManager.play('explosion');
@@ -1055,6 +1062,7 @@ export class HelicopterBoss {
         shakeCamera(2);
 
         if (this.hp <= 0) {
+            gameState.levelCompleteStats.kills++;
             shakeCamera(100);
             spawnExplosion(this.x + 75, this.y + 40, "orange", 10);
             if(soundManager) soundManager.play('explosion');
