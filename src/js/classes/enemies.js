@@ -1,4 +1,4 @@
-import { GRAVITY, TILE_SIZE, LEVEL_HEIGHT } from '../constants.js';
+import { GRAVITY, TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH } from '../constants.js';
 import { tiles, players, entities, gameState } from '../state.js';
 import { Bullet } from './projectiles.js';
 import { PropaneTank, Helicopter } from './items.js';
@@ -34,7 +34,7 @@ export class Enemy {
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
         // Check for solid ground (Type 1=Dirt, 2=Stone, 3=Metal)
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < gameState.levelData.width && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -96,7 +96,7 @@ export class Enemy {
         let wallCheckX = Math.floor((nextX + (this.vx > 0 ? this.w : 0)) / TILE_SIZE);
 
         let hitWall = false;
-        if (wallCheckX >= 0 && wallCheckX < gameState.levelData.width) {
+        if (wallCheckX >= 0 && wallCheckX < LEVEL_WIDTH) {
              let t1 = (tiles[wallCheckY_Top] && tiles[wallCheckY_Top][wallCheckX]);
              let t2 = (tiles[wallCheckY_Bot] && tiles[wallCheckY_Bot][wallCheckX]);
 
@@ -115,7 +115,7 @@ export class Enemy {
         let ledgeCheckY = Math.floor((this.y + this.h + 2) / TILE_SIZE); // Look slightly down
 
         let hitLedge = false;
-        if (ledgeCheckY < LEVEL_HEIGHT && ledgeCheckX >= 0 && ledgeCheckX < gameState.levelData.width) {
+        if (ledgeCheckY < LEVEL_HEIGHT && ledgeCheckX >= 0 && ledgeCheckX < LEVEL_WIDTH) {
             let t = tiles[ledgeCheckY][ledgeCheckX];
             // If air (0) or non-solid, it's a ledge.
             if (!t || t.type === 0 || t.type === 4 || t.type === 6) {
@@ -158,7 +158,6 @@ export class Enemy {
         this.blockedTimer = 10; // Stun briefly
 
         if (this.hp <= 0) {
-            gameState.levelCompleteStats.kills++;
             spawnExplosion(this.x + this.w/2, this.y + this.h/2, "red", 1);
             if(soundManager) soundManager.play('explosion');
             this.x = -9999;
@@ -258,7 +257,7 @@ export class FlyingEnemy extends Enemy {
         let r = Math.floor((nextY + this.h/2) / TILE_SIZE);
         let c = Math.floor((nextX + this.w/2) / TILE_SIZE);
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < gameState.levelData.width && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
              // Hit wall, bounce back
              targetVx *= -1.5;
              targetVy *= -1.5;
@@ -342,18 +341,7 @@ export class KamikazeEnemy extends Enemy {
     }
     takeDamage(amt, sourceX) {
         super.takeDamage(amt, sourceX);
-        if (this.hp <= 0) {
-            // Already counted in super.takeDamage?
-            // Wait, super.takeDamage checks hp <= 0.
-            // If super calls it, kills++ happens.
-            // Kamikaze calls explode().
-            // If explode sets x = -9999, super might not see hp <= 0 if it was already?
-            // No, super.takeDamage decrements hp.
-            // If hp <= 0, super increments kills.
-            // Then this block runs.
-            // If explode() is called, it just does visual.
-            this.explode();
-        }
+        if (this.hp <= 0) this.explode();
     }
     draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
@@ -409,7 +397,7 @@ export class HeavyGunner extends Enemy {
         // Ground Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < gameState.levelData.width && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -499,7 +487,7 @@ export class SniperEnemy extends Enemy {
         // Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < gameState.levelData.width && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -629,7 +617,6 @@ export class ShieldBearer extends Enemy {
             spawnDamageNumber(this.x, this.y, amt * 10);
         }
         if (this.hp <= 0) {
-             gameState.levelCompleteStats.kills++;
              this.x = -9999;
              spawnExplosion(this.x, this.y, "red", 3);
              if(soundManager) soundManager.play('explosion');
@@ -684,7 +671,7 @@ export class CaptainEnemy extends Enemy {
 
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < gameState.levelData.width && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -735,7 +722,6 @@ export class CaptainEnemy extends Enemy {
         this.hp -= amt;
         spawnDamageNumber(this.x, this.y, amt * 10, "gold");
         if (this.hp <= 0) {
-             gameState.levelCompleteStats.kills++;
              let deathX = this.x;
              let deathY = this.y;
              spawnExplosion(deathX + this.w/2, deathY + this.h/2, "gold", 3);
@@ -905,7 +891,6 @@ export class Boss {
         if(document.getElementById('bossHealthBar')) document.getElementById('bossHealthBar').style.width = pct + "%";
         spawnDamageNumber(this.x + 60, this.y + 60, amt * 10);
         if (this.hp <= 0) {
-            gameState.levelCompleteStats.kills++;
             shakeCamera(50);
             spawnExplosion(this.x + 60, this.y + 60, "#ff00de", 5);
             if(soundManager) soundManager.play('explosion');
@@ -1070,14 +1055,13 @@ export class HelicopterBoss {
         shakeCamera(2);
 
         if (this.hp <= 0) {
-            gameState.levelCompleteStats.kills++;
             shakeCamera(100);
             spawnExplosion(this.x + 75, this.y + 40, "orange", 10);
             if(soundManager) soundManager.play('explosion');
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
             this.x = -9999;
-            entities.push(new Helicopter((gameState.levelData.width - 15) * TILE_SIZE, 8 * TILE_SIZE, false)); // Extraction Heli
+            entities.push(new Helicopter((LEVEL_WIDTH - 15) * TILE_SIZE, 8 * TILE_SIZE, false)); // Extraction Heli
             gameState.slowMo = 0.1;
             setTimeout(() => gameState.slowMo = 1.0, 3000);
         }
