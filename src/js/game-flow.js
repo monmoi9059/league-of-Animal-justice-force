@@ -1,7 +1,9 @@
 import { gameState } from './state.js';
+import { soundManager } from './sound.js';
 
 export function winGame() {
     gameState.running = false;
+    if(soundManager) soundManager.stopMusic();
     // Calculate Stats
     // Kills are now tracked explicitly in gameState.levelCompleteStats.kills
 
@@ -14,6 +16,7 @@ export function winGame() {
 
 export function endGame() {
     gameState.running = false;
+    if(soundManager) soundManager.stopMusic();
     document.getElementById('ovTitle').innerText = "MISSION FAILED";
     document.getElementById('ovTitle').style.color = "red";
     document.getElementById('ovMsg').innerText = "Out of lives. The pound awaits.";

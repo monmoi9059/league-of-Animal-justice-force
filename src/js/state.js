@@ -8,8 +8,8 @@ export const gameState = {
     checkpointsHit: 0,
     rescues: 0,
     lives: 3,
-    unlockedCount: 1,
-    globalUnlocked: 1, // Alias for legacy code
+    unlockedCount: parseInt(localStorage.getItem('loajf_unlocked') || '1'),
+    globalUnlocked: parseInt(localStorage.getItem('loajf_unlocked') || '1'), // Alias for legacy code
     spawnPoint: { x: 100, y: 0 },
     bossActive: false,
     hitStop: 0,

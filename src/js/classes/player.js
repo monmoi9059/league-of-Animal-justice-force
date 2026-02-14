@@ -146,7 +146,7 @@ export class Player {
              if (pKeys[' '] && !this.wallJumpLocked) {
                  this.vy = JUMP_FORCE;
                  if(soundManager) soundManager.play('jump');
-                 this.vx = -wallDir * 10;
+                 this.vx = -wallDir * 5; // Reduced bounce
                  this.wallJumpLocked = true;
                  this.facing = -wallDir;
                  spawnExplosion(this.x + (wallDir > 0 ? this.w : 0), this.y + this.h/2, ASSETS.dirtLight, 0.5);
@@ -165,7 +165,7 @@ export class Player {
             if (pKeys[' '] && !this.wallJumpLocked) {
                 this.vy = JUMP_FORCE;
                 if(soundManager) soundManager.play('jump');
-                this.vx = -wallDir * 10; // Kick off away from wall
+                this.vx = -wallDir * 5; // Reduced bounce
                 this.wallJumpLocked = true; // Prevent spam
                 this.facing = -wallDir; // Face away
 
