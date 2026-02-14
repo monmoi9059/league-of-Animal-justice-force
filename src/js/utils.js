@@ -1,7 +1,8 @@
 import { damageNumbers, particles, debris, tiles, gameState, players, entities } from './state.js';
 import { Particle, RockChunk } from './classes/particles.js';
+import { secureRandom } from './math.js';
 import { soundManager } from './sound.js';
-import { LEVEL_HEIGHT, TILE_SIZE, ASSETS, CHARACTERS } from './constants.js';
+import { LEVEL_HEIGHT, LEVEL_WIDTH, TILE_SIZE, ASSETS, CHARACTERS } from './constants.js';
 
 export function spawnDamageNumber(x, y, amount, color="white") {
     damageNumbers.push({ x: x, y: y, text: amount, life: 60, vy: -2, color: color });
@@ -14,8 +15,8 @@ export function spawnExplosion(x, y, color, scale=1) {
 export function spawnDebris(x, y, color) {
     // Spawn more, smaller chunks for better "shattering" effect
     for(let i=0; i<6; i++) {
-        let chunk = new RockChunk(x + Math.random()*20, y + Math.random()*20, color);
-        chunk.size = Math.random() * 4 + 2; // Smaller chunks (2-6px)
+        let chunk = new RockChunk(x + secureRandom()*20, y + secureRandom()*20, color);
+        chunk.size = secureRandom() * 4 + 2; // Smaller chunks (2-6px)
         debris.push(chunk);
     }
 }
@@ -23,7 +24,7 @@ export function spawnDebris(x, y, color) {
 export function destroyRadius(cx, cy, r) {
     for(let y = cy - r; y <= cy + r; y++) {
         for(let x = cx - r; x <= cx + r; x++) {
-            if(y>=0 && y<LEVEL_HEIGHT && x>=0 && x<gameState.levelData.width) {
+            if(y>=0 && y<LEVEL_HEIGHT && x>=0 && x<LEVEL_WIDTH) {
                 let t = tiles[y][x];
                 if(t) {
                     if (t.type === 1) {

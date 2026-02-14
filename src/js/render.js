@@ -1,6 +1,7 @@
-import { CANVAS, CTX, CHARACTERS, ASSETS, LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
+import { CANVAS, CTX, CHARACTERS, ASSETS, LEVEL_HEIGHT, LEVEL_WIDTH, TILE_SIZE } from './constants.js';
 import { gameState, tiles, debris, entities, players, particles, damageNumbers } from './state.js';
 import { drawRoundedRect, drawAnatomicalHero } from './graphics.js';
+import { secureRandom } from './math.js';
 
 export function drawBackground(ctx, camX, camY) {
     let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
@@ -94,8 +95,8 @@ export function drawRoster() {
 
 export function drawGame() {
     const now = Date.now();
-    let sx = (Math.random()-0.5) * gameState.shake;
-    let sy = (Math.random()-0.5) * gameState.shake;
+    let sx = (secureRandom()-0.5) * gameState.shake;
+    let sy = (secureRandom()-0.5) * gameState.shake;
 
     CTX.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
     CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
@@ -117,7 +118,7 @@ export function drawGame() {
     let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (visibleH / TILE_SIZE) + 4;
 
     for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
-        for(let c=startCol; c<endCol && c<gameState.levelData.width; c++) { // Use constant LEVEL_WIDTH for loop bound if array is large enough, or better check array length?
+        for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) { // Use constant LEVEL_WIDTH for loop bound if array is large enough, or better check array length?
             // Actually tiles[r] might not exist if r is out of bounds, but we check r<LEVEL_HEIGHT
             if(tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
                 let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
@@ -141,7 +142,7 @@ export function drawGame() {
                         CTX.fillStyle = t.color;
                         CTX.fillRect(tx, ty + 10, TILE_SIZE, TILE_SIZE - 10);
                         CTX.fillStyle = "orange";
-                        CTX.beginPath(); CTX.arc(tx + Math.random()*40, ty+10, 5, 0, Math.PI*2); CTX.fill();
+                        CTX.beginPath(); CTX.arc(tx + secureRandom()*40, ty+10, 5, 0, Math.PI*2); CTX.fill();
                     } else {
                         let grd = CTX.createLinearGradient(tx, ty, tx, ty+TILE_SIZE);
                         grd.addColorStop(0, "#ccc"); grd.addColorStop(1, "#555"); CTX.fillStyle = grd;

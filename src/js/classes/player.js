@@ -1,4 +1,4 @@
-import { CHARACTERS, LEVEL_HEIGHT, JUMP_FORCE, ACCELERATION, FRICTION, GRAVITY, TERMINAL_VELOCITY, TILE_SIZE, ASSETS } from '../constants.js';
+import { CHARACTERS, LEVEL_HEIGHT, LEVEL_WIDTH, JUMP_FORCE, ACCELERATION, FRICTION, GRAVITY, TERMINAL_VELOCITY, TILE_SIZE, ASSETS } from '../constants.js';
 import { updateUI } from '../ui.js';
 import { gameState, playerKeys, tiles, particles, entities } from '../state.js';
 import { winGame, endGame } from '../game-flow.js';
@@ -8,6 +8,7 @@ import { soundManager } from '../sound.js';
 import { Bullet, MeleeHitbox } from './projectiles.js';
 import { Dumpster } from './items.js';
 import { drawAnatomicalHero } from '../graphics.js';
+import { secureRandom } from '../math.js';
 import { WEAPONS } from './weapons.js';
 
 export class Player {
@@ -44,7 +45,7 @@ export class Player {
 
         // Pick from unlocked characters
         let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
-        let newCharIndex = Math.floor(Math.random() * unlockedChars.length);
+        let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
         this.setCharacter(unlockedChars[newCharIndex].id);
 
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
@@ -66,7 +67,7 @@ export class Player {
         for (let py of points) {
             let r = Math.floor(py / TILE_SIZE);
             let c = Math.floor(checkX / TILE_SIZE);
-            if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<gameState.levelData.width && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+            if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
                 return true;
             }
         }
@@ -106,7 +107,7 @@ export class Player {
         // LADDER CHECK
         let cx = Math.floor((this.x + this.w/2) / TILE_SIZE);
         let cy = Math.floor((this.y + this.h/2) / TILE_SIZE);
-        let onLadder = (cy>=0 && cy<LEVEL_HEIGHT && cx>=0 && cx<gameState.levelData.width && tiles[cy] && tiles[cy][cx] && tiles[cy][cx].type === 6);
+        let onLadder = (cy>=0 && cy<LEVEL_HEIGHT && cx>=0 && cx<LEVEL_WIDTH && tiles[cy] && tiles[cy][cx] && tiles[cy][cx].type === 6);
 
         let input = 0;
         if (pKeys['arrowleft'] || pKeys['a']) input = -1;
@@ -270,7 +271,7 @@ export class Player {
 
         for(let row = t; row <= b; row++) {
             for(let col = l; col <= r; col++) {
-                if(row>=0 && row<LEVEL_HEIGHT && col>=0 && col<gameState.levelData.width && tiles[row] && tiles[row][col] && tiles[row][col].type !== 0) {
+                if(row>=0 && row<LEVEL_HEIGHT && col>=0 && col<LEVEL_WIDTH && tiles[row] && tiles[row][col] && tiles[row][col].type !== 0) {
                     let type = tiles[row][col].type;
 
                     if(type === 6) continue; // Ignore ladders for solid collision
