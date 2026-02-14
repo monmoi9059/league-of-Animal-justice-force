@@ -17,6 +17,9 @@ function init() {
     console.log("INIT() CALLED");
     setLastTime(0);
 
+    // Stop music on menu
+    if (soundManager) soundManager.stopMusic();
+
     if (!soundManager.initialized) {
         // Init happens on user interaction usually, but let's ensure instance is there.
         // soundManager is exported instance.
@@ -252,6 +255,9 @@ window.startGame = function() {
         });
 
         gameState.spawnPoint = { x: startX + 20, y: startY + 60 };
+
+        // Start Music
+        if (soundManager) soundManager.playMusic();
 
         // Switch UI
         document.getElementById('menuOverlay').style.display = 'none';

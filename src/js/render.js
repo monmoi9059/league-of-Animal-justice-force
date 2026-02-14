@@ -10,11 +10,34 @@ export function drawBackground(ctx, camX, camY) {
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // Simple Moon
+    // Sun/Moon
     ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
     ctx.beginPath();
     ctx.arc(ctx.canvas.width - 100, 100, 50, 0, Math.PI*2);
     ctx.fill();
+
+    // Distant Mountains (Parallax 0.2)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+    let mountainW = 200;
+    let offset = ((camX * 0.2) % mountainW + mountainW) % mountainW;
+    for(let i = -1; i < ctx.canvas.width / mountainW + 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * mountainW - offset, ctx.canvas.height);
+        ctx.lineTo(i * mountainW + mountainW/2 - offset, ctx.canvas.height - 150);
+        ctx.lineTo(i * mountainW + mountainW - offset, ctx.canvas.height);
+        ctx.fill();
+    }
+
+    // Closer Hills (Parallax 0.5)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    let hillW = 100;
+    let hillOffset = ((camX * 0.5) % hillW + hillW) % hillW;
+    for(let i = -1; i < ctx.canvas.width / hillW + 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * hillW - hillOffset, ctx.canvas.height);
+        ctx.quadraticCurveTo(i * hillW + hillW/2 - hillOffset, ctx.canvas.height - 100, i * hillW + hillW - hillOffset, ctx.canvas.height);
+        ctx.fill();
+    }
 }
 
 export function drawMenu() {
@@ -97,14 +120,21 @@ export function drawGame() {
     const now = Date.now();
     let sx = (secureRandom()-0.5) * gameState.shake;
     let sy = (secureRandom()-0.5) * gameState.shake;
+    let rot = (secureRandom()-0.5) * (gameState.shake * 0.002); // Rotation shake
 
     CTX.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
     CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
 
     // Draw Background based on Biome
-    drawBackground(CTX, gameState.cameraX + sx, gameState.cameraY + sy);
+    drawBackground(CTX, gameState.cameraX, gameState.cameraY); // Background handles its own parallax
 
     CTX.save();
+
+    // Center rotation
+    CTX.translate(CANVAS.width/2, CANVAS.height/2);
+    CTX.rotate(rot);
+    CTX.translate(-CANVAS.width/2, -CANVAS.height/2);
+
     // Apply zoom
     let zoom = gameState.zoom || 1.0;
     CTX.scale(zoom, zoom);
@@ -156,6 +186,14 @@ export function drawGame() {
                     if (gameState.levelData.biome === 'volcano') color = "#422";
 
                     CTX.fillStyle = color; CTX.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+
+                    // Noise Texture
+                    CTX.fillStyle = "rgba(0,0,0,0.1)";
+                    for(let k=0; k<4; k++) {
+                         let nx = (tx + (c*13 + r*7 + k*5) % TILE_SIZE);
+                         let ny = (ty + (c*23 + r*11 + k*3) % TILE_SIZE);
+                         CTX.fillRect(nx, ny, 2, 2);
+                    }
 
                     if (gameState.levelData.biome === 'city') {
                         CTX.fillStyle = "#444"; CTX.fillRect(tx, ty+35, 40, 5); // Piping
