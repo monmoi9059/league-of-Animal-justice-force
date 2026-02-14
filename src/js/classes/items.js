@@ -71,11 +71,11 @@ export class PropaneTank {
             this.x = -9999;
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
-        if (this.burning && Math.floor(Date.now() / 100) % 2 === 0) {
+        if (this.burning && Math.floor(now / 100) % 2 === 0) {
              ctx.fillStyle = "#e67e22"; // Flashing orange
         } else {
              ctx.fillStyle = "#e74c3c"; // Red tank
@@ -123,7 +123,7 @@ export class FallingBlock {
             }
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         ctx.fillStyle = "#7f8c8d";
         ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
         ctx.strokeStyle = "#2c3e50";
@@ -144,7 +144,7 @@ export class BridgeBlock {
             spawnExplosion(this.x, this.y, "grey", 1);
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         ctx.fillStyle = "#8e44ad"; // Purple bridge?
         ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
         ctx.beginPath();
@@ -198,7 +198,7 @@ export class MechSuit {
         spawnExplosion(this.x + 30, this.y + 40, "cyan", 5);
         this.x = -9999;
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         if (this.occupied) return; // Drawn with player
         let cx = this.x - camX;
         let cy = this.y - camY;
@@ -247,7 +247,7 @@ export class Helicopter {
             if(this.y < -200) this.x = -9999;
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
         ctx.fillStyle = "#27ae60"; // Green friendly heli
@@ -283,7 +283,7 @@ export class Dumpster {
              this.y = r * TILE_SIZE - this.h;
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         ctx.fillStyle = "#2c3e50"; // Dark blue
         ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
         ctx.fillStyle = "#95a5a6"; // Lid
@@ -343,7 +343,7 @@ export class TrappedBeast {
             }
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         if (this.freed) return;
         let cx = this.x - camX;
         let cy = this.y - camY;
@@ -373,7 +373,7 @@ export class Mailman {
         let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
         if (tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) this.vx *= -1;
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         ctx.fillStyle = "#3498db"; // Uniform
         ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
         ctx.fillStyle = "#ecf0f1"; // Bag

@@ -89,24 +89,24 @@ const Behaviors = {
 };
 
 const Renderers = {
-    circle: (color, radius) => (ctx, b, cx, cy) => {
+    circle: (color, radius) => (ctx, b, cx, cy, now) => {
         ctx.fillStyle = color;
         ctx.beginPath(); ctx.arc(cx + b.w/2, cy + b.h/2, radius, 0, Math.PI*2); ctx.fill();
     },
-    rect: (color) => (ctx, b, cx, cy) => {
+    rect: (color) => (ctx, b, cx, cy, now) => {
         ctx.fillStyle = color;
         ctx.fillRect(cx, cy, b.w, b.h);
     },
-    laser: (color) => (ctx, b, cx, cy) => {
+    laser: (color) => (ctx, b, cx, cy, now) => {
         ctx.fillStyle = color;
         ctx.shadowBlur = 10; ctx.shadowColor = color;
         ctx.fillRect(cx, cy, b.w, b.h);
         ctx.shadowBlur = 0;
     },
-    star: (color) => (ctx, b, cx, cy) => {
+    star: (color) => (ctx, b, cx, cy, now) => {
         ctx.save();
         ctx.translate(cx + b.w/2, cy + b.h/2);
-        ctx.rotate(Date.now() * 0.1);
+        ctx.rotate(now * 0.1);
         ctx.fillStyle = color;
         ctx.beginPath();
         for(let i=0; i<5; i++) {
@@ -116,7 +116,7 @@ const Renderers = {
         ctx.fill();
         ctx.restore();
     },
-    note: (color) => (ctx, b, cx, cy) => {
+    note: (color) => (ctx, b, cx, cy, now) => {
         ctx.fillStyle = color;
         ctx.font = "20px Arial";
         ctx.fillText("♪", cx, cy + 15);
@@ -146,8 +146,8 @@ export const WEAPONS = {
             createBullet(p, {
                 vx: p.facing * 15, w: 20, h: 20, life: 100, damage: 2,
                 behavior: Behaviors.boomerang(1),
-                renderer: (ctx, b, cx, cy) => {
-                    ctx.save(); ctx.translate(cx+10, cy+10); ctx.rotate(Date.now()*0.3);
+                renderer: (ctx, b, cx, cy, now) => {
+                    ctx.save(); ctx.translate(cx+10, cy+10); ctx.rotate(now*0.3);
                     ctx.fillStyle = "#888"; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
                     ctx.fillStyle = "#555"; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
                     ctx.restore();
@@ -178,7 +178,7 @@ export const WEAPONS = {
              createBullet(p, {
                  vx: p.facing * 18, w: 20, h: 20, damage: 3,
                  behavior: Behaviors.boomerang(1),
-                 renderer: (ctx, b, cx, cy) => {
+                 renderer: (ctx, b, cx, cy, now) => {
                      ctx.fillStyle = "#ccc"; ctx.fillRect(cx, cy, 15, 10); ctx.fillStyle = "#855e42"; ctx.fillRect(cx+5, cy+10, 5, 10);
                  }
              });

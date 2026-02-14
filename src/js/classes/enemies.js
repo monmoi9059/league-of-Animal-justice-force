@@ -164,7 +164,7 @@ export class Enemy {
         }
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -269,7 +269,7 @@ export class FlyingEnemy extends Enemy {
         this.x += this.vx;
         this.y += this.vy;
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -289,7 +289,7 @@ export class FlyingEnemy extends Enemy {
         ctx.strokeStyle = "#7f8c8d"; ctx.stroke();
 
         // Lights
-        let time = Date.now();
+        let time = now;
         for(let i=0; i<3; i++) {
             ctx.fillStyle = (Math.floor(time / 200) % 3 === i) ? "red" : "#550000";
             ctx.beginPath(); ctx.arc(cx + 10 + (i*10), cy + 20, 2, 0, Math.PI*2); ctx.fill();
@@ -343,7 +343,7 @@ export class KamikazeEnemy extends Enemy {
         super.takeDamage(amt, sourceX);
         if (this.hp <= 0) this.explode();
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -372,7 +372,7 @@ export class KamikazeEnemy extends Enemy {
         // Digital Face
         ctx.fillStyle = "red";
         ctx.font = "10px monospace";
-        let blink = Math.floor(Date.now() / 100) % 2 === 0;
+        let blink = Math.floor(now / 100) % 2 === 0;
         ctx.fillText(blink ? ":(" : "X(", cx + 12, cy + 28);
 
         // Chest Light
@@ -435,7 +435,7 @@ export class HeavyGunner extends Enemy {
         entities.push(b);
         if(soundManager) soundManager.play('enemy_shoot');
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -463,7 +463,7 @@ export class HeavyGunner extends Enemy {
         let gunX = this.facing === 1 ? cx + 40 : cx - 20;
         ctx.fillRect(gunX, cy + 25, 30, 10); // Barrel
         // Rotation
-        let spin = Math.sin(Date.now() * 0.5) * 2;
+        let spin = Math.sin(now * 0.5) * 2;
         ctx.fillStyle = "#111";
         ctx.fillRect(gunX + (this.facing===1?30:0), cy + 22 + spin, 5, 16);
     }
@@ -529,7 +529,7 @@ export class SniperEnemy extends Enemy {
         entities.push(b);
         if(soundManager) soundManager.play('enemy_shoot');
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -622,7 +622,7 @@ export class ShieldBearer extends Enemy {
              if(soundManager) soundManager.play('explosion');
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -730,7 +730,7 @@ export class CaptainEnemy extends Enemy {
              entities.push(new Helicopter(deathX, deathY - 50));
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -905,7 +905,7 @@ export class Boss {
             setTimeout(() => gameState.slowMo = 1.0, 2000);
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         if (this.hp <= 0) return;
         let cx = this.x - camX;
         let cy = this.y - camY;
@@ -1066,7 +1066,7 @@ export class HelicopterBoss {
             setTimeout(() => gameState.slowMo = 1.0, 3000);
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         if (this.hp <= 0) return;
         let cx = this.x - camX;
         let cy = this.y - camY;

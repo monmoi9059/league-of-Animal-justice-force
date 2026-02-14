@@ -26,6 +26,7 @@ export function drawMenu() {
 }
 
 export function drawRoster() {
+    const now = Date.now();
     CTX.setTransform(1, 0, 0, 1, 0, 0); // Safety reset
     CTX.clearRect(0,0,CANVAS.width,CANVAS.height);
     var grd = CTX.createLinearGradient(0, 0, 0, CANVAS.height);
@@ -64,7 +65,7 @@ export function drawRoster() {
             CTX.save();
             CTX.translate(cx, cy);
             CTX.scale(0.8, 0.8);
-            let frame = Date.now() / 100;
+            let frame = now / 100;
             drawAnatomicalHero(CTX, CHARACTERS[i], frame);
             CTX.restore();
 
@@ -93,6 +94,7 @@ export function drawRoster() {
 }
 
 export function drawGame() {
+    const now = Date.now();
     let sx = (secureRandom()-0.5) * gameState.shake;
     let sy = (secureRandom()-0.5) * gameState.shake;
 
@@ -182,7 +184,7 @@ export function drawGame() {
                     CTX.fillStyle = "#34495e"; // Dark Blue-Grey
                     CTX.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
                     // Windows
-                    CTX.fillStyle = (Math.floor(Date.now() / 1000) + c + r) % 3 === 0 ? "yellow" : "#2c3e50";
+                    CTX.fillStyle = (Math.floor(now / 1000) + c + r) % 3 === 0 ? "yellow" : "#2c3e50";
                     CTX.fillRect(tx+10, ty+10, 8, 12);
                     CTX.fillRect(tx+22, ty+10, 8, 12);
                     // Border
@@ -198,14 +200,14 @@ export function drawGame() {
         }
     }
 
-    debris.forEach(d => d.draw(CTX));
-    entities.forEach(e => e.draw(CTX, 0, 0));
+    debris.forEach(d => d.draw(CTX, 0, 0, now));
+    entities.forEach(e => e.draw(CTX, 0, 0, now));
     if (players) {
         players.forEach(p => {
-            if (p.health > 0) p.draw(CTX, 0, 0);
+            if (p.health > 0) p.draw(CTX, 0, 0, now);
         });
     }
-    particles.forEach(p => p.draw(CTX));
+    particles.forEach(p => p.draw(CTX, 0, 0, now));
 
     CTX.font = "900 20px 'Segoe UI'";
     CTX.lineWidth = 3;
