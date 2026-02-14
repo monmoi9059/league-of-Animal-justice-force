@@ -1,6 +1,5 @@
 import { Bullet, MeleeHitbox } from './projectiles.js';
 import { entities, gameState } from '../state.js';
-import { secureRandom } from '../math.js';
 import { spawnExplosion, shakeCamera, spawnDamageNumber } from '../utils.js';
 import { soundManager } from '../sound.js';
 import { drawRoundedRect } from '../graphics.js';

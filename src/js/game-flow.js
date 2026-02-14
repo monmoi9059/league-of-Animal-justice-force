@@ -3,10 +3,8 @@ import { gameState } from './state.js';
 export function winGame() {
     gameState.running = false;
     // Calculate Stats
-    gameState.levelCompleteStats.kills = 0; // Todo: Track kills properly in state?
-    // Simplified: Score / 100 roughly
-    let kills = Math.floor((gameState.score - (gameState.rescues * 500)) / 100);
-    if (kills < 0) kills = 0;
+    // gameState.levelCompleteStats.kills is already tracked in enemies.js
+    let kills = gameState.levelCompleteStats.kills;
 
     document.getElementById('lcKills').innerText = kills;
     document.getElementById('lcRescues').innerText = gameState.rescues;

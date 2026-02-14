@@ -1,8 +1,7 @@
-import { secureRandom } from '../math.js';
 import { rectIntersect } from '../physics.js';
 import { spawnExplosion, destroyRadius } from '../utils.js';
 import { tiles, entities, player } from '../state.js';
-import { TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH, ASSETS } from '../constants.js';
+import { TILE_SIZE, LEVEL_HEIGHT, ASSETS } from '../constants.js';
 import { soundManager } from '../sound.js';
 import { drawRoundedRect } from '../graphics.js';
 
@@ -37,7 +36,7 @@ export class Bullet {
         else this.vx = dir * 15;
 
         if (configOrCharData.vy !== undefined) this.vy = configOrCharData.vy;
-        else this.vy = (secureRandom() - 0.5) * 2;
+        else this.vy = (Math.random() - 0.5) * 2;
 
         // DOWNWARD SHOT OVERRIDE
         if (isDown) {
@@ -63,7 +62,7 @@ export class Bullet {
 
         // TYPE SPECIFIC ADJUSTMENTS (Legacy overrides unless custom behavior set)
         if (!this.behavior && !isDown && !isSecondary && !isUp) {
-            if (this.type === 'spread') { this.w = 8; this.h = 8; this.vx = dir * 15 + (secureRandom()-0.5)*5; this.vy = (secureRandom()-0.5)*10; }
+            if (this.type === 'spread') { this.w = 8; this.h = 8; this.vx = dir * 15 + (Math.random()-0.5)*5; this.vy = (Math.random()-0.5)*10; }
             if (this.type === 'rocket' || this.type === 'grenade') { this.w = 12; this.h = 12; this.vy = -5; }
             if (this.type === 'boomerang') { this.w = 20; this.h = 20; this.life = 100; }
             if (this.type === 'bolt') { this.w = 25; this.h = 10; }
@@ -76,7 +75,7 @@ export class Bullet {
             if (this.type === 'sonic_wave') { this.w = 10; this.h = 40; this.vx = dir * 8; this.life = 120; }
             if (this.type === 'lightning') { this.w = 50; this.h = 4; this.vx = dir * 40; }
             if (this.type === 'shuriken') { this.w = 15; this.h = 15; this.vx = dir * 18; this.rotation = 0; }
-            if (this.type === 'water_gun') { this.w = 12; this.h = 12; this.vx = dir * 14; this.vy = (secureRandom()-0.5)*5; }
+            if (this.type === 'water_gun') { this.w = 12; this.h = 12; this.vx = dir * 14; this.vy = (Math.random()-0.5)*5; }
             if (this.type === 'acid_spit') { this.w = 10; this.h = 10; this.vx = dir * 10; this.vy = -8; }
             if (this.type === 'card_throw') { this.w = 12; this.h = 4; this.vx = dir * 22; }
         }
@@ -130,7 +129,7 @@ export class Bullet {
         // COLLISIONS
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
 
-        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<gameState.levelData.width && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             let t = tiles[r][c];
             // Sonic wave passes through walls
             if (this.type === 'sonic_wave') {
@@ -286,7 +285,7 @@ export class Package {
         this.x += this.vx; this.y += this.vy; this.vy += 0.3; this.life--;
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
         let hit = false;
-        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) hit = true;
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<gameState.levelData.width && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) hit = true;
         if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) hit = true;
         if (hit || this.life <= 0) {
             spawnExplosion(this.x, this.y, "#e67e22", 1);
