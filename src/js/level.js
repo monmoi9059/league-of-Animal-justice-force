@@ -107,7 +107,7 @@ export function generateLevel() {
     }
 
     // 2. Terrain Walker
-    let currentHeight = 10;
+    let currentHeight = 35; // Start lower in the map
     let checkpointInterval = Math.floor(currentLevelWidth / 6);
     let nextCheckpoint = checkpointInterval;
     let checkpointsPlaced = 0;
@@ -177,7 +177,7 @@ export function generateLevel() {
             }
         }
         else {
-            currentHeight = 10;
+            currentHeight = 35;
         }
 
         surfaceMap[x] = currentHeight;
