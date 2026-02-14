@@ -325,7 +325,7 @@ export class Player {
         if (!isSpecial) this.vx -= this.facing * 2; // Recoil
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
         let cx = this.x - camX + this.w/2;
         let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));

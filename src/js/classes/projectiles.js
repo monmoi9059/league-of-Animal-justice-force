@@ -181,12 +181,12 @@ export class Bullet {
         }
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
         if (this.renderer) {
-            this.renderer(ctx, this, cx, cy); // Pass calculated screen coords
+            this.renderer(ctx, this, cx, cy, now); // Pass calculated screen coords
             return;
         }
 
@@ -194,7 +194,7 @@ export class Bullet {
         if (this.type === 'boomerang') {
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(Date.now() * 0.2);
+            ctx.rotate(now * 0.2);
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.moveTo(0,0); ctx.lineTo(15, -10); ctx.lineTo(10, 0); ctx.lineTo(15, 10); ctx.fill();
@@ -272,7 +272,7 @@ export class MeleeHitbox {
             }
         }
     }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         // Invisible Hitbox
         // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
         // ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
@@ -296,7 +296,7 @@ export class Package {
         }
     }
     takeDamage() { this.life = 0; }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
@@ -319,7 +319,7 @@ export class DebrisProjectile {
         }
     }
     takeDamage() { this.life = 0; }
-    draw(ctx, camX, camY) {
+    draw(ctx, camX, camY, now) {
         ctx.fillStyle = "#7f8c8d";
         ctx.beginPath(); ctx.arc(this.x - camX + 10, this.y - camY + 10, 8, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = "#95a5a6";
