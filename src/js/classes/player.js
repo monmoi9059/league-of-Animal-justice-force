@@ -358,7 +358,22 @@ export class Player {
                 }
 
                 if (allDead) {
-                    endGame();
+                    if (gameState.lives > 1) { // Check > 1 because we will decrement
+                        gameState.lives--;
+                        players.forEach(p => {
+                            p.dead = false;
+                            p.health = 3;
+                            p.x = gameState.spawnPoint.x;
+                            p.y = gameState.spawnPoint.y - 40;
+                            p.vx = 0; p.vy = 0;
+                            p.invincible = 120;
+                            spawnExplosion(p.x, p.y, "#00ff41", 2);
+                        });
+                        spawnDamageNumber(gameState.spawnPoint.x, gameState.spawnPoint.y, "GROUP RESPAWN!", "#00ff41");
+                        if(soundManager) soundManager.play('powerup');
+                    } else {
+                        endGame();
+                    }
                 } else {
                     spawnDamageNumber(gameState.spawnPoint.x, gameState.spawnPoint.y, "PLAYER DOWN!", "red");
                 }
