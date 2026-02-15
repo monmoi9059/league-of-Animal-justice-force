@@ -19,12 +19,15 @@ export class Player {
     }
     setCharacter(typeId) {
         this.charData = CHARACTERS.find(c => c.id === typeId) || CHARACTERS[0];
+        // Apply Character Dimensions
+        this.w = this.charData.w || 24;
+        this.h = this.charData.h || 30;
         if (this.index === 0) updateUI(); // Only update UI for P1 for now
     }
     reset() {
         this.x = gameState.spawnPoint.x + (this.index * 20); // Spread spawn
         this.y = gameState.spawnPoint.y;
-        this.w = 24; this.h = 30; // SLIM FIT HITBOX
+        this.w = 24; this.h = 30; // Default, overwritten in setCharacter
         this.vx = 0; this.vy = 0; this.speed = 5;
         this.grounded = false; this.facing = 1; this.health = 3; this.invincible = 0;
         this.stretchX = 1; this.stretchY = 1; this.animFrame = 0;
@@ -396,6 +399,19 @@ export class Player {
         particles.push(new Particle(this.x + (this.facing*30), this.y + 10, "yellow"));
         shakeCamera(2);
 
+        // Determine spawn point based on stance
+        let spawnX = this.x + this.w/2 + (this.facing * 10);
+        let spawnY = this.y + 15;
+
+        // Adjust for weapon mount type
+        if (this.charData.mount === 'back') {
+            spawnY = this.y + 5;
+            spawnX = this.x + this.w/2 + (this.facing * 5);
+        } else if (this.charData.mount === 'mouth') {
+            spawnY = this.y + this.h - 10;
+            spawnX = this.x + (this.facing === 1 ? this.w : 0);
+        }
+
         // Generic Down/Up Shot Logic to preserve platforming mechanics
         if (!isSpecial) {
              if (isDown) {
@@ -427,7 +443,7 @@ export class Player {
             }
         } else {
              // Fallback for undefined weapons
-             entities.push(new Bullet(this.x + 15 + (15*this.facing), this.y + 15, this.facing, isSpecial, this.charData));
+             entities.push(new Bullet(spawnX, spawnY, this.facing, isSpecial, this.charData));
              this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
         }
 
@@ -443,11 +459,16 @@ export class Player {
         ctx.save();
         ctx.translate(cx, cy);
         ctx.scale(this.facing * this.stretchX, this.stretchY);
+
         // Shadow (At ground level)
-        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, 15, 20, 5, 0, 0, Math.PI*2); ctx.fill();
+        // Adjust shadow based on width
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(0, this.h/2, this.w/1.5, 5, 0, 0, Math.PI*2); ctx.fill();
 
         // Offset sprite up so feet align with shadow/ground
-        ctx.translate(0, -22);
+        // Standard biped offset was -22 (approx h/2 + bob)
+        // Dynamic offset:
+        ctx.translate(0, -this.h/2 - 7); // -7 acts as base bob/leg padding
+
         drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim);
         ctx.restore();
 
