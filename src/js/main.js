@@ -226,13 +226,15 @@ window.startGame = function() {
 
         let newPlayers = [];
         // Ensure Unique Characters for all players
+        let needed = activeConfigs.length;
+
         // 1. Create a pool of available indices (unlocked)
         let availableCount = Math.min(gameState.globalUnlocked, CHARACTERS.length);
         let pool = [];
         for(let i=0; i<availableCount; i++) pool.push(i);
 
         // 2. If we need more characters than unlocked, add locked ones sequentially
-        let needed = activeConfigs.length;
+        // To guarantee uniqueness, we MUST have at least 'needed' characters in the pool.
         if (pool.length < needed) {
             for(let i=availableCount; i<CHARACTERS.length && pool.length < needed; i++) {
                 pool.push(i);
@@ -249,7 +251,9 @@ window.startGame = function() {
             // We create Player with the SLOT index so it reads from playerKeys[slot]
             let p = new Player(obj.slot);
 
-            // Assign from shuffled pool. If pool exhausted (rare if CHARACTERS > 4), loop back.
+            // Assign from shuffled pool.
+            // Use direct index access to guarantee uniqueness for the first N players.
+            // The modulo fallback handles the unlikely case where CHARACTERS.length < needed.
             let charIdx = pool[idx % pool.length];
             p.setCharacter(CHARACTERS[charIdx].id);
 

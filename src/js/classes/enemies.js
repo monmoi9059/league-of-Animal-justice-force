@@ -314,8 +314,33 @@ export class KamikazeEnemy extends Enemy {
         this.speed = 4;
         this.chaseSpeed = 5;
         this.color = "#d35400";
+        this.charging = false;
+        this.chargeTimer = 0;
     }
     update() {
+        if (this.charging) {
+            this.vx = 0;
+            this.vy += GRAVITY;
+            this.y += this.vy;
+
+            // Ground Collision only (simple)
+            let r = Math.floor((this.y + this.h) / TILE_SIZE);
+            if (r >= 0 && r < LEVEL_HEIGHT && tiles[r]) {
+                 // Check feet x
+                 let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+                 if (tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+                     this.y = r * TILE_SIZE - this.h;
+                     this.vy = 0;
+                 }
+            }
+
+            this.chargeTimer--;
+            if (this.chargeTimer <= 0) {
+                this.explode();
+            }
+            return;
+        }
+
         // Use standard logic for movement, but override chase behavior slightly
         super.update();
 
@@ -333,7 +358,11 @@ export class KamikazeEnemy extends Enemy {
         }
 
         if (target) {
-            if (minDist < 50) this.explode();
+            if (minDist < 50) {
+                this.charging = true;
+                this.chargeTimer = 60; // 1 second delay
+                // Optional: Play alert sound here if wanted
+            }
         }
     }
     explode() {
@@ -375,10 +404,20 @@ export class KamikazeEnemy extends Enemy {
         ctx.fillStyle = "red";
         ctx.font = "10px monospace";
         let blink = Math.floor(now / 100) % 2 === 0;
-        ctx.fillText(blink ? ":(" : "X(", cx + 12, cy + 28);
+
+        if (this.charging) {
+            blink = Math.floor(now / 10) % 2 === 0; // Faster blink
+            ctx.fillStyle = blink ? "white" : "red";
+            ctx.font = "bold 12px monospace";
+            // Show countdown or exclamation
+            ctx.fillText("!!!", cx + 14, cy + 28);
+        } else {
+            ctx.fillText(blink ? ":(" : "X(", cx + 12, cy + 28);
+        }
 
         // Chest Light
         ctx.fillStyle = blink ? "red" : "#500";
+        if (this.charging && blink) ctx.fillStyle = "yellow";
         ctx.beginPath(); ctx.arc(cx + 20, cy + 35, 3, 0, Math.PI*2); ctx.fill();
     }
 }
