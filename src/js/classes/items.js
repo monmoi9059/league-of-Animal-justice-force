@@ -2,7 +2,7 @@ import { TILE_SIZE, GRAVITY, LEVEL_HEIGHT, LEVEL_WIDTH, CHARACTERS } from '../co
 import { tiles, players, gameState } from '../state.js';
 import { checkRectOverlap } from '../physics.js';
 import { spawnExplosion, createExplosion, unlockCharacter, spawnDamageNumber } from '../utils.js';
-import { drawRoundedRect } from '../graphics.js';
+import { drawRoundedRect, drawAnatomicalHero } from '../graphics.js';
 import { playerKeys } from '../state.js';
 import { winGame } from '../game-flow.js';
 import { updateUI } from '../ui.js';
@@ -296,6 +296,22 @@ export class TrappedBeast {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
         this.hp = 100; // Required to persist in entity list
+
+        // Decide which character is trapped. This is the character the player will switch to.
+        // We pick from currently unlocked characters to ensure valid switch logic,
+        // OR we could pick the NEXT unlockable if we want to preview it (but the switch logic needs to match).
+
+        // Current logic: unlockCharacter() bumps globalUnlocked.
+        // Switch logic: Picks random unlocked.
+
+        // Let's make it consistent: The cage holds a specific character.
+        // If you free them, you switch to THAT character.
+
+        // To keep it simple and robust:
+        // Pick a random unlocked character to be the "prisoner".
+        let availableCount = Math.max(1, gameState.globalUnlocked);
+        let possibleChars = CHARACTERS.slice(0, availableCount);
+        this.prisonerChar = possibleChars[Math.floor(secureRandom() * possibleChars.length)];
     }
     update() {
         // Check intersection with any player
@@ -312,29 +328,36 @@ export class TrappedBeast {
         if (touchingPlayer) {
             this.freed = true;
             spawnExplosion(this.x, this.y, "green", 2);
-            unlockCharacter(touchingPlayer);
+            unlockCharacter(touchingPlayer); // This might unlock a NEW char, but we switch to the prisoner
             gameState.rescues++;
 
             // Extra Life
             gameState.lives++;
             spawnDamageNumber(this.x, this.y - 40, "1 UP!", "gold");
+
+            // Revive ONE dead teammate
+            if (players) {
+                for(let p of players) {
+                    if (p.dead) {
+                        p.dead = false;
+                        p.health = 3;
+                        p.x = this.x;
+                        p.y = this.y - 40; // Spawn slightly above
+                        p.vx = 0; p.vy = -5; // Pop up
+                        p.invincible = 120;
+                        spawnExplosion(p.x, p.y, "#00ff41", 2);
+                        spawnDamageNumber(p.x, p.y - 20, "REVIVED!", "green");
+                        break; // Only one per cage
+                    }
+                }
+            }
+
             if(typeof soundManager !== 'undefined' && soundManager) soundManager.play('powerup');
             try { updateUI(); } catch(e) {}
 
-            // Switch Character Logic
-            if (touchingPlayer) {
-                // Pick random unlocked character
-                let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
-                let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
-                let newCharId = unlockedChars[newCharIndex].id;
-
-                // Ensure switch if possible (optional, but good for UX)
-                if (unlockedChars.length > 1 && newCharId === touchingPlayer.charData.id) {
-                     newCharIndex = (newCharIndex + 1) % unlockedChars.length;
-                     newCharId = unlockedChars[newCharIndex].id;
-                }
-
-                touchingPlayer.setCharacter(newCharId);
+            // Switch Character Logic - Switch to the specific prisoner we saw
+            if (touchingPlayer && this.prisonerChar) {
+                touchingPlayer.setCharacter(this.prisonerChar.id);
                 touchingPlayer.health = 3; // Reset health
                 updateUI(); // Reflect health change
 
@@ -347,16 +370,21 @@ export class TrappedBeast {
         if (this.freed) return;
         let cx = this.x - camX;
         let cy = this.y - camY;
-        // Cage
+
+        // Character inside (scaled down to fit 40x40 cage)
+        ctx.save();
+        ctx.translate(cx + 20, cy + 30); // Center, slightly down
+        ctx.scale(0.8, 0.8); // Scale
+        drawAnatomicalHero(ctx, this.prisonerChar, 0, { type: null, timer: 0 });
+        ctx.restore();
+
+        // Cage Bars (Overlay)
         ctx.strokeStyle = "#bdc3c7";
         ctx.lineWidth = 2;
         ctx.strokeRect(cx, cy, this.w, this.h);
         for(let i=10; i<this.w; i+=10) {
             ctx.beginPath(); ctx.moveTo(cx+i, cy); ctx.lineTo(cx+i, cy+this.h); ctx.stroke();
         }
-        // Beast inside
-        ctx.fillStyle = "#e67e22";
-        ctx.beginPath(); ctx.arc(cx+20, cy+20, 10, 0, Math.PI*2); ctx.fill();
     }
 }
 

@@ -1,6 +1,6 @@
 import { CHARACTERS, LEVEL_HEIGHT, LEVEL_WIDTH, JUMP_FORCE, ACCELERATION, FRICTION, GRAVITY, TERMINAL_VELOCITY, TILE_SIZE, ASSETS } from '../constants.js';
 import { updateUI } from '../ui.js';
-import { gameState, playerKeys, tiles, particles, entities } from '../state.js';
+import { gameState, playerKeys, tiles, particles, entities, players } from '../state.js';
 import { winGame, endGame } from '../game-flow.js';
 import { spawnExplosion, spawnDamageNumber, shakeCamera } from '../utils.js';
 import { Particle } from './particles.js';
@@ -39,6 +39,8 @@ export class Player {
         this.stamina = 100;
         this.maxStamina = 100;
         this.staminaRecharge = 1;
+
+        this.dead = false;
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
@@ -51,6 +53,7 @@ export class Player {
         this.x = gameState.spawnPoint.x; this.y = gameState.spawnPoint.y - 40;
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
         this.stamina = 100;
+        this.dead = false;
         spawnExplosion(this.x, this.y, "#00ff41", 2);
         if(soundManager) soundManager.play('powerup'); // Respawn sound
     }
@@ -75,6 +78,7 @@ export class Player {
     }
 
     update() {
+        if (this.dead) return;
         this.lastY = this.y;
         if(this.secondaryCooldown > 0) this.secondaryCooldown--;
         if(this.attackAnim.timer > 0) this.attackAnim.timer--;
@@ -282,7 +286,24 @@ export class Player {
                             tiles[row][col].active = true; gameState.checkpointsHit++;
                             gameState.spawnPoint = { x: col * TILE_SIZE, y: (row * TILE_SIZE) - 40 };
                             spawnExplosion(col*TILE_SIZE+20, row*TILE_SIZE+20, "#00ff41", 2);
-                            if(this.health < 3) this.health = 3; updateUI();
+                            if(this.health < 3) this.health = 3;
+
+                            // Revive dead players
+                            if (players) {
+                                players.forEach(p => {
+                                    if (p.dead) {
+                                        p.dead = false;
+                                        p.health = 3;
+                                        p.x = gameState.spawnPoint.x;
+                                        p.y = gameState.spawnPoint.y;
+                                        p.vx = 0; p.vy = 0;
+                                        p.invincible = 120;
+                                        spawnExplosion(p.x, p.y, "#00ff41", 2);
+                                        if(soundManager) soundManager.play('powerup');
+                                    }
+                                });
+                            }
+                            updateUI();
                         }
                         continue;
                     }
@@ -317,10 +338,34 @@ export class Player {
         }
     }
     takeDamage(amt = 1) {
-        if(this.invincible > 0) return;
+        if(this.invincible > 0 || this.dead) return;
         this.health -= amt; shakeCamera(15); this.invincible = 60; spawnExplosion(this.x, this.y, "red");
         if(soundManager) soundManager.play('hurt');
-        if(this.health <= 0) this.respawn();
+
+        if(this.health <= 0) {
+            // Multiplayer Logic
+            if (players && players.length > 1) {
+                this.dead = true;
+                this.x = -9999; // Move offscreen
+
+                // Check if ALL are dead
+                let allDead = true;
+                for(let p of players) {
+                    if (!p.dead && p.health > 0) {
+                        allDead = false;
+                        break;
+                    }
+                }
+
+                if (allDead) {
+                    endGame();
+                } else {
+                    spawnDamageNumber(gameState.spawnPoint.x, gameState.spawnPoint.y, "PLAYER DOWN!", "red");
+                }
+            } else {
+                this.respawn();
+            }
+        }
         updateUI();
     }
 
@@ -375,6 +420,7 @@ export class Player {
     }
 
     draw(ctx, camX, camY, now) {
+        if (this.dead) return;
         if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
         let cx = this.x - camX + this.w/2;
         let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));
