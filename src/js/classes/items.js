@@ -2,7 +2,7 @@ import { TILE_SIZE, GRAVITY, LEVEL_HEIGHT, LEVEL_WIDTH, CHARACTERS } from '../co
 import { tiles, players, gameState } from '../state.js';
 import { checkRectOverlap } from '../physics.js';
 import { spawnExplosion, createExplosion, unlockCharacter, spawnDamageNumber } from '../utils.js';
-import { drawRoundedRect } from '../graphics.js';
+import { drawRoundedRect, drawAnatomicalHero } from '../graphics.js';
 import { playerKeys } from '../state.js';
 import { winGame } from '../game-flow.js';
 import { updateUI } from '../ui.js';
@@ -296,6 +296,9 @@ export class TrappedBeast {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
         this.hp = 100; // Required to persist in entity list
+
+        // Fallback for maxed roster
+        this.randomFallback = CHARACTERS[Math.floor(secureRandom() * CHARACTERS.length)];
     }
     update() {
         // Check intersection with any player
@@ -318,6 +321,24 @@ export class TrappedBeast {
             // Extra Life
             gameState.lives++;
             spawnDamageNumber(this.x, this.y - 40, "1 UP!", "gold");
+
+            // Revive ONE dead teammate
+            if (players) {
+                for(let p of players) {
+                    if (p.dead) {
+                        p.dead = false;
+                        p.health = 3;
+                        p.x = this.x;
+                        p.y = this.y - 40; // Spawn slightly above
+                        p.vx = 0; p.vy = -5; // Pop up
+                        p.invincible = 120;
+                        spawnExplosion(p.x, p.y, "#00ff41", 2);
+                        spawnDamageNumber(p.x, p.y - 20, "REVIVED!", "green");
+                        break; // Only one per cage
+                    }
+                }
+            }
+
             if(typeof soundManager !== 'undefined' && soundManager) soundManager.play('powerup');
             try { updateUI(); } catch(e) {}
 
@@ -347,16 +368,25 @@ export class TrappedBeast {
         if (this.freed) return;
         let cx = this.x - camX;
         let cy = this.y - camY;
-        // Cage
+
+        // Determine who is inside (Dynamic to support multiple unlocks in one run)
+        let charToShow = CHARACTERS[gameState.globalUnlocked];
+        if (!charToShow) charToShow = this.randomFallback;
+
+        // Character inside (scaled down to fit 40x40 cage)
+        ctx.save();
+        ctx.translate(cx + 20, cy + 30); // Center, slightly down
+        ctx.scale(0.8, 0.8); // Scale
+        drawAnatomicalHero(ctx, charToShow, 0, { type: null, timer: 0 });
+        ctx.restore();
+
+        // Cage Bars (Overlay)
         ctx.strokeStyle = "#bdc3c7";
         ctx.lineWidth = 2;
         ctx.strokeRect(cx, cy, this.w, this.h);
         for(let i=10; i<this.w; i+=10) {
             ctx.beginPath(); ctx.moveTo(cx+i, cy); ctx.lineTo(cx+i, cy+this.h); ctx.stroke();
         }
-        // Beast inside
-        ctx.fillStyle = "#e67e22";
-        ctx.beginPath(); ctx.arc(cx+20, cy+20, 10, 0, Math.PI*2); ctx.fill();
     }
 }
 
