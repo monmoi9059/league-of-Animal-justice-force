@@ -147,8 +147,10 @@ export function drawGame() {
     let startCol = Math.floor(gameState.cameraX / TILE_SIZE); let endCol = startCol + (visibleW / TILE_SIZE) + 4;
     let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (visibleH / TILE_SIZE) + 4;
 
+    const currentLevelWidth = gameState.levelData.width || LEVEL_WIDTH;
+
     for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
-        for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) { // Use constant LEVEL_WIDTH for loop bound if array is large enough, or better check array length?
+        for(let c=startCol; c<endCol && c<currentLevelWidth; c++) {
             // Actually tiles[r] might not exist if r is out of bounds, but we check r<LEVEL_HEIGHT
             if(tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
                 let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;

@@ -27,7 +27,7 @@ export class PropaneTank {
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
         // Use dynamic width check from tiles array if available
-        let maxW = tiles && tiles[0] ? tiles[0].length : LEVEL_WIDTH;
+        let maxW = gameState.levelData.width || LEVEL_WIDTH;
         let maxH = tiles ? tiles.length : LEVEL_HEIGHT;
 
         if (r >= 0 && r < maxH && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
@@ -166,7 +166,8 @@ export class MechSuit {
             this.y += 5; // Simple gravity
              let r = Math.floor((this.y + this.h) / TILE_SIZE);
              let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+             let maxW = gameState.levelData.width || LEVEL_WIDTH;
+             if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
                  this.y = r * TILE_SIZE - this.h;
              }
 
@@ -279,7 +280,8 @@ export class Dumpster {
         this.y += 5;
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+        let maxW = gameState.levelData.width || LEVEL_WIDTH;
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
              this.y = r * TILE_SIZE - this.h;
         }
     }

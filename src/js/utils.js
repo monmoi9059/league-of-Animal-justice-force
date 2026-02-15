@@ -25,9 +25,10 @@ export function spawnDebris(x, y, color) {
 }
 
 export function destroyRadius(cx, cy, r) {
+    const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
     for(let y = cy - r; y <= cy + r; y++) {
         for(let x = cx - r; x <= cx + r; x++) {
-            if(y>=0 && y<LEVEL_HEIGHT && x>=0 && x<LEVEL_WIDTH) {
+            if(y>=0 && y<LEVEL_HEIGHT && x>=0 && x<levelWidth) {
                 let t = tiles[y][x];
                 if(t) {
                     if (t.type === 1) {

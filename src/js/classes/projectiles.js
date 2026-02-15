@@ -1,7 +1,7 @@
 import { secureRandom } from '../math.js';
 import { rectIntersect } from '../physics.js';
 import { spawnExplosion, destroyRadius } from '../utils.js';
-import { tiles, entities, player } from '../state.js';
+import { tiles, entities, player, gameState } from '../state.js';
 import { TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH, ASSETS } from '../constants.js';
 import { soundManager } from '../sound.js';
 import { drawRoundedRect } from '../graphics.js';
@@ -129,8 +129,9 @@ export class Bullet {
     checkCollisions() {
         // COLLISIONS
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
 
-        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<levelWidth && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             let t = tiles[r][c];
             // Sonic wave passes through walls
             if (this.type === 'sonic_wave') {
@@ -286,7 +287,8 @@ export class Package {
         this.x += this.vx; this.y += this.vy; this.vy += 0.3; this.life--;
         let c = Math.floor(this.x / TILE_SIZE); let r = Math.floor(this.y / TILE_SIZE);
         let hit = false;
-        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) hit = true;
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
+        if (r>=0 && r<LEVEL_HEIGHT && c>=0 && c<levelWidth && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) hit = true;
         if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) hit = true;
         if (hit || this.life <= 0) {
             spawnExplosion(this.x, this.y, "#e67e22", 1);
