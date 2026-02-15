@@ -1,5 +1,5 @@
 import { secureRandom } from '../math.js';
-import { tiles } from '../state.js';
+import { tiles, gameState } from '../state.js';
 import { TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH } from '../constants.js';
 
 export class Particle {
@@ -78,7 +78,8 @@ export class SparkParticle {
         // Bounce off floor
         let r = Math.floor(this.y / TILE_SIZE);
         let c = Math.floor(this.x / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < levelWidth && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
             this.vy *= -0.6;
             this.vx *= 0.6;
             this.y = r * TILE_SIZE - 2;
@@ -113,7 +114,8 @@ export class RockChunk {
         this.life--;
         let r=Math.floor(this.y/TILE_SIZE);
         let c=Math.floor(this.x/TILE_SIZE);
-        if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<LEVEL_WIDTH && tiles[r] && tiles[r][c] && tiles[r][c].type!==0) {
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
+        if(r>=0 && r<LEVEL_HEIGHT && c>=0 && c<levelWidth && tiles[r] && tiles[r][c] && tiles[r][c].type!==0) {
             this.vy=0;
             this.vx*=0.8;
             this.rotSpeed*=0.8;

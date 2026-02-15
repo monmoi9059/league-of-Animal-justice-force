@@ -32,9 +32,10 @@ export class Enemy {
         // Vertical Collision (Ground)
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
 
         // Check for solid ground (Type 1=Dirt, 2=Stone, 3=Metal)
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < levelWidth && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -96,7 +97,7 @@ export class Enemy {
         let wallCheckX = Math.floor((nextX + (this.vx > 0 ? this.w : 0)) / TILE_SIZE);
 
         let hitWall = false;
-        if (wallCheckX >= 0 && wallCheckX < LEVEL_WIDTH) {
+        if (wallCheckX >= 0 && wallCheckX < levelWidth) {
              let t1 = (tiles[wallCheckY_Top] && tiles[wallCheckY_Top][wallCheckX]);
              let t2 = (tiles[wallCheckY_Bot] && tiles[wallCheckY_Bot][wallCheckX]);
 
@@ -109,13 +110,16 @@ export class Enemy {
 
         // Check Ledge Ahead (Ground Check at next position)
         // We check the tile directly below the future feet position
-        let ledgeCheckX = Math.floor((nextX + (this.vx > 0 ? this.w : 0)) / TILE_SIZE);
+        let checkDir = this.facing;
+        let checkX = this.x + (checkDir > 0 ? this.w : 0) + (checkDir * 5);
+        let ledgeCheckX = Math.floor(checkX / TILE_SIZE);
+
         // Or check center? Standard platformer check usually checks the leading edge.
         // If leading edge is over empty space, turn back.
         let ledgeCheckY = Math.floor((this.y + this.h + 2) / TILE_SIZE); // Look slightly down
 
         let hitLedge = false;
-        if (ledgeCheckY < LEVEL_HEIGHT && ledgeCheckX >= 0 && ledgeCheckX < LEVEL_WIDTH) {
+        if (ledgeCheckY < LEVEL_HEIGHT && ledgeCheckX >= 0 && ledgeCheckX < levelWidth) {
             let t = tiles[ledgeCheckY][ledgeCheckX];
             // If air (0) or non-solid, it's a ledge.
             if (!t || t.type === 0 || t.type === 4 || t.type === 6) {
@@ -258,8 +262,9 @@ export class FlyingEnemy extends Enemy {
         let nextY = this.y + targetVy;
         let r = Math.floor((nextY + this.h/2) / TILE_SIZE);
         let c = Math.floor((nextX + this.w/2) / TILE_SIZE);
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
 
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < levelWidth && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
              // Hit wall, bounce back
              targetVx *= -1.5;
              targetVy *= -1.5;
@@ -399,7 +404,8 @@ export class HeavyGunner extends Enemy {
         // Ground Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < levelWidth && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -489,7 +495,8 @@ export class SniperEnemy extends Enemy {
         // Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
         let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < LEVEL_WIDTH && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
+        const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
+        if (r >= 0 && r < LEVEL_HEIGHT && c >= 0 && c < levelWidth && tiles[r] && tiles[r][c] && (tiles[r][c].type === 1 || tiles[r][c].type === 2 || tiles[r][c].type === 3)) {
             this.y = r * TILE_SIZE - this.h;
             this.vy = 0;
         }
@@ -797,11 +804,7 @@ export class Boss {
         this.dirY = 1;
     }
     update() {
-        // Player is imported as 'player' which is an array in state.js? No 'player' var is null mostly.
-        // I need to use 'players' array.
-        // Wait, Boss logic in original code used `player.x`.
-        // I need to use a valid target.
-        // Let's find nearest player.
+        // Find nearest player
         let target = null;
         let minDist = 9999;
         if (players) {
@@ -1069,7 +1072,8 @@ export class HelicopterBoss {
             gameState.bossActive = false;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'none';
             this.x = -9999;
-            entities.push(new Helicopter((LEVEL_WIDTH - 15) * TILE_SIZE, 8 * TILE_SIZE, false)); // Extraction Heli
+            const levelWidth = gameState.levelData.width || LEVEL_WIDTH;
+            entities.push(new Helicopter((levelWidth - 15) * TILE_SIZE, 8 * TILE_SIZE, false)); // Extraction Heli
             gameState.slowMo = 0.1;
             setTimeout(() => gameState.slowMo = 1.0, 3000);
         }

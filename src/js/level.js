@@ -245,8 +245,6 @@ export function generateLevel() {
     }
 
     // 4. PASS 3: SURFACE OBJECTS & FLOATING ISLANDS
-    checkpointsPlaced = 0;
-    nextCheckpoint = Math.floor(currentLevelWidth / 6);
     lastEncounterX = 20;
 
     for (let x = 20; x < currentLevelWidth - 40; x++) {
