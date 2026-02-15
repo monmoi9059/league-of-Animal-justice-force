@@ -57,29 +57,35 @@ export function drawRoster() {
     CTX.fillStyle = grd; CTX.fillRect(0,0,CANVAS.width,CANVAS.height);
 
     let padding = 70;
-    let cols = 12; // More columns
+    let cols = 18; // Increased columns for 200+ heroes
     let totalWidth = cols * padding;
-    let startX = (CANVAS.width - totalWidth) / 2 + padding/2;
-    let startY = 100;
+    let totalHeight = Math.ceil(CHARACTERS.length / cols) * padding;
 
-    // Scale down if screen is small
-    let scale = 1;
-    if (totalWidth > CANVAS.width) scale = CANVAS.width / (totalWidth + 50);
+    // Scale down if screen is small (both width and height)
+    let scaleX = 1;
+    let scaleY = 1;
 
-    CTX.save();
-    CTX.scale(scale, scale);
-    if(scale < 1) startX = (CANVAS.width/scale - totalWidth)/2 + padding/2;
+    if (totalWidth > CANVAS.width - 50) scaleX = (CANVAS.width - 50) / totalWidth;
+    if (totalHeight > CANVAS.height - 150) scaleY = (CANVAS.height - 150) / totalHeight;
 
+    let scale = Math.min(scaleX, scaleY);
+
+    // Title
     CTX.font = "30px 'Courier New'";
     CTX.fillStyle = "#00ff41";
     CTX.textAlign = "center";
-    CTX.fillText("ROSTER STATUS: " + gameState.globalUnlocked + " / " + CHARACTERS.length + " HEROES UNLOCKED", (CANVAS.width/scale)/2, 50);
+    CTX.fillText("ROSTER STATUS: " + gameState.globalUnlocked + " / " + CHARACTERS.length + " HEROES UNLOCKED", CANVAS.width/2, 50);
+
+    CTX.save();
+    // Center grid
+    CTX.translate((CANVAS.width - (totalWidth * scale))/2, 100);
+    CTX.scale(scale, scale);
 
     for(let i=0; i<CHARACTERS.length; i++) {
         let row = Math.floor(i / cols);
         let col = i % cols;
-        let cx = startX + col * padding;
-        let cy = startY + row * padding;
+        let cx = col * padding + padding/2;
+        let cy = row * padding + padding/2;
 
         CTX.fillStyle = "rgba(255,255,255,0.1)";
         drawRoundedRect(CTX, cx-30, cy-30, 60, 60, 10);
@@ -93,7 +99,9 @@ export function drawRoster() {
             CTX.restore();
 
             CTX.fillStyle = "#aaa"; CTX.font = "8px Arial";
-            CTX.fillText(CHARACTERS[i].name.split(" ")[0], cx, cy+40);
+            let name = CHARACTERS[i].name.split(" ")[0];
+            if(name.length > 8) name = name.substring(0,8);
+            CTX.fillText(name, cx, cy+40);
         } else {
             CTX.fillStyle = "#222";
             CTX.beginPath(); CTX.arc(cx, cy, 15, 0, Math.PI*2); CTX.fill();
@@ -108,8 +116,12 @@ export function drawRoster() {
                 CTX.font = "10px Arial"; CTX.fillText("NEXT", cx, cy-5);
                 CTX.font = "bold 16px Arial"; CTX.fillStyle = "#00ff41"; CTX.fillText(remaining, cx, cy+12);
             } else {
-                CTX.font = "10px Arial"; CTX.fillText("NEED", cx, cy-5);
-                CTX.font = "16px Arial"; CTX.fillText(remaining, cx, cy+12);
+                if (i < gameState.globalUnlocked + 10) {
+                    CTX.font = "10px Arial"; CTX.fillText("NEED", cx, cy-5);
+                    CTX.font = "16px Arial"; CTX.fillText(remaining, cx, cy+12);
+                } else {
+                    CTX.font = "20px Arial"; CTX.fillText("?", cx, cy+8);
+                }
             }
         }
     }

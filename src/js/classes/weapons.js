@@ -1251,4 +1251,933 @@ export const WEAPONS = {
              createBullet(p, { vx: p.facing*10, w: 80, h: 20, damage: 5, life: 40, renderer: Renderers.rect('green') });
         }
     }
+,
+    'willywombat': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#dda0dd', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#dda0dd', 15) });
+        }
+    },
+    'mandalmatian': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 20, h: 20, damage: 3, type: 'fireball' });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 10, w: 60, h: 40, damage: 8, life: 40, type: 'fireball' });
+        }
+    },
+    'kungfupanther': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 5, damage: 4, renderer: Renderers.laser('#ffd700') });
+        },
+        special: (p) => {
+            createBullet(p, { x: p.x + 100*p.facing, y: p.y - 100, vx: 0, vy: 20, w: 20, h: 200, damage: 10, renderer: Renderers.laser('#ffd700') });
+        }
+    },
+    'minnowion': {
+        shoot: (p) => {
+            for(let i=-1; i<=1; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 8, h: 8, damage: 2, renderer: Renderers.circle('#ffd700', 4) });
+        },
+        special: (p) => {
+            for(let i=-3; i<=3; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        }
+    },
+    'mooana': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'batmanatee': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffff00', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffff00', 15) });
+        }
+    },
+    'moolan': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'yodog': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 4, behavior: Behaviors.wave(0.1, 5), renderer: Renderers.star('#00ff00') });
+        },
+        special: (p) => {
+            for(let i=0; i<5; i++) createBullet(p, { vx: p.facing*15, vy: (i-2)*3, w: 15, h: 15, damage: 4, renderer: Renderers.star('#00ff00') });
+        }
+    },
+    'alihen': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 12, w: 15, h: 15, damage: 3, type: 'acid_spit', renderer: Renderers.circle('#00ff00', 8) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 8, w: 50, h: 50, damage: 1, life: 100, renderer: Renderers.circle('#00ff00', 25) });
+        }
+    },
+    'drmanhatcat': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'supermanta': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#ff0000') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#ff0000') });
+        }
+    },
+    'freddycougar': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'chewbarka': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'eweve': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#0000ff') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#0000ff') });
+        }
+    },
+    'wickedfish': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ff00', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ff00', 15) });
+        }
+    },
+    'beastbee': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff0000', 15) });
+        }
+    },
+    'wonderwombat': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'woodpecker': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#a52a2a', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#a52a2a', 15) });
+        }
+    },
+    'madcatter': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#da70d6', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#da70d6', 15) });
+        }
+    },
+    'duckula': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff0000', 15) });
+        }
+    },
+    'stitchostrich': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#00ff00') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#00ff00') });
+        }
+    },
+    'monkeysifu': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#8b4513', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#8b4513', 15) });
+        }
+    },
+    'oompallama': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#8b4513', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#8b4513', 15) });
+        }
+    },
+    'hercowles': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'cheshirerat': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#da70d6', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#da70d6', 15) });
+        }
+    },
+    'grub': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 20, h: 5, damage: 3, renderer: Renderers.rect('#add8e6') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 60, h: 60, damage: 2, life: 60, renderer: Renderers.rect('rgba(200,255,255,0.5)') });
+        }
+    },
+    'lightningmcqueen': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffff00', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffff00', 15) });
+        }
+    },
+    'indianabones': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'greensparrow': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ff00', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ff00', 15) });
+        }
+    },
+    'johnlick': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'fiony': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'neot': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'tinkerbull': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 4, behavior: Behaviors.wave(0.1, 5), renderer: Renderers.star('#ffd700') });
+        },
+        special: (p) => {
+            for(let i=0; i<5; i++) createBullet(p, { vx: p.facing*15, vy: (i-2)*3, w: 15, h: 15, damage: 4, renderer: Renderers.star('#ffd700') });
+        }
+    },
+    'snowcrow': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff0000', 15) });
+        }
+    },
+    'mooshu': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 20, h: 20, damage: 3, type: 'fireball' });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 10, w: 60, h: 40, damage: 8, life: 40, type: 'fireball' });
+        }
+    },
+    'frodobaggins': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00bfff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00bfff', 15) });
+        }
+    },
+    'docbrown': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ffff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ffff', 15) });
+        }
+    },
+    'buzzlightbear': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#ff0000') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#ff0000') });
+        }
+    },
+    'matear': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#8b4513', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#8b4513', 15) });
+        }
+    },
+    'doray': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#4169e1', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#4169e1', 15) });
+        }
+    },
+    'totoad': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff69b4', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff69b4', 15) });
+        }
+    },
+    'invisibull': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'meowpheus': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#800080', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#800080', 15) });
+        }
+    },
+    'greenlantern': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 5, damage: 4, renderer: Renderers.laser('#00ff00') });
+        },
+        special: (p) => {
+            createBullet(p, { x: p.x + 100*p.facing, y: p.y - 100, vx: 0, vy: 20, w: 20, h: 200, damage: 10, renderer: Renderers.laser('#00ff00') });
+        }
+    },
+    'lukeskydog': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#00ff00') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#00ff00') });
+        }
+    },
+    'gollum': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#808080', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#808080', 15) });
+        }
+    },
+    'leatherfish': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'jasonboarhees': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'aquamander': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00bfff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00bfff', 15) });
+        }
+    },
+    'owladdin': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'scarecrow': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#f5deb3', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#f5deb3', 15) });
+        }
+    },
+    'dogzilla': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 20, h: 20, damage: 3, type: 'fireball' });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 10, w: 60, h: 40, damage: 8, life: 40, type: 'fireball' });
+        }
+    },
+    'catatouille': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'predatoad': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ffff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ffff', 15) });
+        }
+    },
+    'peterprawn': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 4, behavior: Behaviors.wave(0.1, 5), renderer: Renderers.star('#ffd700') });
+        },
+        special: (p) => {
+            for(let i=0; i<5; i++) createBullet(p, { vx: p.facing*15, vy: (i-2)*3, w: 15, h: 15, damage: 4, renderer: Renderers.star('#ffd700') });
+        }
+    },
+    'lyin': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'arielbird': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'edwardscissorclaws': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'ursulabear': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 12, w: 15, h: 15, damage: 3, type: 'acid_spit', renderer: Renderers.circle('#800080', 8) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 8, w: 50, h: 50, damage: 1, life: 100, renderer: Renderers.circle('#800080', 25) });
+        }
+    },
+    'captainhaddock': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'tarantula': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#006400', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#006400', 15) });
+        }
+    },
+    'agentsniff': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'mumbee': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'michaelmeowers': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'dogothy': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#deb887', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#deb887', 15) });
+        }
+    },
+    'et': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'hairyotter': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 4, behavior: Behaviors.wave(0.1, 5), renderer: Renderers.star('#ff0000') });
+        },
+        special: (p) => {
+            for(let i=0; i<5; i++) createBullet(p, { vx: p.facing*15, vy: (i-2)*3, w: 15, h: 15, damage: 4, renderer: Renderers.star('#ff0000') });
+        }
+    },
+    'pinhead': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'glinduck': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffc0cb', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffc0cb', 15) });
+        }
+    },
+    'rambo': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'beetlegoose': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ff00', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ff00', 15) });
+        }
+    },
+    'princessleia': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#0000ff') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#0000ff') });
+        }
+    },
+    'ghostfish': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'darthvadehound': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#ff0000') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#ff0000') });
+        }
+    },
+    'eelsad': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#e0ffff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#e0ffff', 15) });
+        }
+    },
+    'incrabible': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'pennywise': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff0000', 15) });
+        }
+    },
+    'grinchfinch': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 20, h: 10, damage: 5, type: 'rocket', renderer: Renderers.rect('#ff0000') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 40, h: 20, damage: 12, type: 'rocket', renderer: Renderers.rect('#ff0000') });
+        }
+    },
+    'pussinboats': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'hantoad': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#ff0000') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#ff0000') });
+        }
+    },
+    'tinram': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#000', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#000', 15) });
+        }
+    },
+    'rockybalboa': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff0000', 15) });
+        }
+    },
+    'whalee': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 20, h: 10, damage: 5, type: 'rocket', renderer: Renderers.rect('#8b4513') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 40, h: 20, damage: 12, type: 'rocket', renderer: Renderers.rect('#8b4513') });
+        }
+    },
+    'hanniball': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#a52a2a', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#a52a2a', 15) });
+        }
+    },
+    'gandalfthegreyhound': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 4, behavior: Behaviors.wave(0.1, 5), renderer: Renderers.star('#fff') });
+        },
+        special: (p) => {
+            for(let i=0; i<5; i++) createBullet(p, { vx: p.facing*15, vy: (i-2)*3, w: 15, h: 15, damage: 4, renderer: Renderers.star('#fff') });
+        }
+    },
+    'jamespond': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'jafrog': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'simbasheep': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'martymcfly': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff69b4', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff69b4', 15) });
+        }
+    },
+    'queenofharts': {
+        shoot: (p) => {
+            for(let i=-1; i<=1; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 8, h: 8, damage: 2, renderer: Renderers.circle('#ff0000', 4) });
+        },
+        special: (p) => {
+            for(let i=-3; i<=3; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        }
+    },
+    'shrewk': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 12, w: 15, h: 15, damage: 3, type: 'acid_spit', renderer: Renderers.circle('#32cd32', 8) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 8, w: 50, h: 50, damage: 1, life: 100, renderer: Renderers.circle('#32cd32', 25) });
+        }
+    },
+    'mrtomatohead': {
+        shoot: (p) => {
+            for(let i=-1; i<=1; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 8, h: 8, damage: 2, renderer: Renderers.circle('#fff', 4) });
+        },
+        special: (p) => {
+            for(let i=-3; i<=3; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        }
+    },
+    'chucky': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'terminator': {
+        shoot: (p) => {
+            for(let i=-1; i<=1; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 8, h: 8, damage: 2, renderer: Renderers.circle('#ff0000', 4) });
+        },
+        special: (p) => {
+            for(let i=-3; i<=3; i++) createBullet(p, { vx: p.facing*15, vy: i*3, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        }
+    },
+    'cyboar': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ffff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ffff', 15) });
+        }
+    },
+    'shalamb': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 5, damage: 4, renderer: Renderers.laser('#ffd700') });
+        },
+        special: (p) => {
+            createBullet(p, { x: p.x + 100*p.facing, y: p.y - 100, vx: 0, vy: 20, w: 20, h: 200, damage: 10, renderer: Renderers.laser('#ffd700') });
+        }
+    },
+    'owlaf': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 20, h: 5, damage: 3, renderer: Renderers.rect('#fff') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 60, h: 60, damage: 2, life: 60, renderer: Renderers.rect('rgba(200,255,255,0.5)') });
+        }
+    },
+    'genieguinea': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00bfff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00bfff', 15) });
+        }
+    },
+    'flashfish': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'trinibee': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'pup': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ff0000', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ff0000', 15) });
+        }
+    },
+    'wolfclam': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#fff', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#fff', 15) });
+        }
+    },
+    'stormgrouper': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#ff0000') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#ff0000') });
+        }
+    },
+    'frankenswine': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'sulleyseal': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ced1', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ced1', 15) });
+        }
+    },
+    'vipear': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#9acd32', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#9acd32', 15) });
+        }
+    },
+    'jacksparrow': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#c0c0c0', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#c0c0c0', 15) });
+        }
+    },
+    'nemoo': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#add8e6', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#add8e6', 15) });
+        }
+    },
+    'bobaferret': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 20, h: 10, damage: 5, type: 'rocket', renderer: Renderers.rect('#00ff00') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 40, h: 20, damage: 12, type: 'rocket', renderer: Renderers.rect('#00ff00') });
+        }
+    },
+    'jocurr': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#00ff00', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#00ff00', 15) });
+        }
+    },
+    'polarbear': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#ffd700', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#ffd700', 15) });
+        }
+    },
+    'frozonefrog': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 20, h: 5, damage: 3, renderer: Renderers.rect('#e0ffff') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 60, h: 60, damage: 2, life: 60, renderer: Renderers.rect('rgba(200,255,255,0.5)') });
+        }
+    },
+    'forrestgrump': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, renderer: Renderers.circle('#8b4513', 5) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 15, w: 30, h: 30, damage: 8, type: 'grenade', renderer: Renderers.circle('#8b4513', 15) });
+        }
+    },
+    'mikewacowski': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser('#32cd32') });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 30, w: 200, h: 20, damage: 10, renderer: Renderers.laser('#32cd32') });
+        }
+    },
+    'rex': {
+        shoot: (p) => {
+            createMelee(p, 50, 4);
+        },
+        special: (p) => {
+            p.vx = p.facing * 20; createMelee(p, 80, 8);
+        }
+    },
+    'roarschach': {
+        shoot: (p) => {
+            createBullet(p, { vx: p.facing * 12, w: 15, h: 15, damage: 3, type: 'acid_spit', renderer: Renderers.circle('#000', 8) });
+        },
+        special: (p) => {
+            createBullet(p, { vx: p.facing * 8, w: 50, h: 50, damage: 1, life: 100, renderer: Renderers.circle('#000', 25) });
+        }
+    }
 };
