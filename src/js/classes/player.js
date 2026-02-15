@@ -1,6 +1,6 @@
 import { CHARACTERS, LEVEL_HEIGHT, LEVEL_WIDTH, JUMP_FORCE, ACCELERATION, FRICTION, GRAVITY, TERMINAL_VELOCITY, TILE_SIZE, ASSETS } from '../constants.js';
 import { updateUI } from '../ui.js';
-import { gameState, playerKeys, tiles, particles, entities } from '../state.js';
+import { gameState, playerKeys, tiles, particles, entities, players } from '../state.js';
 import { winGame, endGame } from '../game-flow.js';
 import { spawnExplosion, spawnDamageNumber, shakeCamera } from '../utils.js';
 import { Particle } from './particles.js';
