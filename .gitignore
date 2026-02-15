@@ -1,6 +1,18 @@
 node_modules/
 dist/
 .DS_Store
+
+# Capacitor
 www/
-android/
-ios/
+
+# Android
+android/app/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/app/build/
+android/.gradle/
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/local.properties
