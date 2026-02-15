@@ -297,8 +297,21 @@ export class TrappedBeast {
         this.freed = false;
         this.hp = 100; // Required to persist in entity list
 
-        // Fallback for maxed roster
-        this.randomFallback = CHARACTERS[Math.floor(secureRandom() * CHARACTERS.length)];
+        // Decide which character is trapped. This is the character the player will switch to.
+        // We pick from currently unlocked characters to ensure valid switch logic,
+        // OR we could pick the NEXT unlockable if we want to preview it (but the switch logic needs to match).
+
+        // Current logic: unlockCharacter() bumps globalUnlocked.
+        // Switch logic: Picks random unlocked.
+
+        // Let's make it consistent: The cage holds a specific character.
+        // If you free them, you switch to THAT character.
+
+        // To keep it simple and robust:
+        // Pick a random unlocked character to be the "prisoner".
+        let availableCount = Math.max(1, gameState.globalUnlocked);
+        let possibleChars = CHARACTERS.slice(0, availableCount);
+        this.prisonerChar = possibleChars[Math.floor(secureRandom() * possibleChars.length)];
     }
     update() {
         // Check intersection with any player
@@ -315,7 +328,7 @@ export class TrappedBeast {
         if (touchingPlayer) {
             this.freed = true;
             spawnExplosion(this.x, this.y, "green", 2);
-            unlockCharacter(touchingPlayer);
+            unlockCharacter(touchingPlayer); // This might unlock a NEW char, but we switch to the prisoner
             gameState.rescues++;
 
             // Extra Life
@@ -342,20 +355,9 @@ export class TrappedBeast {
             if(typeof soundManager !== 'undefined' && soundManager) soundManager.play('powerup');
             try { updateUI(); } catch(e) {}
 
-            // Switch Character Logic
-            if (touchingPlayer) {
-                // Pick random unlocked character
-                let unlockedChars = CHARACTERS.slice(0, gameState.globalUnlocked);
-                let newCharIndex = Math.floor(secureRandom() * unlockedChars.length);
-                let newCharId = unlockedChars[newCharIndex].id;
-
-                // Ensure switch if possible (optional, but good for UX)
-                if (unlockedChars.length > 1 && newCharId === touchingPlayer.charData.id) {
-                     newCharIndex = (newCharIndex + 1) % unlockedChars.length;
-                     newCharId = unlockedChars[newCharIndex].id;
-                }
-
-                touchingPlayer.setCharacter(newCharId);
+            // Switch Character Logic - Switch to the specific prisoner we saw
+            if (touchingPlayer && this.prisonerChar) {
+                touchingPlayer.setCharacter(this.prisonerChar.id);
                 touchingPlayer.health = 3; // Reset health
                 updateUI(); // Reflect health change
 
@@ -369,15 +371,11 @@ export class TrappedBeast {
         let cx = this.x - camX;
         let cy = this.y - camY;
 
-        // Determine who is inside (Dynamic to support multiple unlocks in one run)
-        let charToShow = CHARACTERS[gameState.globalUnlocked];
-        if (!charToShow) charToShow = this.randomFallback;
-
         // Character inside (scaled down to fit 40x40 cage)
         ctx.save();
         ctx.translate(cx + 20, cy + 30); // Center, slightly down
         ctx.scale(0.8, 0.8); // Scale
-        drawAnatomicalHero(ctx, charToShow, 0, { type: null, timer: 0 });
+        drawAnatomicalHero(ctx, this.prisonerChar, 0, { type: null, timer: 0 });
         ctx.restore();
 
         // Cage Bars (Overlay)
