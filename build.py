@@ -35,15 +35,26 @@ def main():
 
     final_html = final_html.replace('<!-- JS_INJECTION_POINT -->', js_injection)
 
+    # 1. Write to root loajf.html (legacy)
     with open('loajf.html', 'w') as f:
         f.write(final_html)
+    print("loajf.html updated.")
 
-    # Copy manifest
+    # 2. Write to www/index.html (Capacitor)
+    if not os.path.exists('www'):
+        os.makedirs('www')
+
+    with open('www/index.html', 'w') as f:
+        f.write(final_html)
+    print("www/index.html updated.")
+
+    # Copy manifest to both locations
     if os.path.exists('src/manifest.json'):
         shutil.copy('src/manifest.json', 'manifest.json')
-        print("Copied manifest.json")
+        shutil.copy('src/manifest.json', 'www/manifest.json')
+        print("Copied manifest.json to root and www/")
 
-    print("Build complete: loajf.html updated.")
+    print("Build complete.")
 
 if __name__ == "__main__":
     main()
