@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import json
 
 def read_file(filepath):
     with open(filepath, 'r') as f:
@@ -38,12 +39,38 @@ def main():
     with open('loajf.html', 'w') as f:
         f.write(final_html)
 
-    # Copy manifest
-    if os.path.exists('src/manifest.json'):
-        shutil.copy('src/manifest.json', 'manifest.json')
-        print("Copied manifest.json")
+    print("loajf.html updated.")
 
-    print("Build complete: loajf.html updated.")
+    # Capacitor Build Step: Create www directory
+    if not os.path.exists('www'):
+        os.makedirs('www')
+
+    # Copy loajf.html to www/index.html
+    shutil.copy('loajf.html', 'www/index.html')
+    print("Copied loajf.html to www/index.html")
+
+    # Handle Manifest
+    if os.path.exists('src/manifest.json'):
+        # Copy to root
+        shutil.copy('src/manifest.json', 'manifest.json')
+        print("Copied manifest.json to root")
+
+        # Copy to www and update start_url
+        with open('src/manifest.json', 'r') as f:
+            manifest_data = json.load(f)
+
+        manifest_data['start_url'] = './index.html'
+
+        with open('www/manifest.json', 'w') as f:
+            json.dump(manifest_data, f, indent=2)
+        print("Created www/manifest.json with updated start_url")
+
+    # Copy icon if available
+    if os.path.exists('assets/icon.png'):
+        shutil.copy('assets/icon.png', 'www/image.png')
+        print("Copied assets/icon.png to www/image.png")
+
+    print("Build complete.")
 
 if __name__ == "__main__":
     main()
