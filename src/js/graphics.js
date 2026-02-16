@@ -65,7 +65,7 @@ function drawTail(ctx, char, bob, frame) {
         ctx.beginPath();
         ctx.arc(-15, 0 + bob, 5, 0, Math.PI*1.5);
         ctx.stroke();
-    } else if (['cat', 'monkey', 'lion', 'panther', 'rodent', 'possum'].includes(type)) {
+    } else if (['cat', 'monkey', 'lion', 'panther', 'rodent', 'possum', 'tiger'].includes(type)) {
         // Long Slinky Tail
         ctx.strokeStyle = skin; ctx.lineWidth = 4; ctx.lineCap = "round";
         let tailWag = Math.sin(frame * 0.2) * 5;
@@ -100,7 +100,7 @@ function drawTail(ctx, char, bob, frame) {
             ctx.beginPath(); ctx.moveTo(-12, -5); ctx.lineTo(-12, 5); ctx.stroke();
         }
         ctx.restore();
-    } else if (['cow', 'bull', 'donkey', 'horse', 'zebra'].includes(type)) {
+    } else if (['cow', 'bull', 'donkey', 'horse', 'zebra', 'buffalo', 'giraffe', 'llama', 'alpaca', 'deer'].includes(type)) {
         // Rope Tail with Tuft
         ctx.strokeStyle = skin; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(-10, 5 + bob); ctx.lineTo(-20, 10 + bob); ctx.stroke();
@@ -110,7 +110,7 @@ function drawTail(ctx, char, bob, frame) {
         // Puff Tail
         ctx.fillStyle = "#fff";
         ctx.beginPath(); ctx.arc(-12, 5 + bob, 5, 0, Math.PI*2); ctx.fill();
-    } else if (['lizard', 'croc', 'dino'].includes(type)) {
+    } else if (['lizard', 'croc', 'dino', 'dragon'].includes(type)) {
         // Thick Tapered Tail
         ctx.fillStyle = skin;
         ctx.beginPath();
@@ -118,8 +118,8 @@ function drawTail(ctx, char, bob, frame) {
         ctx.lineTo(-30, 5 + bob);
         ctx.lineTo(-10, 10 + bob);
         ctx.fill();
-        // Spikes for croc
-        if(type === 'croc') {
+        // Spikes for croc/dragon
+        if(type === 'croc' || type === 'dragon') {
             ctx.fillStyle = dark;
             for(let i=0; i<3; i++) {
                 ctx.beginPath(); ctx.moveTo(-12 - i*6, 2+bob); ctx.lineTo(-15 - i*6, -3+bob); ctx.lineTo(-18 - i*6, 3+bob); ctx.fill();
@@ -196,31 +196,77 @@ function drawQuadruped(ctx, char, frame, bob, skin, dark, suit, attackAnim) {
     // Dimensions (Horizontal)
     let w = char.w || 36;
     let h = char.h || 24;
+    let type = char.type;
 
     // 1. TAIL
     drawTail(ctx, char, bob, frame);
 
-    // 2. FAR LEGS (Back & Front) - Darker
+    // 2. FAR LEGS (Back & Front)
     ctx.fillStyle = dark;
+
+    // Leg shape/length based on type
+    let legW = 6, legH = 12;
+    if (['horse', 'deer', 'llama', 'giraffe', 'zebra', 'donkey', 'cow', 'bull', 'buffalo'].includes(type)) {
+        legH = 16; legW = 5; // Longer, thinner legs
+    } else if (['elephant', 'rhino', 'hippo'].includes(type)) {
+        legH = 10; legW = 8; // Stumpy thick legs
+    }
+
     // Back-Far
     ctx.save(); ctx.translate(-w/2 + 8, 10 + bob); ctx.rotate(-backLegAngle);
-    drawRoundedRect(ctx, -3, 0, 6, 12, 3); ctx.restore();
+    drawRoundedRect(ctx, -legW/2, 0, legW, legH, legW/2);
+    ctx.restore();
     // Front-Far
     ctx.save(); ctx.translate(w/2 - 8, 10 + bob); ctx.rotate(-frontLegAngle);
-    drawRoundedRect(ctx, -3, 0, 6, 12, 3); ctx.restore();
+    drawRoundedRect(ctx, -legW/2, 0, legW, legH, legW/2);
+    ctx.restore();
 
-    // 3. BODY
+    // 3. BODY SHAPE LOGIC
     ctx.fillStyle = suit;
-    // Body Shape Variations
-    if (char.body === 'muscular' || char.body === 'brute') {
-        // Bulky chest
+
+    if (['horse', 'deer', 'llama', 'alpaca', 'donkey', 'zebra', 'giraffe'].includes(type)) {
+        // EQUINE / UNGULATE: Rising neck
+        ctx.beginPath();
+        // Hindquarters
+        ctx.moveTo(-w/2, -h/2 + bob + 5);
+        ctx.quadraticCurveTo(-w/2 - 5, -h/2 + bob + 10, -w/2, h/2 + bob); // Butt curve
+        ctx.lineTo(w/2 - 10, h/2 + bob); // Belly
+        // Chest/Neck rise
+        ctx.lineTo(w/2, -h/2 + bob - 10); // Neck base high
+        ctx.lineTo(w/2 - 15, -h/2 + bob + 5); // Withers
+        ctx.fill();
+
+    } else if (['elephant', 'rhino', 'hippo', 'pig', 'boar', 'bear', 'cow', 'bull', 'buffalo'].includes(type)) {
+        // HEAVY: Bulky, round/boxy
+        let roundness = (type === 'pig' || type === 'hippo') ? 12 : 6;
+        if(type === 'elephant') {
+            // Big arch back
+            ctx.beginPath();
+            ctx.moveTo(-w/2, h/2 + bob);
+            ctx.quadraticCurveTo(0, -h/2 + bob - 10, w/2, h/2 + bob);
+            ctx.fill();
+        } else {
+            drawRoundedRect(ctx, -w/2, -h/2 + bob, w, h, roundness);
+        }
+
+    } else if (['cat', 'dog_pointy', 'wolf', 'fox', 'lion', 'panther', 'tiger', 'cheetah'].includes(type)) {
+        // AGILE: Lean, defined chest
         ctx.beginPath();
         ctx.moveTo(-w/2, -h/2 + bob + 5);
-        ctx.lineTo(w/2, -h/2 + bob); // Sloped up to neck
-        ctx.lineTo(w/2, h/2 + bob);
-        ctx.lineTo(-w/2, h/2 + bob - 2);
+        ctx.lineTo(w/2, -h/2 + bob);
+        ctx.lineTo(w/2 + 2, h/2 + bob - 2); // Chest out
+        ctx.lineTo(w/2 - 10, h/2 + bob - 5); // Tuck up
+        ctx.lineTo(-w/2 + 5, h/2 + bob); // Haunch
         ctx.fill();
+
+    } else if (['rodent', 'rabbit', 'hedgehog', 'skunk', 'raccoon'].includes(type)) {
+        // SMALL: Oval/Egg
+        ctx.beginPath();
+        ctx.ellipse(0, bob + 5, w/2, h/2, 0, 0, Math.PI*2);
+        ctx.fill();
+
     } else {
+        // GENERIC / REPTILE
         drawRoundedRect(ctx, -w/2, -h/2 + bob, w, h, 8);
     }
 
@@ -238,16 +284,29 @@ function drawQuadruped(ctx, char, frame, bob, skin, dark, suit, attackAnim) {
 
     // 4. HEAD (Attached to Front)
     ctx.save();
-    // Neck offset
+    // Neck offset logic
     let neckX = w/2;
     let neckY = -5 + bob;
-    if (char.type === 'horse' || char.type === 'llama' || char.type === 'alpaca') {
+
+    if (['horse', 'deer', 'llama', 'alpaca', 'donkey', 'zebra', 'giraffe'].includes(type)) {
         // Long neck up
         ctx.fillStyle = skin;
-        ctx.save(); ctx.translate(w/2 - 5, -5 + bob); ctx.rotate(-0.3);
-        drawRoundedRect(ctx, 0, -15, 10, 20, 4);
+        let neckLen = (type === 'giraffe') ? 30 : 15;
+        let angle = -0.3;
+
+        ctx.save();
+        ctx.translate(w/2 - 5, -5 + bob);
+        ctx.rotate(angle);
+        drawRoundedRect(ctx, 0, -neckLen, 10, neckLen + 5, 4);
         ctx.restore();
-        neckX += 2; neckY -= 15;
+
+        // Adjust head pos to end of neck
+        neckX += Math.sin(-angle) * neckLen + 2;
+        neckY -= Math.cos(-angle) * neckLen;
+    } else if (['bird', 'ostrich'].includes(type)) {
+        // Bird neck
+        neckY -= 10;
+        neckX += 2;
     }
 
     ctx.translate(neckX, neckY);
@@ -255,15 +314,122 @@ function drawQuadruped(ctx, char, frame, bob, skin, dark, suit, attackAnim) {
     ctx.restore();
 
     // 5. NEAR LEGS (Back & Front)
-    ctx.fillStyle = skin; // Often legs are skin color unless wearing pants
-    if(char.cSuit !== char.cSkin) ctx.fillStyle = dark; // Or dark if specific style
+    ctx.fillStyle = skin;
+    if(char.cSuit !== char.cSkin) ctx.fillStyle = dark;
 
     // Back-Near
     ctx.save(); ctx.translate(-w/2 + 8, 15 + bob); ctx.rotate(backLegAngle);
-    drawRoundedRect(ctx, -3, 0, 6, 12, 3); ctx.restore();
+    drawRoundedRect(ctx, -legW/2, 0, legW, legH, legW/2);
+    ctx.restore();
     // Front-Near
     ctx.save(); ctx.translate(w/2 - 8, 15 + bob); ctx.rotate(frontLegAngle);
-    drawRoundedRect(ctx, -3, 0, 6, 12, 3); ctx.restore();
+    drawRoundedRect(ctx, -legW/2, 0, legW, legH, legW/2);
+    ctx.restore();
+}
+
+function drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim) {
+    let runCycle = Math.sin(frame * 0.5);
+    let legAngle = runCycle * 0.8;
+    let armAngle = -runCycle * 0.8;
+    let type = char.type;
+
+    // Attack overrides
+    let armOffsetX = 0, armOffsetY = 0;
+    if (attackAnim && attackAnim.timer > 0) {
+         let t = attackAnim.timer / attackAnim.max;
+         if (attackAnim.type === 'shoot') { armAngle = -Math.PI/2; }
+    }
+
+    ctx.save();
+
+    // Wings / Back Features
+    drawBodyFeatures(ctx, char, bob, frame);
+
+    // Cape
+    if (['dog_pointy', 'cat', 'bird'].includes(char.type) || char.name.includes("SUPER") || char.name.includes("CAPTAIN")) {
+         ctx.fillStyle = char.pColor;
+         ctx.beginPath(); ctx.moveTo(-10, 5+bob); ctx.lineTo(10, 5+bob); ctx.lineTo(0, 35+bob); ctx.fill();
+    }
+
+    // Tail
+    drawTail(ctx, char, bob, frame);
+
+    // Back Leg
+    ctx.fillStyle = dark;
+    ctx.save(); ctx.translate(-4, 25+bob); ctx.rotate(legAngle);
+
+    // Bird legs are thin
+    if (['bird', 'duck', 'chicken', 'owl', 'penguin', 'bee'].includes(type)) {
+        ctx.fillRect(-1, 0, 2, 10);
+        ctx.fillStyle = "orange"; // Feet
+        ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-3, 14); ctx.lineTo(3, 14); ctx.fill();
+    } else {
+        drawRoundedRect(ctx, -3, 0, 6, 12, 3);
+    }
+    ctx.restore();
+
+    // BODY SHAPES
+    ctx.fillStyle = suit;
+    let bodyShape = char.body || 'standard';
+
+    if (['bird', 'duck', 'chicken', 'owl', 'penguin'].includes(type)) {
+        // AVIAN: Teardrop
+        ctx.beginPath();
+        ctx.ellipse(0, 12 + bob, 10, 14, 0, 0, Math.PI*2);
+        ctx.fill();
+        // Tail feathers stick out back
+        ctx.fillStyle = skin;
+        ctx.beginPath(); ctx.moveTo(-8, 15+bob); ctx.lineTo(-15, 10+bob); ctx.lineTo(-15, 20+bob); ctx.fill();
+
+    } else if (type === 'bee' || type === 'ant') {
+        // INSECT: Segmented
+        ctx.beginPath(); ctx.arc(0, 10+bob, 8, 0, Math.PI*2); ctx.fill(); // Thorax
+        ctx.beginPath(); ctx.arc(0, 22+bob, 10, 0, Math.PI*2); ctx.fill(); // Abdomen
+
+    } else if (bodyShape === 'brute' || type === 'bear' || type === 'rhino') {
+         ctx.beginPath(); ctx.moveTo(-15,0+bob); ctx.lineTo(15,0+bob); ctx.lineTo(5,25+bob); ctx.lineTo(-5,25+bob); ctx.fill();
+
+    } else if (bodyShape === 'orb' || type === 'pumpkin') {
+         ctx.beginPath(); ctx.arc(0, 15+bob, 15, 0, Math.PI*2); ctx.fill();
+
+    } else if (bodyShape === 'stick' || type === 'skeleton') {
+         ctx.lineWidth=4; ctx.strokeStyle=suit; ctx.beginPath(); ctx.moveTo(0, 5+bob); ctx.lineTo(0, 25+bob); ctx.stroke();
+
+    } else {
+         drawRoundedRect(ctx, -10, 8+bob, 20, 18, 5);
+    }
+
+    // Head
+    ctx.save(); ctx.translate(0, bob); drawHeroHead(ctx, char); ctx.restore();
+
+    // Front Leg
+    ctx.fillStyle = dark;
+    ctx.save(); ctx.translate(4, 25+bob); ctx.rotate(-legAngle);
+    if (['bird', 'duck', 'chicken', 'owl', 'penguin', 'bee'].includes(type)) {
+        ctx.fillStyle = "#333";
+        ctx.fillRect(-1, 0, 2, 10);
+        ctx.fillStyle = "orange";
+        ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-3, 14); ctx.lineTo(3, 14); ctx.fill();
+    } else {
+        drawRoundedRect(ctx, -3, 0, 6, 12, 3);
+    }
+    ctx.restore();
+
+    // Front Arm
+    ctx.fillStyle = suit;
+    // Wing arms for birds?
+    if (['bird', 'duck', 'chicken', 'owl', 'penguin'].includes(type)) {
+        ctx.fillStyle = skin; // Wing color
+        ctx.save(); ctx.translate(5, 15+bob); ctx.rotate(armAngle);
+        ctx.beginPath(); ctx.ellipse(0, 5, 4, 10, 0.2, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    } else {
+        ctx.save(); ctx.translate(0 + armOffsetX, 15 + bob + armOffsetY); ctx.rotate(armAngle); drawRoundedRect(ctx, -3, 0, 6, 12, 3);
+        ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, 12, 4, 0, 2*Math.PI); ctx.fill(); // Hand
+        ctx.restore();
+    }
+
+    ctx.restore();
 }
 
 function drawSnake(ctx, char, frame, bob, skin, dark, suit) {
@@ -438,7 +604,7 @@ export function drawHeroHead(ctx, char) {
     }
 
     // --- FARM ---
-    else if (['cow', 'bull', 'buffalo', 'goat', 'pig', 'horse', 'donkey'].includes(type)) {
+    else if (['cow', 'bull', 'buffalo', 'goat', 'pig', 'horse', 'donkey', 'llama', 'alpaca', 'zebra', 'giraffe', 'deer'].includes(type)) {
         if (type === 'pig') {
             drawRoundedRect(ctx, -10, -10, 20, 20, 8);
             // Snout
@@ -451,7 +617,7 @@ export function drawHeroHead(ctx, char) {
             ctx.fillStyle = skin;
             ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(-12, -2); ctx.lineTo(-6, -2); ctx.fill();
             ctx.beginPath(); ctx.moveTo(8, -8); ctx.lineTo(12, -2); ctx.lineTo(6, -2); ctx.fill();
-        } else if (type === 'cow' || type === 'bull' || type === 'buffalo') {
+        } else if (['cow', 'bull', 'buffalo'].includes(type)) {
             drawRoundedRect(ctx, -12, -12, 24, 22, 6); // Broad head
             // Muzzle
             ctx.fillStyle = "#ecc"; // Pinkish muzzle usually, or skin light
@@ -472,12 +638,24 @@ export function drawHeroHead(ctx, char) {
             ctx.fillStyle = "#ccc";
             ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-8, -18); ctx.lineTo(-4, -10); ctx.fill();
             ctx.beginPath(); ctx.moveTo(5, -10); ctx.lineTo(8, -18); ctx.lineTo(4, -10); ctx.fill();
-        } else if (type === 'horse' || type === 'donkey') {
+        } else if (['horse', 'donkey', 'zebra', 'llama', 'alpaca', 'giraffe', 'deer'].includes(type)) {
             // Long face
             ctx.beginPath(); ctx.ellipse(0, 0, 8, 14, 0.2, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(5, 8, 6, 6, 0, 0, Math.PI*2); ctx.fill(); // Snout
             // Ears
             ctx.beginPath(); ctx.moveTo(-4, -10); ctx.lineTo(-6, -18); ctx.lineTo(0, -10); ctx.fill();
+            if (type === 'giraffe') {
+                // Ossicones
+                ctx.fillStyle = dark;
+                ctx.fillRect(-2, -14, 2, 6);
+                ctx.fillRect(2, -14, 2, 6);
+            }
+            if (type === 'deer') {
+                // Antlers
+                ctx.strokeStyle = "#d2b48c"; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-2, -10); ctx.lineTo(-10, -20); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(2, -10); ctx.lineTo(10, -20); ctx.stroke();
+            }
         }
     }
 
@@ -518,8 +696,8 @@ export function drawHeroHead(ctx, char) {
     }
 
     // --- REPTILES ---
-    else if (['croc', 'lizard', 'snake', 'turtle', 'frog'].includes(type)) {
-        if (type === 'croc') {
+    else if (['croc', 'lizard', 'snake', 'turtle', 'frog', 'dragon'].includes(type)) {
+        if (type === 'croc' || type === 'dragon') {
             // Long snout
             ctx.fillStyle = skin;
             ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(20, -5); ctx.lineTo(20, 5); ctx.lineTo(-10, 8); ctx.fill();
@@ -612,7 +790,7 @@ export function drawHeroHead(ctx, char) {
     if (!['frog', 'croc', 'robot', 'snake', 'bee'].includes(type) && !char.name.includes("DARE")) {
         // Offset for side profile animals
         let ex = 2, ey = -4;
-        if (['bird', 'chicken', 'duck', 'horse', 'cow', 'wolf', 'fox', 'anteater'].includes(type)) {
+        if (['bird', 'chicken', 'duck', 'horse', 'cow', 'wolf', 'fox', 'anteater', 'deer', 'giraffe', 'zebra', 'donkey', 'llama'].includes(type)) {
             ex = 2; ey = -6; // Side view usually
         }
         if (['owl', 'monkey', 'cat', 'lion', 'pig', 'human', 'bear', 'tiger'].includes(type)) {
@@ -645,62 +823,7 @@ export function drawAnatomicalHero(ctx, char, frame, attackAnim = null) {
     } else if (stance === 'fish') {
         drawFish(ctx, char, frame, bob, skin, dark, suit);
     } else {
-        // BIPEDAL (Standard)
-        let runCycle = Math.sin(frame * 0.5);
-        let legAngle = runCycle * 0.8;
-        let armAngle = -runCycle * 0.8;
-
-        // Attack overrides
-        let armOffsetX = 0, armOffsetY = 0;
-        if (attackAnim && attackAnim.timer > 0) {
-             let t = attackAnim.timer / attackAnim.max;
-             if (attackAnim.type === 'shoot') { armAngle = -Math.PI/2; }
-        }
-
-        ctx.save();
-
-        // Wings / Back Features
-        drawBodyFeatures(ctx, char, bob, frame);
-
-        // Cape
-        if (['dog_pointy', 'cat', 'bird'].includes(char.type) || char.name.includes("SUPER") || char.name.includes("CAPTAIN")) {
-             ctx.fillStyle = char.pColor;
-             ctx.beginPath(); ctx.moveTo(-10, 5+bob); ctx.lineTo(10, 5+bob); ctx.lineTo(0, 35+bob); ctx.fill();
-        }
-
-        // Tail
-        drawTail(ctx, char, bob, frame);
-
-        // Back Leg
-        ctx.fillStyle = dark;
-        ctx.save(); ctx.translate(-4, 25+bob); ctx.rotate(legAngle); drawRoundedRect(ctx, -3, 0, 6, 12, 3); ctx.restore();
-
-        // Body
-        ctx.fillStyle = suit;
-        let bodyShape = char.body || 'standard';
-        if(bodyShape === 'brute') {
-             ctx.beginPath(); ctx.moveTo(-15,0+bob); ctx.lineTo(15,0+bob); ctx.lineTo(5,25+bob); ctx.lineTo(-5,25+bob); ctx.fill();
-        } else if (bodyShape === 'orb' || char.type === 'bee' || char.type === 'pumpkin') {
-             ctx.beginPath(); ctx.arc(0, 15+bob, 15, 0, Math.PI*2); ctx.fill();
-        } else if (bodyShape === 'stick' || char.type === 'skeleton' || char.type === 'ant') {
-             ctx.lineWidth=4; ctx.strokeStyle=suit; ctx.beginPath(); ctx.moveTo(0, 5+bob); ctx.lineTo(0, 25+bob); ctx.stroke();
-        } else {
-             drawRoundedRect(ctx, -10, 8+bob, 20, 18, 5);
-        }
-
-        // Head
-        ctx.save(); ctx.translate(0, bob); drawHeroHead(ctx, char); ctx.restore();
-
-        // Front Leg
-        ctx.fillStyle = dark;
-        ctx.save(); ctx.translate(4, 25+bob); ctx.rotate(-legAngle); drawRoundedRect(ctx, -3, 0, 6, 12, 3); ctx.restore();
-
-        // Front Arm
-        ctx.fillStyle = suit;
-        ctx.save(); ctx.translate(0 + armOffsetX, 15 + bob + armOffsetY); ctx.rotate(armAngle); drawRoundedRect(ctx, -3, 0, 6, 12, 3);
-        ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, 12, 4, 0, Math.PI*2); ctx.fill(); // Hand
-        ctx.restore();
-
-        ctx.restore();
+        // Biped / Avian
+        drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim);
     }
 }
