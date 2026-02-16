@@ -54,6 +54,7 @@ function init() {
     // Set to MENU initially
     gameState.screen = 'MENU';
     gameState.running = false;
+
     gameState.currentLevel = 1;
 
     // Show Menu UI, Hide Game UI

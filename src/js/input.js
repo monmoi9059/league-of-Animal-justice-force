@@ -27,11 +27,7 @@ export function initInput() {
 }
 
 function setupTouchControls() {
-    const touchMap = {
-        'btnUp': 'arrowup',
-        'btnDown': 'arrowdown',
-        'btnLeft': 'arrowleft',
-        'btnRight': 'arrowright',
+    const actionMap = {
         'btnJump': ' ',
         'btnShoot': 'z',
         'btnSpecial': 'x',
@@ -47,7 +43,123 @@ function setupTouchControls() {
         }
     }
 
-    function handleTouch(id, isDown) {
+    // --- JOYSTICK LOGIC ---
+    const joystickArea = document.getElementById('joystick-area');
+    const joystickStick = document.getElementById('joystick-stick');
+    let joystickTouchId = null;
+    let joystickCenter = { x: 0, y: 0 };
+    const maxRadius = 30; // Max distance the stick can move visually
+
+    if (joystickArea && joystickStick) {
+        const handleJoystickStart = (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches ? e.changedTouches[0] : e;
+            joystickTouchId = touch.identifier;
+
+            // Get center relative to viewport
+            const rect = joystickArea.getBoundingClientRect();
+            joystickCenter = {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
+
+            updateJoystick(touch.clientX, touch.clientY);
+        };
+
+        const handleJoystickMove = (e) => {
+            e.preventDefault();
+            if (joystickTouchId === null && !e.changedTouches) return; // Mouse check
+
+            let clientX, clientY;
+            if (e.changedTouches) {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === joystickTouchId) {
+                        clientX = e.changedTouches[i].clientX;
+                        clientY = e.changedTouches[i].clientY;
+                        break;
+                    }
+                }
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            if (clientX !== undefined) {
+                updateJoystick(clientX, clientY);
+            }
+        };
+
+        const handleJoystickEnd = (e) => {
+            e.preventDefault();
+            let shouldEnd = false;
+            if (e.changedTouches) {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === joystickTouchId) {
+                        shouldEnd = true;
+                        break;
+                    }
+                }
+            } else {
+                shouldEnd = true;
+            }
+
+            if (shouldEnd) {
+                joystickTouchId = null;
+                resetJoystick();
+            }
+        };
+
+        function updateJoystick(x, y) {
+            let dx = x - joystickCenter.x;
+            let dy = y - joystickCenter.y;
+            let distance = Math.sqrt(dx*dx + dy*dy);
+
+            // Clamp visual movement
+            if (distance > maxRadius) {
+                let angle = Math.atan2(dy, dx);
+                dx = Math.cos(angle) * maxRadius;
+                dy = Math.sin(angle) * maxRadius;
+            }
+
+            joystickStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+            // Input Mapping (Threshold based)
+            // Normalized direction
+            let ndx = dx / maxRadius; // -1 to 1
+            let ndy = dy / maxRadius; // -1 to 1
+            const threshold = 0.3;
+
+            setKey('arrowright', ndx > threshold);
+            setKey('arrowleft', ndx < -threshold);
+            setKey('arrowdown', ndy > threshold);
+            setKey('arrowup', ndy < -threshold);
+        }
+
+        function resetJoystick() {
+            joystickStick.style.transform = `translate(-50%, -50%)`;
+            setKey('arrowright', false);
+            setKey('arrowleft', false);
+            setKey('arrowdown', false);
+            setKey('arrowup', false);
+        }
+
+        joystickArea.addEventListener('touchstart', handleJoystickStart, {passive: false});
+        joystickArea.addEventListener('touchmove', handleJoystickMove, {passive: false});
+        joystickArea.addEventListener('touchend', handleJoystickEnd, {passive: false});
+        joystickArea.addEventListener('touchcancel', handleJoystickEnd, {passive: false});
+
+        // Mouse Fallbacks for testing
+        joystickArea.addEventListener('mousedown', handleJoystickStart);
+        window.addEventListener('mousemove', (e) => {
+            if (joystickTouchId !== null && !e.touches) handleJoystickMove(e);
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (joystickTouchId !== null && !e.touches) handleJoystickEnd(e);
+        });
+    }
+
+    // --- ACTION BUTTON LOGIC ---
+    function handleBtn(id, isDown) {
         const btn = document.getElementById(id);
         if (!btn) return;
 
@@ -61,7 +173,7 @@ function setupTouchControls() {
             return;
         }
 
-        const key = touchMap[id];
+        const key = actionMap[id];
         if (key) {
             setKey(key, isDown);
             if (isDown) btn.classList.add('active');
@@ -69,25 +181,22 @@ function setupTouchControls() {
         }
     }
 
-    // Attach listeners
-    const allBtnIds = Object.keys(touchMap).concat(['btnSprint']);
-
-    allBtnIds.forEach(id => {
+    const actionIds = Object.keys(actionMap).concat(['btnSprint']);
+    actionIds.forEach(id => {
         const btn = document.getElementById(id);
         if (!btn) return;
 
         const start = (e) => {
             e.preventDefault();
-            handleTouch(id, true);
+            handleBtn(id, true);
         };
         const end = (e) => {
             e.preventDefault();
-            handleTouch(id, false);
+            handleBtn(id, false);
         };
 
         btn.addEventListener('touchstart', start, {passive: false});
         btn.addEventListener('touchend', end, {passive: false});
-        // Mouse fallbacks for testing
         btn.addEventListener('mousedown', start);
         btn.addEventListener('mouseup', end);
         btn.addEventListener('mouseleave', end);
