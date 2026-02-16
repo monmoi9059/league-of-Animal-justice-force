@@ -262,11 +262,11 @@ export function drawAnatomicalHero(ctx, char, frame, attackAnim = null) {
         }
 
         ctx.save();
-        // Cape
-        if (['dog_pointy', 'cat', 'bird'].includes(char.type) || char.name.includes("SUPER")) {
-             ctx.fillStyle = char.pColor;
-             ctx.beginPath(); ctx.moveTo(-10, 5+bob); ctx.lineTo(10, 5+bob); ctx.lineTo(0, 35+bob); ctx.fill();
-        }
+        // Cape - Removed as per user request (was causing visual confusion with 'wing' look)
+        // if (['dog_pointy', 'cat', 'bird'].includes(char.type) || char.name.includes("SUPER")) {
+        //      ctx.fillStyle = char.pColor;
+        //      ctx.beginPath(); ctx.moveTo(-10, 5+bob); ctx.lineTo(10, 5+bob); ctx.lineTo(0, 35+bob); ctx.fill();
+        // }
 
         // Back Leg
         ctx.fillStyle = dark;
