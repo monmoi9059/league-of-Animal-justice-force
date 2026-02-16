@@ -45,5 +45,24 @@ def main():
 
     print("Build complete: loajf.html updated.")
 
+    # Prepare www directory for Capacitor
+    print("Preparing www directory for Capacitor...")
+    if not os.path.exists('www'):
+        os.makedirs('www')
+
+    shutil.copy('loajf.html', 'www/index.html')
+
+    # Read manifest.json and update start_url
+    if os.path.exists('manifest.json'):
+        manifest_content = read_file('manifest.json')
+        manifest_content = manifest_content.replace('"start_url": "./loajf.html"', '"start_url": "./index.html"')
+        with open('www/manifest.json', 'w') as f:
+            f.write(manifest_content)
+
+    if os.path.exists('assets/icon.png'):
+        shutil.copy('assets/icon.png', 'www/image.png')
+
+    print("www directory prepared.")
+
 if __name__ == "__main__":
     main()

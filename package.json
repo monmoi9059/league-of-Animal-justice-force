@@ -11,6 +11,10 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
     "@rollup/plugin-terser": "^0.4.4",
     "rollup": "^4.57.1"
   }
