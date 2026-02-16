@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LOAJF</string>
+    <string name="title_activity_main">LOAJF</string>
+    <string name="package_name">com.loajf.game</string>
+    <string name="custom_url_scheme">com.loajf.game</string>
+</resources>
