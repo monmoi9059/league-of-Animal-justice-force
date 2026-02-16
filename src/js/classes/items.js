@@ -296,24 +296,52 @@ export class TrappedBeast {
         this.x = x; this.y = y; this.w = 40; this.h = 40;
         this.freed = false;
         this.hp = 100; // Required to persist in entity list
-
-        // Decide which character is trapped. This is the character the player will switch to.
-        // We pick from currently unlocked characters to ensure valid switch logic,
-        // OR we could pick the NEXT unlockable if we want to preview it (but the switch logic needs to match).
-
-        // Current logic: unlockCharacter() bumps globalUnlocked.
-        // Switch logic: Picks random unlocked.
-
-        // Let's make it consistent: The cage holds a specific character.
-        // If you free them, you switch to THAT character.
-
-        // To keep it simple and robust:
-        // Pick a random unlocked character to be the "prisoner".
-        let availableCount = Math.max(1, gameState.globalUnlocked);
-        let possibleChars = CHARACTERS.slice(0, availableCount);
-        this.prisonerChar = possibleChars[Math.floor(secureRandom() * possibleChars.length)];
+        this.prisonerChar = null; // Will be assigned on first update/draw to ensure we know players
     }
+
+    ensurePrisonerAssigned() {
+        if (this.prisonerChar) return;
+
+        // Get currently active player character IDs
+        let activeIDs = [];
+        if (players) {
+            for(let p of players) {
+                if (p.charData) activeIDs.push(p.charData.id);
+            }
+        }
+
+        // Available pool (unlocked characters)
+        let availableCount = Math.max(1, gameState.globalUnlocked);
+        // To provide more variety (and because unlockCharacter bumps unlocked count anyway),
+        // let's pick from ALL unlocked + maybe next few locked ones if needed?
+        // The prompt implies we liberate a hostage.
+        // Logic: Standard behavior is pick from unlocked.
+
+        let pool = CHARACTERS.slice(0, availableCount);
+
+        // Filter out active players
+        let candidates = pool.filter(c => !activeIDs.includes(c.id));
+
+        // If no candidates (e.g. 1 player, 1 unlocked char, and player is using it),
+        // we MUST violate the rule or pick a locked character.
+        // Let's try picking a locked character if available.
+        if (candidates.length === 0) {
+            // Try entire roster minus active players
+            let allCandidates = CHARACTERS.filter(c => !activeIDs.includes(c.id));
+            if (allCandidates.length > 0) {
+                candidates = allCandidates; // Use locked characters if necessary
+            } else {
+                // Should never happen unless >200 players using unique chars
+                candidates = CHARACTERS;
+            }
+        }
+
+        this.prisonerChar = candidates[Math.floor(secureRandom() * candidates.length)];
+    }
+
     update() {
+        this.ensurePrisonerAssigned();
+
         // Check intersection with any player
         let touchingPlayer = null;
         if (!this.freed && players) {
@@ -368,15 +396,19 @@ export class TrappedBeast {
     }
     draw(ctx, camX, camY, now) {
         if (this.freed) return;
+        this.ensurePrisonerAssigned();
+
         let cx = this.x - camX;
         let cy = this.y - camY;
 
         // Character inside (scaled down to fit 40x40 cage)
-        ctx.save();
-        ctx.translate(cx + 20, cy + 30); // Center, slightly down
-        ctx.scale(0.8, 0.8); // Scale
-        drawAnatomicalHero(ctx, this.prisonerChar, 0, { type: null, timer: 0 });
-        ctx.restore();
+        if (this.prisonerChar) {
+            ctx.save();
+            ctx.translate(cx + 20, cy + 30); // Center, slightly down
+            ctx.scale(0.8, 0.8); // Scale
+            drawAnatomicalHero(ctx, this.prisonerChar, 0, { type: null, timer: 0 });
+            ctx.restore();
+        }
 
         // Cage Bars (Overlay)
         ctx.strokeStyle = "#bdc3c7";
