@@ -103,7 +103,11 @@ export function generateLevel() {
 
     // 1. Init Empty Grid
     for (let r = 0; r < LEVEL_HEIGHT; r++) {
-        newTiles[r] = new Array(currentLevelWidth).fill(null).map(() => ({ type: 0 }));
+        const row = new Array(currentLevelWidth);
+        for (let c = 0; c < currentLevelWidth; c++) {
+            row[c] = { type: 0 };
+        }
+        newTiles[r] = row;
     }
 
     // 2. Terrain Walker
