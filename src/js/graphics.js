@@ -28,6 +28,21 @@ export function drawCartoonEye(ctx, x, y, size, lookX, lookY) {
     ctx.beginPath(); ctx.arc(px + pupilSize*0.3, py - pupilSize*0.3, pupilSize*0.3, 0, Math.PI*2); ctx.fill();
 }
 
+function drawWheel(ctx, x, y, r, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = "#ccc"; // Wheel color
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#333"; // Hub
+    ctx.beginPath(); ctx.arc(0, 0, r*0.3, 0, Math.PI*2); ctx.fill();
+    // Spokes
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke();
+    ctx.restore();
+}
+
 function drawLimb(ctx, x, y, width, len1, len2, angle1, angle2, color) {
     ctx.save();
     ctx.translate(x, y);
@@ -195,6 +210,25 @@ function drawFish(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
     ctx.translate(0, bob);
     let pitch = vy * 0.05; // Tilt with vertical movement
     ctx.rotate(pitch);
+
+    // SKATEBOARD RENDERING
+    // The fish is "on" a skateboard. The board should be below the fish body.
+    // Fish is centered at (0,0) relative to bob.
+    // Board Y position: h/2 (approx 9) + gap. Let's say 14.
+    let boardY = 14;
+    let boardColor = "#222"; // Dark deck
+    let wheelRadius = 4;
+    let wheelY = boardY + 4;
+    let wheelSpin = frame * 0.4; // Spin based on movement frame
+
+    // Deck
+    ctx.fillStyle = boardColor;
+    drawRoundedRect(ctx, -w/2 - 2, boardY, w + 4, 5, 2);
+
+    // Wheels
+    drawWheel(ctx, -w/3, wheelY, wheelRadius, wheelSpin);
+    drawWheel(ctx, w/3, wheelY, wheelRadius, wheelSpin);
+
 
     let tailWag = Math.sin(frame * 0.3);
 
