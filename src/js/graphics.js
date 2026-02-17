@@ -143,43 +143,71 @@ function drawSnake(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
 }
 
 function drawFish(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
-    let w = char.w || 30;
+    let w = char.w || 36;
+    let h = char.h || 18;
 
     // Swim motion
     ctx.save();
     ctx.translate(0, bob);
     let pitch = vy * 0.05; // Tilt with vertical movement
-    ctx.rotate(pitch + Math.sin(frame*0.2)*0.1);
+    ctx.rotate(pitch);
 
-    // Tail fin
-    ctx.fillStyle = dark;
-    ctx.beginPath();
-    let tailFlap = Math.sin(frame * 0.5) * 5;
-    ctx.moveTo(-w/2, 0);
-    ctx.lineTo(-w/2 - 10, -10 + tailFlap);
-    ctx.lineTo(-w/2 - 10, 10 + tailFlap);
-    ctx.fill();
+    let tailWag = Math.sin(frame * 0.3);
 
-    // Body
+    // 1. REAR BODY / TAIL SECTION (Rotates)
+    ctx.save();
+    ctx.translate(-w/4, 0); // Pivot at rear of main body
+    ctx.rotate(tailWag * 0.3); // Tail wag
+
+    // Tail Peduncle (tapered)
     ctx.fillStyle = suit;
     ctx.beginPath();
-    ctx.ellipse(0, 0, w/2, w/3, 0, 0, Math.PI*2);
+    ctx.moveTo(0, -h/2 + 2);
+    ctx.lineTo(-w/2, -h/4);
+    ctx.lineTo(-w/2, h/4);
+    ctx.lineTo(0, h/2 - 2);
     ctx.fill();
 
-    // Side Fin (Flapping)
-    ctx.fillStyle = skin;
-    ctx.save();
-    ctx.translate(0, 5);
-    ctx.rotate(Math.sin(frame * 0.3) * 0.5);
+    // Caudal Fin (Tail Fin)
+    ctx.translate(-w/2, 0);
+    ctx.rotate(tailWag * 0.5); // Extra flick
+    ctx.fillStyle = dark;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(-5, 10, -10, 0);
+    ctx.lineTo(-10, -12); // Top tip
+    ctx.quadraticCurveTo(-5, 0, -10, 12); // Bot tip
+    ctx.lineTo(0, 0);
     ctx.fill();
     ctx.restore();
 
-    // Head (Integrated)
+    // 2. MAIN BODY
+    ctx.fillStyle = suit;
+    // Ovalish shape
+    ctx.beginPath();
+    ctx.ellipse(w/8, 0, w/2.5, h/2, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Dorsal Fin (Top)
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.moveTo(0, -h/2 + 2);
+    ctx.quadraticCurveTo(-5, -h/2 - 10, -15, -h/2);
+    ctx.fill();
+
+    // 3. PECTORAL FIN (Side Flapper)
     ctx.save();
-    ctx.translate(w/3, -5);
+    ctx.translate(w/4, 5);
+    ctx.rotate(Math.sin(frame * 0.5) * 0.5); // Flap
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-5, 10, -10, 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 4. HEAD (Integrated)
+    ctx.save();
+    ctx.translate(w/2 - 5, -2);
     drawCartoonEye(ctx, 0, 0, 4, 0.5, 0);
     ctx.restore();
 
