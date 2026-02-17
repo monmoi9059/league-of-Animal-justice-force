@@ -454,3 +454,12 @@ setupErrorHandler();
 initInput();
 init();
 requestAnimationFrame(loop);
+
+// EXPOSE FOR DEBUGGING
+window.state = {
+    gameState,
+    get players() { return players; },
+    get entities() { return entities; },
+    get particles() { return particles; }
+};
+window.constants = { CHARACTERS };

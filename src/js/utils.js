@@ -1,5 +1,5 @@
 import { damageNumbers, particles, debris, tiles, gameState, players, entities } from './state.js';
-import { Particle, RockChunk, SmokeParticle, SparkParticle } from './classes/particles.js';
+import { Particle, RockChunk, SmokeParticle, SparkParticle, DustParticle } from './classes/particles.js';
 import { secureRandom } from './math.js';
 import { soundManager } from './sound.js';
 import { LEVEL_HEIGHT, LEVEL_WIDTH, TILE_SIZE, ASSETS, CHARACTERS } from './constants.js';
@@ -12,6 +12,7 @@ export function spawnExplosion(x, y, color, scale=1) {
     for(let i=0; i<10*scale; i++) particles.push(new Particle(x, y, color));
     for(let i=0; i<5*scale; i++) particles.push(new SmokeParticle(x, y));
     for(let i=0; i<5*scale; i++) particles.push(new SparkParticle(x, y));
+    for(let i=0; i<5*scale; i++) particles.push(new DustParticle(x, y, color));
     shakeCamera(5 * scale);
 }
 

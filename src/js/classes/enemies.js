@@ -23,11 +23,14 @@ export class Enemy {
         this.blockedTimer = 0;
         this.speed = 2; // Default patrol speed
         this.chaseSpeed = 3;
+        this.animFrame = 0;
+        this.recoil = 0;
     }
 
     update() {
         this.vy += GRAVITY;
         this.y += this.vy;
+        if (this.recoil > 0) this.recoil--;
 
         // Vertical Collision (Ground)
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
@@ -81,10 +84,13 @@ export class Enemy {
                     if (this.shootTimer > 60) {
                         this.shoot(target);
                         this.shootTimer = 0;
+                        this.recoil = 5;
                     }
                 }
             }
         }
+
+        if (this.vx !== 0) this.animFrame++;
 
         // Horizontal Movement & Wall/Ledge Collision
         let nextX = this.x + this.vx;
@@ -167,7 +173,7 @@ export class Enemy {
     }
 
     draw(ctx, camX, camY, now) {
-        let cx = this.x - camX;
+        let cx = this.x - camX - (this.facing * this.recoil);
         let cy = this.y - camY;
 
         // RETRO ROBOT GRUNT
@@ -175,40 +181,56 @@ export class Enemy {
         let mainColor = "#c0392b"; // Red
         let metalColor = "#7f8c8d"; // Grey
 
-        // Legs (Tracks)
+        let walkCycle = Math.sin(this.animFrame * 0.3);
+
+        // Legs (Walking)
         ctx.fillStyle = "#2c3e50";
-        ctx.fillRect(cx + 5, cy + 40, 10, 20); // L
-        ctx.fillRect(cx + 25, cy + 40, 10, 20); // R
+        // Left Leg
+        ctx.save(); ctx.translate(cx + 10, cy + 40);
+        ctx.rotate(walkCycle * 0.5);
+        ctx.fillRect(-5, 0, 10, 20);
+        ctx.restore();
+        // Right Leg
+        ctx.save(); ctx.translate(cx + 30, cy + 40);
+        ctx.rotate(-walkCycle * 0.5);
+        ctx.fillRect(-5, 0, 10, 20);
+        ctx.restore();
 
         // Body (Blocky)
         ctx.fillStyle = mainColor;
-        ctx.fillRect(cx, cy + 10, 40, 30);
-        ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(cx, cy+10, 40, 30);
+        let bounce = Math.abs(walkCycle) * 2;
+        ctx.fillRect(cx, cy + 10 - bounce, 40, 30);
+        ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(cx, cy+10-bounce, 40, 30);
 
         // Rivets
         ctx.fillStyle = "#fff";
-        ctx.fillRect(cx+2, cy+12, 2, 2); ctx.fillRect(cx+36, cy+12, 2, 2);
-        ctx.fillRect(cx+2, cy+36, 2, 2); ctx.fillRect(cx+36, cy+36, 2, 2);
+        ctx.fillRect(cx+2, cy+12-bounce, 2, 2); ctx.fillRect(cx+36, cy+12-bounce, 2, 2);
+        ctx.fillRect(cx+2, cy+36-bounce, 2, 2); ctx.fillRect(cx+36, cy+36-bounce, 2, 2);
 
         // Head
         ctx.fillStyle = metalColor;
-        ctx.fillRect(cx + 10, cy - 5, 20, 15);
-        ctx.strokeRect(cx + 10, cy - 5, 20, 15);
-
-        // Eye (Cyclops)
-        ctx.fillStyle = "#e74c3c"; // Glowing red
-        ctx.beginPath(); ctx.arc(cx + 20 + (this.facing*2), cy + 2, 4, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "#fff"; ctx.fillRect(cx + 20 + (this.facing*2) - 1, cy + 1, 2, 2); // Shine
+        ctx.save();
+        ctx.translate(cx + 20, cy + 2 - bounce);
+        ctx.fillRect(-10, 0, 20, 15);
+        ctx.strokeRect(-10, 0, 20, 15);
+        // Eye
+        ctx.fillStyle = "#e74c3c";
+        ctx.beginPath(); ctx.arc(0 + (this.facing*2), 7, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.fillRect(0 + (this.facing*2) - 1, 6, 2, 2);
+        ctx.restore();
 
         // Arms (Clamps)
         ctx.fillStyle = metalColor;
-        // Front arm based on facing
         let armX = this.facing === 1 ? cx + 30 : cx - 10;
-        ctx.fillRect(armX, cy + 15, 20, 8); // Arm
-
-        // Gun/Weapon
+        ctx.save();
+        ctx.translate(armX + 10, cy + 20 - bounce);
+        // Aiming / Swaying
+        ctx.rotate(walkCycle * 0.2);
+        ctx.fillRect(-10, -5, 20, 8); // Arm
+        // Gun
         ctx.fillStyle = "#222";
-        ctx.fillRect(armX + (this.facing===1?20:-5), cy + 12, 5, 14); // Hand/Gun
+        ctx.fillRect(this.facing===1?10:-15, -8, 5, 14);
+        ctx.restore();
     }
 }
 
@@ -218,6 +240,7 @@ export class FlyingEnemy extends Enemy {
         this.type = 'fly';
         this.hp = 2;
         this.w = 40; this.h = 40;
+        this.hoverOffset = 0;
     }
     update() {
         // Find nearest player
@@ -270,40 +293,51 @@ export class FlyingEnemy extends Enemy {
 
         this.x += this.vx;
         this.y += this.vy;
+
+        // Update visual timers
+        this.hoverOffset += 0.1;
     }
     draw(ctx, camX, camY, now) {
+        let bob = Math.sin(this.hoverOffset) * 5;
         let cx = this.x - camX;
-        let cy = this.y - camY;
+        let cy = this.y - camY + bob;
+
+        ctx.save();
+        ctx.translate(cx + 20, cy + 20);
+        // Tilt based on velocity
+        ctx.rotate(this.vx * 0.1);
+        ctx.translate(-20, -20);
 
         // UFO / DRONE
         // Dome
         ctx.fillStyle = "rgba(142, 68, 173, 0.6)"; // Purple glass
-        ctx.beginPath(); ctx.arc(cx + 20, cy + 15, 15, Math.PI, 0); ctx.fill();
+        ctx.beginPath(); ctx.arc(20, 15, 15, Math.PI, 0); ctx.fill();
         ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
 
         // Brain/Pilot inside
         ctx.fillStyle = "#8e44ad";
-        ctx.beginPath(); ctx.arc(cx + 20, cy + 12, 6, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(20, 12, 6, 0, Math.PI*2); ctx.fill();
 
         // Ring Body
         ctx.fillStyle = "#bdc3c7"; // Silver
-        ctx.beginPath(); ctx.ellipse(cx + 20, cy + 20, 20, 8, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(20, 20, 20, 8, 0, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = "#7f8c8d"; ctx.stroke();
 
         // Lights
         let time = now;
         for(let i=0; i<3; i++) {
             ctx.fillStyle = (Math.floor(time / 200) % 3 === i) ? "red" : "#550000";
-            ctx.beginPath(); ctx.arc(cx + 10 + (i*10), cy + 20, 2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(10 + (i*10), 20, 2, 0, Math.PI*2); ctx.fill();
         }
 
         // Thruster
         ctx.fillStyle = "#333";
-        ctx.fillRect(cx + 15, cy + 25, 10, 5);
+        ctx.fillRect(15, 25, 10, 5);
         if (Math.random() < 0.5) {
              ctx.fillStyle = "cyan";
-             ctx.beginPath(); ctx.moveTo(cx+15, cy+30); ctx.lineTo(cx+20, cy+40); ctx.lineTo(cx+25, cy+30); ctx.fill();
+             ctx.beginPath(); ctx.moveTo(15, 30); ctx.lineTo(20, 40 + (Math.random()*5)); ctx.lineTo(25, 30); ctx.fill();
         }
+        ctx.restore();
     }
 }
 
@@ -335,6 +369,9 @@ export class KamikazeEnemy extends Enemy {
             }
 
             this.chargeTimer--;
+            // Shake visual effect
+            if (this.chargeTimer % 4 === 0) this.x += (Math.random()-0.5)*4;
+
             if (this.chargeTimer <= 0) {
                 this.explode();
             }
@@ -379,22 +416,26 @@ export class KamikazeEnemy extends Enemy {
         let cy = this.y - camY;
 
         // WALKING BOMB BOT
+        let walkCycle = Math.sin(this.animFrame * 0.5) * 5;
+
         // Legs
         ctx.fillStyle = "#333";
-        ctx.fillRect(cx + 10, cy + 40, 5, 20);
-        ctx.fillRect(cx + 25, cy + 40, 5, 20);
+        ctx.save(); ctx.translate(cx + 10, cy + 40); ctx.rotate(walkCycle*0.1); ctx.fillRect(-2, 0, 5, 20); ctx.restore();
+        ctx.save(); ctx.translate(cx + 25, cy + 40); ctx.rotate(-walkCycle*0.1); ctx.fillRect(-2, 0, 5, 20); ctx.restore();
 
         // Body (Bomb Shape)
         ctx.fillStyle = "#2c3e50"; // Dark body
-        ctx.beginPath(); ctx.arc(cx + 20, cy + 25, 18, 0, Math.PI*2); ctx.fill();
+        // Swell if charging
+        let swell = this.charging ? Math.sin(now * 0.05) * 2 : 0;
+        ctx.beginPath(); ctx.arc(cx + 20, cy + 25, 18 + swell, 0, Math.PI*2); ctx.fill();
 
         // Fuse / Antenna
         ctx.fillStyle = "#7f8c8d";
         ctx.fillRect(cx + 18, cy, 4, 10);
         // Spark
-        if (Math.random() < 0.5) {
+        if (Math.random() < 0.5 || this.charging) {
              ctx.fillStyle = "yellow";
-             ctx.beginPath(); ctx.arc(cx + 20, cy, 4, 0, Math.PI*2); ctx.fill();
+             ctx.beginPath(); ctx.arc(cx + 20, cy, 4 + swell, 0, Math.PI*2); ctx.fill();
         }
 
         // Face (Screen)
@@ -430,10 +471,12 @@ export class HeavyGunner extends Enemy {
         this.color = "#27ae60";
         this.speed = 0; // Stationary usually, or very slow
         this.chaseSpeed = 0; // Doesn't chase
+        this.recoil = 0;
     }
     update() {
         this.vy += GRAVITY;
         this.y += this.vy;
+        if (this.recoil > 0) this.recoil--;
 
         // Ground Collision
         let r = Math.floor((this.y + this.h) / TILE_SIZE);
@@ -462,6 +505,7 @@ export class HeavyGunner extends Enemy {
                 if (this.shootTimer > 10) {
                      this.shoot(target);
                      this.shootTimer = 0;
+                     this.recoil = 4;
                 }
             }
         }
@@ -477,7 +521,7 @@ export class HeavyGunner extends Enemy {
         if(soundManager) soundManager.play('enemy_shoot');
     }
     draw(ctx, camX, camY, now) {
-        let cx = this.x - camX;
+        let cx = this.x - camX - (this.facing * this.recoil);
         let cy = this.y - camY;
 
         // TANK BOT
@@ -486,7 +530,20 @@ export class HeavyGunner extends Enemy {
         drawRoundedRect(ctx, cx, cy + 50, 50, 20, 5);
         // Tread wheels
         ctx.fillStyle = "#7f8c8d";
-        for(let i=0; i<3; i++) ctx.beginPath(), ctx.arc(cx + 10 + i*15, cy + 60, 6, 0, Math.PI*2), ctx.fill();
+        for(let i=0; i<3; i++) {
+            let wx = cx + 10 + i*15;
+            let wy = cy + 60;
+            ctx.save();
+            ctx.translate(wx, wy);
+            // Rotate wheels
+            if (this.vx !== 0) ctx.rotate(now * 0.01);
+            else ctx.rotate(Math.sin(now * 0.005) * 0.2); // Idle rock
+
+            ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#333"; ctx.fillRect(-1, -6, 2, 12); ctx.fillRect(-6, -1, 12, 2);
+            ctx.restore();
+            ctx.fillStyle = "#7f8c8d";
+        }
 
         // Torso
         ctx.fillStyle = "#27ae60"; // Green Armor
@@ -502,11 +559,11 @@ export class HeavyGunner extends Enemy {
         // Minigun Arm
         ctx.fillStyle = "#333";
         let gunX = this.facing === 1 ? cx + 40 : cx - 20;
-        ctx.fillRect(gunX, cy + 25, 30, 10); // Barrel
+        ctx.fillRect(gunX - (this.recoil*2), cy + 25, 30, 10); // Barrel
         // Rotation
         let spin = Math.sin(now * 0.5) * 2;
         ctx.fillStyle = "#111";
-        ctx.fillRect(gunX + (this.facing===1?30:0), cy + 22 + spin, 5, 16);
+        ctx.fillRect(gunX - (this.recoil*2) + (this.facing===1?30:0), cy + 22 + spin, 5, 16);
     }
 }
 
@@ -982,7 +1039,12 @@ export class Boss {
         ctx.strokeStyle = "#333"; ctx.lineWidth = 15; ctx.lineCap = "round"; ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(0, -50);
-        ctx.bezierCurveTo(0, -100, -80, -50, -60, 0);
+
+        // Animated Hose
+        let hx = Math.sin(now * 0.005) * 30;
+        let hy = Math.cos(now * 0.005) * 30;
+
+        ctx.bezierCurveTo(0, -100, -80+hx, -50+hy, -60, 0);
         ctx.stroke();
 
         // Nozzle head
@@ -1128,10 +1190,11 @@ export class HelicopterBoss {
 
         // Rotor
         ctx.fillStyle = "#000";
-        ctx.fillRect(cx+60, cy-10, 20, 10);
-        // Blade blur
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(cx-20, cy-15, 180, 5);
+        ctx.save();
+        ctx.translate(cx+60, cy-10);
+        ctx.scale(1.0, 0.1); // flatten
+        ctx.beginPath(); ctx.arc(0,0, 80, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
 
         // Gun Mount
         ctx.fillStyle = "#111";

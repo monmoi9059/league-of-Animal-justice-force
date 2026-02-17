@@ -3,7 +3,7 @@ import { updateUI } from '../ui.js';
 import { gameState, playerKeys, tiles, particles, entities, players } from '../state.js';
 import { winGame, endGame } from '../game-flow.js';
 import { spawnExplosion, spawnDamageNumber, shakeCamera } from '../utils.js';
-import { Particle } from './particles.js';
+import { Particle, DustParticle } from './particles.js';
 import { soundManager } from '../sound.js';
 import { Bullet, MeleeHitbox } from './projectiles.js';
 import { Dumpster } from './items.js';
@@ -211,7 +211,9 @@ export class Player {
                     this.vx += input * ACCELERATION; this.facing = input;
                     this.animFrame += isSprinting ? 2 : 1;
                     let dustFreq = isSprinting ? 5 : 10;
-                    if(this.grounded && this.animFrame % dustFreq === 0) particles.push(new Particle(this.x + 15, this.y + 30, "#d2b48c"));
+                    if(this.grounded && this.animFrame % dustFreq === 0) {
+                        particles.push(new DustParticle(this.x + this.w/2, this.y + this.h, "#fff"));
+                    }
                 } else { this.vx *= FRICTION; this.animFrame = 0; }
 
                 if(Math.abs(this.vx) > this.speed) this.vx = Math.sign(this.vx) * this.speed;
@@ -221,6 +223,8 @@ export class Player {
             if (pKeys[' '] && this.grounded && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
                 if(soundManager) soundManager.play('jump');
+                // Jump dust
+                for(let i=0; i<3; i++) particles.push(new DustParticle(this.x + this.w/2 + (Math.random()-0.5)*10, this.y + this.h, "#fff"));
             }
 
             // --- FLY ABILITY ---
@@ -310,7 +314,7 @@ export class Player {
                         }
                         continue;
                     }
-            if(type === 1 || type === 2 || type === 3) {
+                    if(type === 1 || type === 2 || type === 3) {
                         if(isX) {
                             if(this.vx > 0) {
                                 this.x = (col * TILE_SIZE) - this.w;
@@ -325,7 +329,11 @@ export class Player {
                                 if (this.lastY + this.h <= row * TILE_SIZE + 15) {
                                     this.y = (row * TILE_SIZE) - this.h;
                                     this.vy = 0;
-                                    if(!this.grounded) { this.stretchX = 1.4; this.stretchY = 0.6; }
+                                    if(!this.grounded) {
+                                        this.stretchX = 1.4; this.stretchY = 0.6;
+                                        // Land dust
+                                        for(let i=0; i<5; i++) particles.push(new DustParticle(this.x + this.w/2 + (Math.random()-0.5)*10, this.y + this.h, "#fff"));
+                                    }
                                     this.grounded = true;
                                     return;
                                 }
@@ -388,11 +396,26 @@ export class Player {
     }
 
     performSecondary() {
-        // Standardized Kick/Melee for all characters
-        entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
-        // Visual
-        particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
-        this.attackAnim = { type: 'kick', timer: 15, max: 15 };
+        if (this.charData.melee) {
+            // Melee chars get a secondary ranged attack (Throwable/Gun)
+            entities.push(new Bullet(
+                this.x + (this.facing > 0 ? this.w : 0),
+                this.y + 10,
+                this.facing,
+                false,
+                this.charData, // Inherit mainly for safety, but isSecondary overrides most stats
+                false, // isDown
+                true   // isSecondary
+            ));
+            this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
+            if(soundManager) soundManager.play('shoot');
+        } else {
+            // Ranged chars get a secondary melee attack (Kick)
+            entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
+            // Visual
+            particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
+            this.attackAnim = { type: 'kick', timer: 15, max: 15 };
+        }
     }
 
     shoot(isSpecial, isDown, isUp = false) {
@@ -469,7 +492,7 @@ export class Player {
         // Dynamic offset:
         ctx.translate(0, -this.h/2 - 7); // -7 acts as base bob/leg padding
 
-        drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim);
+        drawAnatomicalHero(ctx, this.charData, this.animFrame, this.attackAnim, this.vy);
         ctx.restore();
 
         // DRAW STAMINA BAR
