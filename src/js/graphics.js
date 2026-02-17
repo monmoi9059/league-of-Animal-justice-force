@@ -41,6 +41,30 @@ function drawLimb(ctx, x, y, width, len1, len2, angle1, angle2, color) {
     ctx.restore();
 }
 
+function drawWing(ctx, x, y, width, length, angle, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = color;
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0); // Shoulder
+    // Wing shape (teardrop)
+    ctx.quadraticCurveTo(width*3, length/2, 0, length);
+    ctx.quadraticCurveTo(-width, length/2, 0, 0);
+    ctx.fill();
+
+    // Feather details
+    ctx.strokeStyle = "rgba(0,0,0,0.15)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(width, length*0.3); ctx.lineTo(width*2, length*0.4);
+    ctx.moveTo(width*0.5, length*0.6); ctx.lineTo(width*1.5, length*0.7);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
 // ---------------------------------------------------------
 // STANCE SPECIFIC RENDERERS
 // ---------------------------------------------------------
@@ -90,7 +114,27 @@ function drawQuadruped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) 
 
     // 3. BODY
     ctx.fillStyle = suit;
-    drawRoundedRect(ctx, -w/2, -h/2 + bob, w, h, 8);
+    let bodyShape = char.body || 'standard';
+
+    if (bodyShape === 'orb' || bodyShape === 'pumpkin') {
+        ctx.beginPath(); ctx.ellipse(0, bob, w/2, h/2, 0, 0, Math.PI*2); ctx.fill();
+    } else if (bodyShape === 'muscular') {
+        // Thicker front (chest), tapered back
+        ctx.beginPath();
+        ctx.moveTo(-w/2 + 5, -h/2 + bob + 4); // Back top
+        ctx.lineTo(w/2, -h/2 + bob - 2); // Front top (higher shoulders)
+        ctx.lineTo(w/2 + 2, h/2 + bob); // Front bot
+        ctx.lineTo(-w/2 + 5, h/2 + bob - 2); // Back bot
+        ctx.fill();
+    } else if (bodyShape === 'brute') {
+        // Large, boxy
+        drawRoundedRect(ctx, -w/2 - 5, -h/2 + bob - 5, w + 10, h + 10, 6);
+    } else if (bodyShape === 'stick') {
+        ctx.lineWidth = 4; ctx.strokeStyle = suit;
+        ctx.beginPath(); ctx.moveTo(-w/2, bob); ctx.lineTo(w/2, bob); ctx.stroke();
+    } else {
+        drawRoundedRect(ctx, -w/2, -h/2 + bob, w, h, 8);
+    }
 
     // Weapon Mount (Back)
     if (char.mount === 'back') {
@@ -217,6 +261,7 @@ function drawFish(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
 function drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
     let isMoving = frame > 0;
     let isAir = Math.abs(vy) > 0.5;
+    let isBird = ['bird', 'duck', 'chicken', 'owl', 'penguin', 'bee'].some(t => char.type.includes(t)) || char.type === 'bird';
 
     let legL_Upper = 0, legL_Lower = 0;
     let legR_Upper = 0, legR_Lower = 0;
@@ -229,11 +274,11 @@ function drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
         if (vy < 0) { // Jump
             legL_Upper = -0.5; legL_Lower = 1.0; // Tuck
             legR_Upper = 0.2; legR_Lower = 0.5;
-            armL = -2.5; armR = -2.5; // Arms up
+            armL = isBird ? -2.0 : -2.5; armR = isBird ? -2.0 : -2.5; // Arms/Wings up
         } else { // Fall
             legL_Upper = 0.2; legL_Lower = 0.1;
             legR_Upper = -0.2; legR_Lower = 0.1;
-            armL = -0.5; armR = -0.5; // Arms out
+            armL = isBird ? -1.0 : -0.5; armR = isBird ? -1.0 : -0.5; // Arms/Wings out
         }
     } else if (isMoving) {
         // Run Cycle
@@ -252,6 +297,7 @@ function drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
         // Idle
         let breath = Math.sin(Date.now() / 500) * 0.05;
         armL = breath; armR = -breath;
+        if(isBird) { armL += 0.5; armR += 0.5; } // Wings fold back slightly
     }
 
     // ATTACK OVERRIDES
@@ -277,17 +323,49 @@ function drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
     drawLimb(ctx, -4, 25+bob, 6, 8, 8, legL_Upper, legL_Lower, dark);
 
     // Back Arm (Left)
-    ctx.save(); ctx.translate(0, 15+bob); ctx.rotate(armL);
-    ctx.fillStyle = dark; drawRoundedRect(ctx, -3, 0, 6, 12, 3);
-    ctx.restore();
+    if (isBird) {
+        drawWing(ctx, -5, 15+bob, 6, 18, armL, dark);
+    } else {
+        ctx.save(); ctx.translate(0, 15+bob); ctx.rotate(armL);
+        ctx.fillStyle = dark; drawRoundedRect(ctx, -3, 0, 6, 12, 3);
+        ctx.restore();
+    }
 
     // Body
     ctx.fillStyle = suit;
     let bodyShape = char.body || 'standard';
-    if(bodyShape === 'brute') {
-         ctx.beginPath(); ctx.moveTo(-15,0+bob); ctx.lineTo(15,0+bob); ctx.lineTo(5,25+bob); ctx.lineTo(-5,25+bob); ctx.fill();
-    } else if (bodyShape === 'orb') {
-         ctx.beginPath(); ctx.arc(0, 15+bob, 15, 0, Math.PI*2); ctx.fill();
+
+    if (bodyShape === 'brute') {
+         // Triangular/Wide top
+         ctx.beginPath(); ctx.moveTo(-15, 0+bob); ctx.lineTo(15, 0+bob); ctx.lineTo(6, 25+bob); ctx.lineTo(-6, 25+bob); ctx.fill();
+    } else if (bodyShape === 'orb' || bodyShape === 'pumpkin') {
+         ctx.beginPath(); ctx.arc(0, 15+bob, 14, 0, Math.PI*2); ctx.fill();
+    } else if (bodyShape === 'teardrop') {
+         // Bird-like body
+         ctx.beginPath();
+         ctx.moveTo(0, 5+bob);
+         ctx.quadraticCurveTo(12, 5+bob, 12, 18+bob);
+         ctx.quadraticCurveTo(0, 30+bob, -12, 18+bob);
+         ctx.quadraticCurveTo(-12, 5+bob, 0, 5+bob);
+         ctx.fill();
+    } else if (bodyShape === 'muscular') {
+         // V-shape torso
+         ctx.beginPath();
+         ctx.moveTo(-12, 5+bob); ctx.lineTo(12, 5+bob); // Shoulders
+         ctx.lineTo(8, 20+bob); ctx.lineTo(-8, 20+bob); // Waist
+         ctx.lineTo(-12, 5+bob);
+         ctx.fill();
+         // Abs/Pecks detail
+         ctx.fillStyle = "rgba(0,0,0,0.1)";
+         ctx.fillRect(-4, 8+bob, 8, 4);
+         ctx.fillRect(-3, 13+bob, 6, 4);
+         ctx.fillStyle = suit;
+    } else if (bodyShape === 'stick') {
+         ctx.lineWidth = 4; ctx.strokeStyle = suit;
+         ctx.beginPath(); ctx.moveTo(0, 5+bob); ctx.lineTo(0, 25+bob); ctx.stroke();
+         ctx.lineWidth = 1; // Reset
+    } else if (bodyShape === 'block') {
+         ctx.fillRect(-12, 5+bob, 24, 20);
     } else {
          drawRoundedRect(ctx, -10, 8+bob, 20, 18, 5);
     }
@@ -303,19 +381,33 @@ function drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy) {
     drawLimb(ctx, 4, 25+bob, 6, 8, 8, legR_Upper, legR_Lower, dark);
 
     // Front Arm (Right)
-    ctx.save(); ctx.translate(0, 15+bob); ctx.rotate(armR);
-    ctx.fillStyle = suit; drawRoundedRect(ctx, -3, 0, 6, 12, 3); // Sleeve
-    ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, 12, 4, 0, Math.PI*2); ctx.fill(); // Hand
-    // Weapon held?
-    if (char.mount === 'hand') {
-        // Simple gun/item representation if needed, but projectiles usually handle this.
-        // Let's add a small item
-        ctx.fillStyle = char.pColor;
-        ctx.translate(0, 12);
-        // ctx.rotate(-Math.PI/2);
-        // ctx.fillRect(0, -2, 10, 4);
+    if (isBird) {
+        drawWing(ctx, 5, 15+bob, 6, 18, armR, suit);
+        // Weapon held? (Attached to wing tip or body?)
+        if (char.mount === 'hand') {
+            ctx.save();
+            ctx.translate(5, 15+bob);
+            ctx.rotate(armR);
+            ctx.translate(0, 15); // Wing tip
+            ctx.fillStyle = char.pColor;
+            // ctx.fillRect(-2, -2, 4, 4); // Minimal weapon
+            ctx.restore();
+        }
+    } else {
+        ctx.save(); ctx.translate(0, 15+bob); ctx.rotate(armR);
+        ctx.fillStyle = suit; drawRoundedRect(ctx, -3, 0, 6, 12, 3); // Sleeve
+        ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, 12, 4, 0, Math.PI*2); ctx.fill(); // Hand
+        // Weapon held?
+        if (char.mount === 'hand') {
+            // Simple gun/item representation if needed, but projectiles usually handle this.
+            // Let's add a small item
+            ctx.fillStyle = char.pColor;
+            ctx.translate(0, 12);
+            // ctx.rotate(-Math.PI/2);
+            // ctx.fillRect(0, -2, 10, 4);
+        }
+        ctx.restore();
     }
-    ctx.restore();
 }
 
 // ---------------------------------------------------------
