@@ -1129,7 +1129,55 @@ export function drawHeroHead(ctx, char, style) {
         }
     }
 
-    // --- 8. PRIMATES / HUMANOIDS / ALIENS ---
+    // --- 8. URSIDS (Bears, Pandas, Koalas) ---
+    else if (['bear', 'panda', 'koala'].some(t => type.includes(t))) {
+        let isPanda = name.includes('PANDA') || type.includes('panda');
+        let headColor = isPanda ? '#fff' : skin; // Pandas usually have white heads despite body color
+
+        // Round Head
+        ctx.fillStyle = headColor;
+        ctx.beginPath(); ctx.arc(0, -2, 11, 0, Math.PI*2); ctx.fill();
+
+        // Ears (Round, on top corners)
+        ctx.fillStyle = isPanda ? "#000" : skin; // Panda ears are black
+        if (type.includes('koala')) {
+             ctx.beginPath(); ctx.arc(-12, -10, 6, 0, Math.PI*2); ctx.fill();
+             ctx.beginPath(); ctx.arc(12, -10, 6, 0, Math.PI*2); ctx.fill();
+             ctx.fillStyle = "#eee"; // Inner ear fluff
+             ctx.beginPath(); ctx.arc(-12, -10, 3, 0, Math.PI*2); ctx.fill();
+             ctx.beginPath(); ctx.arc(12, -10, 3, 0, Math.PI*2); ctx.fill();
+        } else {
+             // Bear/Panda ears
+             ctx.beginPath(); ctx.arc(-9, -11, 4.5, 0, Math.PI*2); ctx.fill();
+             ctx.beginPath(); ctx.arc(9, -11, 4.5, 0, Math.PI*2); ctx.fill();
+        }
+
+        ctx.fillStyle = headColor; // Restore head color
+
+        // Snout
+        ctx.fillStyle = (isPanda || skin === '#fff') ? "#f9f9f9" : "#deb887"; // Light snout
+        ctx.beginPath(); ctx.ellipse(0, 3, 5, 3.5, 0, 0, Math.PI*2); ctx.fill();
+
+        // Nose
+        ctx.fillStyle = "#222";
+        ctx.beginPath(); ctx.moveTo(-2, 2); ctx.lineTo(2, 2); ctx.lineTo(0, 5); ctx.fill();
+
+        // PANDA MARKINGS
+        if (isPanda) {
+             ctx.fillStyle = "#000"; // Eye patches
+             // Slanted patches
+             ctx.beginPath();
+             ctx.ellipse(-5, -3, 4, 3, -0.3, 0, Math.PI*2);
+             ctx.fill();
+             ctx.beginPath();
+             ctx.ellipse(5, -3, 4, 3, 0.3, 0, Math.PI*2);
+             ctx.fill();
+        }
+
+        if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 0, -3, 1, {x: 0, y: 5});
+    }
+
+    // --- 9. PRIMATES / HUMANOIDS / ALIENS ---
     else {
         // Standard Head
         drawRoundedRect(ctx, -10, -12, 20, 24, 8);
