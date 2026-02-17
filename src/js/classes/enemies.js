@@ -58,7 +58,7 @@ export class Enemy {
             }
 
             if (target) {
-                if (minDist < 400) {
+                if (minDist < 600) {
                     this.state = 'chase';
                 } else {
                     this.state = 'patrol';
@@ -361,7 +361,7 @@ export class KamikazeEnemy extends Enemy {
         }
 
         if (target) {
-            if (minDist < 50) {
+            if (minDist < 100) {
                 this.charging = true;
                 this.chargeTimer = 60; // 1 second delay
                 // Optional: Play alert sound here if wanted
@@ -459,7 +459,7 @@ export class HeavyGunner extends Enemy {
         }
 
         if (target) {
-            if (minDist < 500) {
+            if (minDist < 600) {
                 this.facing = target.x < this.x ? -1 : 1;
                 this.shootTimer++;
                 if (this.shootTimer > 10) {
