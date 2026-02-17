@@ -416,8 +416,6 @@ function loop(timestamp) {
                 gameState.cameraY += (targetY - gameState.cameraY) * 0.1;
             }
 
-            let sx = (secureRandom()-0.5) * gameState.shake;
-            let sy = (secureRandom()-0.5) * gameState.shake;
             gameState.shake *= 0.9;
         }
     } catch(e) {
