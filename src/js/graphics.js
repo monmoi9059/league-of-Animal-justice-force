@@ -351,7 +351,7 @@ function drawShading(ctx, x, y, w, h) {
     ctx.fillRect(x, y, w, h);
 }
 
-function drawFaceFeatures(ctx, style, x, y, size = 1) {
+function drawFaceFeatures(ctx, style, x, y, size = 1, mouthPos = null) {
     let rng = style.rng;
 
     // Blink Logic
@@ -421,16 +421,22 @@ function drawFaceFeatures(ctx, style, x, y, size = 1) {
 
     // Mouth
     ctx.beginPath();
+    let mx = x;
     let my = y + 6*size;
+    if (mouthPos) {
+        mx = mouthPos.x;
+        my = mouthPos.y;
+    }
+
     if (style.expression === 'angry') {
-        ctx.moveTo(x-3, my); ctx.lineTo(x+3, my); // Line mouth
+        ctx.moveTo(mx-3, my); ctx.lineTo(mx+3, my); // Line mouth
         // Teeth
         ctx.strokeStyle = "#fff"; ctx.lineWidth=2; ctx.stroke(); ctx.lineWidth=1;
     } else if (style.expression === 'happy') {
-        ctx.arc(x, my-2, 4, 0.2, Math.PI-0.2); // Smile
+        ctx.arc(mx, my-2, 4, 0.2, Math.PI-0.2); // Smile
         ctx.strokeStyle = "#000"; ctx.stroke();
     } else {
-        ctx.moveTo(x-2, my); ctx.lineTo(x+2, my);
+        ctx.moveTo(mx-2, my); ctx.lineTo(mx+2, my);
         ctx.strokeStyle = "#000"; ctx.stroke();
     }
 }
@@ -887,6 +893,7 @@ export function drawHeroHead(ctx, char, style) {
             ctx.fillStyle = dark; // Inner ear
             ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-9, -20); ctx.lineTo(0, -10); ctx.fill();
         }
+        if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 2, -5, 1, {x: 11, y: 6});
     }
 
     // --- 2. FELIDS (Cats, Lions, Panthers) ---
@@ -917,7 +924,7 @@ export function drawHeroHead(ctx, char, style) {
         ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-12, -18); ctx.lineTo(-2, -10); ctx.fill();
         ctx.beginPath(); ctx.moveTo(2, -10); ctx.lineTo(8, -18); ctx.lineTo(10, -6); ctx.fill();
 
-        fx = 0; fy = -3;
+        if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 0, -3, 1, {x: 0, y: 5});
     }
 
     // --- 3. UNGULATES (Cows, Pigs, Horses, etc) ---
@@ -957,6 +964,7 @@ export function drawHeroHead(ctx, char, style) {
             ctx.fillStyle = "#111"; // Nostrils
             ctx.beginPath(); ctx.arc(12, 0, 2, 0, Math.PI*2); ctx.fill();
         }
+        if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 2, -4, 1, {x: 12, y: 6});
         ctx.restore();
 
         // Horns / Antlers
@@ -980,8 +988,6 @@ export function drawHeroHead(ctx, char, style) {
              // Side ears
              ctx.beginPath(); ctx.ellipse(-8, -8, 8, 4, -0.5, 0, Math.PI*2); ctx.fill();
         }
-
-        fx = 2; fy = -4;
     }
 
     // --- 4. BIRDS (Beaks & Bills) ---
@@ -1020,7 +1026,7 @@ export function drawHeroHead(ctx, char, style) {
              ctx.fill();
         }
 
-        fx = 2; fy = -6;
+        if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 2, -6, 1, {x: 12, y: 0});
     }
 
     // --- 5. RODENTS (Rats, Mice, Rabbits, etc) ---
@@ -1055,7 +1061,7 @@ export function drawHeroHead(ctx, char, style) {
              ctx.beginPath(); ctx.arc(-4, -10, 6, 0, Math.PI*2); ctx.fill();
         }
 
-        fx = 2; fy = -4;
+        if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 2, -4, 1, {x: 12, y: 5});
     }
 
     // --- 6. REPTILES/AMPHIBIANS (Lizards, Frogs, Crocs) ---
@@ -1064,9 +1070,10 @@ export function drawHeroHead(ctx, char, style) {
              // Wide flat head
              ctx.beginPath(); ctx.ellipse(0, -4, 14, 8, 0, 0, Math.PI*2); ctx.fill();
              // Eyes on top
-             fx = 0; fy = -10;
+
              // Big Mouth Line
              ctx.strokeStyle = "#000"; ctx.beginPath(); ctx.moveTo(-8, 2); ctx.quadraticCurveTo(0, 4, 8, 2); ctx.stroke();
+             if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 0, -10, 1, {x: 0, y: 2});
          } else if (type.includes('croc') || type.includes('alligator')) {
              // Long flat snout
              drawRoundedRect(ctx, -12, -8, 12, 16, 4); // Head back
@@ -1076,7 +1083,7 @@ export function drawHeroHead(ctx, char, style) {
              for(let i=0; i<4; i++) {
                  ctx.beginPath(); ctx.moveTo(2 + i*4, 6); ctx.lineTo(4+i*4, 10); ctx.lineTo(6+i*4, 6); ctx.fill();
              }
-             fx = -4; fy = -6;
+             if (!name.includes("DARE")) drawFaceFeatures(ctx, style, -4, -6, 1, {x: 10, y: 4});
          } else {
              // Lizard/Snake head (Diamond shape)
              ctx.beginPath();
@@ -1090,7 +1097,7 @@ export function drawHeroHead(ctx, char, style) {
                  ctx.strokeStyle = "red"; ctx.lineWidth=1;
                  ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(20, 0); ctx.lineTo(22, -2); ctx.moveTo(20, 0); ctx.lineTo(22, 2); ctx.stroke();
              }
-             fx = 0; fy = -4;
+             if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 0, -4, 1, {x: 12, y: 2});
          }
     }
 
@@ -1103,7 +1110,7 @@ export function drawHeroHead(ctx, char, style) {
             ctx.quadraticCurveTo(15, -8, 20, 4); // Downward curve
             ctx.quadraticCurveTo(10, 0, -10, 8);
             ctx.fill();
-            fx = 2; fy = -6;
+            if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 2, -6, 1, {x: 15, y: 0});
         } else {
             // Insect Head (Oval)
             ctx.beginPath(); ctx.ellipse(0, -4, 10, 8, 0, 0, Math.PI*2); ctx.fill();
@@ -1118,7 +1125,7 @@ export function drawHeroHead(ctx, char, style) {
                 ctx.beginPath(); ctx.moveTo(-4, 4); ctx.lineTo(-2, 8); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(4, 4); ctx.lineTo(2, 8); ctx.stroke();
             }
-            fx = 0; fy = -4;
+            if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 0, -4, 1, {x: 0, y: 4});
         }
     }
 
@@ -1140,15 +1147,10 @@ export function drawHeroHead(ctx, char, style) {
             ctx.fillStyle = "#000";
             ctx.beginPath(); ctx.arc(-2, 4, 1, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(2, 4, 1, 0, Math.PI*2); ctx.fill();
-            fx = 0; fy = -4;
+            if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 0, -4, 1, {x: 0, y: 6});
         } else {
-            fx = 0; fy = -2;
+            if (!name.includes("DARE")) drawFaceFeatures(ctx, style, 0, -2);
         }
-    }
-
-    if (!name.includes("DARE")) {
-        // Use new Face Rendering
-        drawFaceFeatures(ctx, style, fx, fy);
     }
 
     // Headgear on top
