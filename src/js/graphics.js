@@ -223,21 +223,47 @@ function drawBackAccessories(ctx, char, style, x, y, frame, vy) {
     if (style.clothing === 'cape') {
         ctx.save();
         ctx.translate(x, y);
+        ctx.fillStyle = char.cDark || "#c00";
 
         let wave = Math.sin(frame * 0.2);
         let lift = Math.min(Math.max(vy * 0.5, -0.5), 1.0);
         if (Math.abs(vy) > 0.5) lift -= 0.5; // Fly up
 
-        ctx.rotate(0.2 + lift + wave * 0.1);
+        // --- QUADRUPED CAPE LOGIC ---
+        if (char.stance === 'quadruped') {
+            // We are now positioned at the neck/shoulder (approx w/2 - 8)
+            // Adjust translation slightly up
+            ctx.translate(-2, -5);
 
-        ctx.fillStyle = char.cDark || "#c00";
+            // Rotate less, flow backwards along the back
+            ctx.rotate(0.1 + lift * 0.5);
 
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-20 - lift*10, 40); // Bottom left
-        ctx.quadraticCurveTo(-10, 45 + wave*5, 0, 40); // Bottom curve
-        ctx.lineTo(5, 0);
-        ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(0, 0); // Neck attachment
+
+            // Top edge flows back (negative x direction)
+            ctx.lineTo(-28 - lift*5, 5 + wave*2);
+
+            // Trailing edge
+            ctx.lineTo(-32 - lift*8, 20 + wave*5);
+
+            // Bottom edge curves back under toward the body
+            ctx.quadraticCurveTo(-15, 12, 0, 8);
+
+            ctx.fill();
+        }
+        // --- BIPED CAPE LOGIC ---
+        else {
+            ctx.rotate(0.2 + lift + wave * 0.1);
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-20 - lift*10, 40); // Bottom left
+            ctx.quadraticCurveTo(-10, 45 + wave*5, 0, 40); // Bottom curve
+            ctx.lineTo(5, 0);
+            ctx.fill();
+        }
+
         ctx.restore();
     }
 
@@ -490,7 +516,7 @@ function drawQuadruped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy, 
     drawLimb(ctx, w/2 - 8, 10+bob, 6, 8, 8, flA, flA*0.5, dark, style, true);
 
     // BACK ACCESSORIES
-    drawBackAccessories(ctx, char, style, -w/2, bob+5, frame, vy);
+    drawBackAccessories(ctx, char, style, w/2 - 8, bob+5, frame, vy);
 
     // 3. BODY with TEXTURE
     let bodyShape = char.body || 'standard';
@@ -820,67 +846,307 @@ function drawBiped(ctx, char, frame, bob, skin, dark, suit, attackAnim, vy, styl
 export function drawHeroHead(ctx, char, style) {
     let skin = char.cSkin;
     let dark = char.cDark;
+    let type = char.type;
+    let name = char.name;
 
     ctx.fillStyle = skin;
 
-    // Head Position/Size adjustments for drawing features
-    let fx = 2, fy = -4;
+    // Default Face Position
+    let fx = 0, fy = -2;
+    let headSize = 10;
 
-    // 1. CANIDS (Dogs, Wolves, Foxes)
-    if (['dog_pointy', 'wolf', 'fox', 'dog_long', 'dog_flat'].includes(char.type)) {
-        if (char.type === 'dog_flat') {
-            drawRoundedRect(ctx, -13, -12, 26, 22, 6);
+    // --- 1. CANIDS (Wolves, Foxes, Dogs) ---
+    if (['wolf', 'fox', 'dog_pointy', 'dog_long', 'dog_flat', 'poodle'].some(t => type.includes(t))) {
+        // Head Shape
+        if (type.includes('dog_flat') || type.includes('poodle')) {
+            drawRoundedRect(ctx, -12, -12, 24, 24, 8); // Boxy head
+            fx = 0; fy = -4;
         } else {
+            // Pointy snout profile
             ctx.beginPath();
-            ctx.moveTo(-10, -10); ctx.lineTo(8, -10);
-            ctx.lineTo(14, 0);
-            ctx.lineTo(8, 8);
+            ctx.moveTo(-10, -10); ctx.lineTo(6, -10);
+            ctx.lineTo(16, 2); // Snout tip
+            ctx.lineTo(6, 10);
             ctx.lineTo(-10, 8);
             ctx.fill();
-            // Nose
-            ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(14, 0, 2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = skin;
-            fx = 0; fy = -6; // Adjust eyes for pointy dogs
+            // Nose Tip
+            ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(16, 2, 2.5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = skin;
+            fx = 2; fy = -5;
         }
-        ctx.fillStyle = skin;
-        if (['dog_pointy', 'wolf', 'fox'].includes(char.type)) {
-            ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(-10, -22); ctx.lineTo(2, -10); ctx.fill();
+
+        // Ears
+        if (type.includes('poodle') || type.includes('dog_flat')) {
+            // Floppy ears
+            ctx.fillStyle = dark;
+            ctx.beginPath(); ctx.ellipse(-12, -4, 4, 10, -0.2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(8, -4, 4, 10, 0.2, 0, Math.PI*2); ctx.fill(); // Wait, side view? Usually we draw 2 ears on top or side
         } else {
-            ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, -6, 12, 6, 0, 0, Math.PI*2); ctx.fill();
+            // Pointy ears
+            ctx.fillStyle = skin;
+            ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(-10, -24); ctx.lineTo(2, -10); ctx.fill(); // Back ear
+            ctx.fillStyle = dark; // Inner ear
+            ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-9, -20); ctx.lineTo(0, -10); ctx.fill();
         }
-    }
-    // 2. FELINES
-    else if (['cat', 'lion', 'panther'].includes(char.type)) {
-        ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(-12, -18); ctx.lineTo(0, -10); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(8, -8); ctx.lineTo(12, -18); ctx.lineTo(0, -10); ctx.fill();
-        if(char.type === 'lion') {
-             ctx.globalCompositeOperation = 'destination-over';
-             ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2); ctx.fill();
-             ctx.globalCompositeOperation = 'source-over';
-        }
-    }
-    // 3. HEAVY
-    else if (['cow', 'bull', 'buffalo', 'rhino', 'elephant', 'bear', 'pig'].includes(char.type)) {
-        drawRoundedRect(ctx, -12, -12, 24, 24, 8);
-        if(char.type === 'rhino') {
-            ctx.fillStyle = "#eee"; ctx.beginPath(); ctx.moveTo(8, -6); ctx.lineTo(18, -12); ctx.lineTo(10, 0); ctx.fill();
-        }
-        if(char.type === 'elephant') {
-            ctx.lineWidth=5; ctx.strokeStyle=skin; ctx.beginPath(); ctx.moveTo(10, 5); ctx.quadraticCurveTo(20, 20, 15, 25); ctx.stroke();
-        }
-    }
-    // 4. BIRDS
-    else if (['bird', 'duck', 'chicken', 'penguin', 'owl'].includes(char.type)) {
-        ctx.beginPath(); ctx.arc(0, -5, 10, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "orange";
-        ctx.beginPath(); ctx.moveTo(8, -5); ctx.lineTo(16, -2); ctx.lineTo(8, 1); ctx.fill();
-        fx = 0; fy = -6; // Birds eyes higher
-    }
-    else {
-        drawRoundedRect(ctx, -10, -10, 20, 20, 6);
     }
 
-    if (!char.name.includes("DARE")) {
+    // --- 2. FELIDS (Cats, Lions, Panthers) ---
+    else if (['cat', 'lion', 'panther', 'tiger', 'cheetah', 'leopard'].some(t => type.includes(t))) {
+        // Mane for Lions
+        if (type.includes('lion') || name.includes('LION')) {
+             ctx.fillStyle = dark;
+             ctx.beginPath(); ctx.arc(-2, 0, 20, 0, Math.PI*2); ctx.fill();
+             ctx.fillStyle = skin;
+        }
+
+        // Head Shape
+        ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI*2); ctx.fill(); // Round head
+
+        // Snout (Small muzzle)
+        ctx.fillStyle = "#fff"; // Muzzle highlight
+        if (skin === '#fff') ctx.fillStyle = "#eee";
+        ctx.beginPath(); ctx.ellipse(2, 4, 5, 3, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = skin;
+
+        // Nose
+        ctx.fillStyle = "#fba"; // Pink nose usually
+        if (type.includes('panther') || skin === '#000') ctx.fillStyle = "#444";
+        ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(4, 2); ctx.lineTo(2, 5); ctx.fill();
+
+        // Ears
+        ctx.fillStyle = skin;
+        ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-12, -18); ctx.lineTo(-2, -10); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(2, -10); ctx.lineTo(8, -18); ctx.lineTo(10, -6); ctx.fill();
+
+        fx = 0; fy = -3;
+    }
+
+    // --- 3. UNGULATES (Cows, Pigs, Horses, etc) ---
+    else if (['cow', 'bull', 'buffalo', 'rhino', 'elephant', 'pig', 'boar', 'horse', 'donkey', 'deer', 'sheep', 'goat', 'llama', 'giraffe'].some(t => type.includes(t))) {
+        // Elongated Head
+        ctx.save();
+        if (type.includes('horse') || type.includes('donkey') || type.includes('giraffe') || type.includes('llama')) {
+            ctx.rotate(0.2); // Angle down slightly
+            drawRoundedRect(ctx, -12, -10, 26, 18, 6);
+        } else {
+            drawRoundedRect(ctx, -12, -12, 24, 24, 8); // Boxy
+        }
+
+        // Snout / Nose
+        if (type.includes('pig') || type.includes('boar')) {
+            ctx.fillStyle = "#fcc"; // Pink snout
+            if (skin !== '#ffc0cb' && skin !== '#ffe4c4') ctx.fillStyle = dark; // Match theme
+            ctx.beginPath(); ctx.ellipse(12, 2, 4, 6, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#000"; // Nostrils
+            ctx.beginPath(); ctx.arc(12, 0, 1.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(12, 4, 1.5, 0, Math.PI*2); ctx.fill();
+        } else if (type.includes('elephant')) {
+            // Trunk
+            ctx.lineWidth = 6; ctx.strokeStyle = skin; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(10, 4);
+            ctx.bezierCurveTo(20, 4, 20, 20, 10, 25); // S-curve trunk
+            ctx.stroke();
+            // Tusks
+            ctx.fillStyle = "#fff";
+            ctx.beginPath(); ctx.moveTo(8, 8); ctx.quadraticCurveTo(15, 12, 18, 4); ctx.lineTo(16, 4); ctx.quadraticCurveTo(14, 10, 8, 6); ctx.fill();
+        } else if (type.includes('rhino')) {
+             ctx.fillStyle = "#eee"; // Horn
+             ctx.beginPath(); ctx.moveTo(10, -6); ctx.lineTo(22, -14); ctx.lineTo(14, 2); ctx.fill();
+             ctx.beginPath(); ctx.moveTo(16, -2); ctx.lineTo(20, -6); ctx.lineTo(18, 0); ctx.fill(); // Small second horn
+        } else {
+            // Horse/Cow Muzzle
+            ctx.fillStyle = "#111"; // Nostrils
+            ctx.beginPath(); ctx.arc(12, 0, 2, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+
+        // Horns / Antlers
+        ctx.fillStyle = "#eee";
+        if (type.includes('cow') || type.includes('bull') || type.includes('buffalo')) {
+             ctx.beginPath(); ctx.moveTo(-6, -10); ctx.quadraticCurveTo(-10, -20, 0, -18); ctx.lineTo(-2, -10); ctx.fill(); // Left
+             ctx.beginPath(); ctx.moveTo(6, -10); ctx.quadraticCurveTo(10, -20, 0, -18); ctx.lineTo(2, -10); ctx.fill(); // Right
+        } else if (type.includes('deer') || type.includes('moose')) {
+             ctx.strokeStyle = "#deb887"; ctx.lineWidth=2;
+             ctx.beginPath(); ctx.moveTo(-4, -10); ctx.lineTo(-8, -25); ctx.moveTo(-8, -20); ctx.lineTo(-12, -28); ctx.stroke();
+        } else if (type.includes('goat') || type.includes('sheep') || type.includes('ram')) {
+             ctx.strokeStyle = "#ccc"; ctx.lineWidth=3;
+             ctx.beginPath(); ctx.moveTo(-2, -10); ctx.arc(-5, -12, 8, 0, Math.PI, true); ctx.stroke();
+        }
+
+        // Ears
+        ctx.fillStyle = skin;
+        if (type.includes('horse') || type.includes('donkey')) {
+             ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(-8, -22); ctx.lineTo(0, -10); ctx.fill();
+        } else {
+             // Side ears
+             ctx.beginPath(); ctx.ellipse(-8, -8, 8, 4, -0.5, 0, Math.PI*2); ctx.fill();
+        }
+
+        fx = 2; fy = -4;
+    }
+
+    // --- 4. BIRDS (Beaks & Bills) ---
+    else if (['bird', 'duck', 'chicken', 'owl', 'penguin', 'eagle', 'hawk', 'crow', 'raven', 'falcon', 'turkey', 'peacock'].some(t => type.includes(t))) {
+        // Round head base
+        ctx.beginPath(); ctx.arc(0, -4, 10, 0, Math.PI*2); ctx.fill();
+
+        // Beak Type
+        if (type.includes('duck') || type.includes('goose') || type.includes('penguin')) {
+            // Flat Bill
+            ctx.fillStyle = "orange";
+            ctx.beginPath();
+            ctx.moveTo(8, -2); ctx.quadraticCurveTo(18, -2, 18, 2);
+            ctx.quadraticCurveTo(8, 4, 8, 2);
+            ctx.fill();
+            // Nostril
+            ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(12, -1, 1, 0, Math.PI*2); ctx.fill();
+        } else if (type.includes('chicken') || type.includes('rooster') || type.includes('turkey')) {
+             // Short Beak
+             ctx.fillStyle = "#eba";
+             ctx.beginPath(); ctx.moveTo(8, -2); ctx.lineTo(14, 0); ctx.lineTo(8, 2); ctx.fill();
+             // Comb
+             ctx.fillStyle = "red";
+             ctx.beginPath(); ctx.moveTo(-4, -12); ctx.quadraticCurveTo(0, -18, 4, -12); ctx.quadraticCurveTo(8, -16, 8, -10); ctx.lineTo(-4, -10); ctx.fill();
+             // Wattle
+             ctx.beginPath(); ctx.arc(10, 6, 3, 0, Math.PI*2); ctx.fill();
+        } else {
+             // Hooked Beak (Raptor/General)
+             ctx.fillStyle = (type.includes('crow') || type.includes('raven')) ? "#333" : "orange";
+             if (type.includes('eagle') || type.includes('hawk') || type.includes('falcon')) ctx.fillStyle = "#ffd700"; // Yellow beak
+
+             ctx.beginPath();
+             ctx.moveTo(8, -6);
+             ctx.quadraticCurveTo(18, -6, 18, 2); // Hook down
+             ctx.lineTo(8, 2);
+             ctx.fill();
+        }
+
+        fx = 2; fy = -6;
+    }
+
+    // --- 5. RODENTS (Rats, Mice, Rabbits, etc) ---
+    else if (['rodent', 'mouse', 'rat', 'hamster', 'rabbit', 'hare', 'squirrel', 'chipmunk', 'beaver', 'porcupine', 'skunk', 'raccoon', 'hedgehog', 'badger'].some(t => type.includes(t))) {
+        // Pointy Snout
+        ctx.beginPath();
+        ctx.moveTo(-8, -8); ctx.lineTo(8, -6);
+        ctx.lineTo(14, 2); // Snout tip
+        ctx.lineTo(8, 8);
+        ctx.lineTo(-8, 8);
+        ctx.fill();
+
+        // Nose
+        ctx.fillStyle = "#fba";
+        if (type.includes('rat') || type.includes('raccoon') || type.includes('skunk')) ctx.fillStyle = "#000";
+        ctx.beginPath(); ctx.arc(14, 2, 2, 0, Math.PI*2); ctx.fill();
+
+        // Whiskers
+        ctx.strokeStyle = "#000"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(10, 2); ctx.lineTo(18, -2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(10, 4); ctx.lineTo(18, 8); ctx.stroke();
+
+        // Ears
+        ctx.fillStyle = skin;
+        if (type.includes('rabbit') || type.includes('hare')) {
+             // Long ears
+             ctx.beginPath(); ctx.ellipse(-4, -18, 4, 12, -0.2, 0, Math.PI*2); ctx.fill();
+             ctx.fillStyle = "#fba"; // Inner ear
+             ctx.beginPath(); ctx.ellipse(-4, -18, 2, 8, -0.2, 0, Math.PI*2); ctx.fill();
+        } else {
+             // Round ears
+             ctx.beginPath(); ctx.arc(-4, -10, 6, 0, Math.PI*2); ctx.fill();
+        }
+
+        fx = 2; fy = -4;
+    }
+
+    // --- 6. REPTILES/AMPHIBIANS (Lizards, Frogs, Crocs) ---
+    else if (['lizard', 'snake', 'croc', 'turtle', 'frog', 'toad', 'gecko', 'chameleon', 'iguana'].some(t => type.includes(t))) {
+         if (type.includes('frog') || type.includes('toad')) {
+             // Wide flat head
+             ctx.beginPath(); ctx.ellipse(0, -4, 14, 8, 0, 0, Math.PI*2); ctx.fill();
+             // Eyes on top
+             fx = 0; fy = -10;
+             // Big Mouth Line
+             ctx.strokeStyle = "#000"; ctx.beginPath(); ctx.moveTo(-8, 2); ctx.quadraticCurveTo(0, 4, 8, 2); ctx.stroke();
+         } else if (type.includes('croc') || type.includes('alligator')) {
+             // Long flat snout
+             drawRoundedRect(ctx, -12, -8, 12, 16, 4); // Head back
+             drawRoundedRect(ctx, 0, -4, 20, 10, 2); // Snout
+             // Teeth
+             ctx.fillStyle = "#fff";
+             for(let i=0; i<4; i++) {
+                 ctx.beginPath(); ctx.moveTo(2 + i*4, 6); ctx.lineTo(4+i*4, 10); ctx.lineTo(6+i*4, 6); ctx.fill();
+             }
+             fx = -4; fy = -6;
+         } else {
+             // Lizard/Snake head (Diamond shape)
+             ctx.beginPath();
+             ctx.moveTo(-10, -6); ctx.lineTo(4, -8);
+             ctx.lineTo(12, 0); // Snout
+             ctx.lineTo(4, 8);
+             ctx.lineTo(-10, 6);
+             ctx.fill();
+             // Tongue?
+             if (Math.random() < 0.1) {
+                 ctx.strokeStyle = "red"; ctx.lineWidth=1;
+                 ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(20, 0); ctx.lineTo(22, -2); ctx.moveTo(20, 0); ctx.lineTo(22, 2); ctx.stroke();
+             }
+             fx = 0; fy = -4;
+         }
+    }
+
+    // --- 7. INSECTS (Bees, Ants) & SPECIAL ---
+    else if (['bee', 'ant', 'insect', 'spider', 'anteater'].some(t => type.includes(t))) {
+        if (type.includes('anteater')) {
+            // Long curved snout
+            ctx.beginPath();
+            ctx.moveTo(-10, -8); ctx.lineTo(0, -8);
+            ctx.quadraticCurveTo(15, -8, 20, 4); // Downward curve
+            ctx.quadraticCurveTo(10, 0, -10, 8);
+            ctx.fill();
+            fx = 2; fy = -6;
+        } else {
+            // Insect Head (Oval)
+            ctx.beginPath(); ctx.ellipse(0, -4, 10, 8, 0, 0, Math.PI*2); ctx.fill();
+
+            // Antennae
+            ctx.strokeStyle = "#000"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(-4, -10); ctx.quadraticCurveTo(-8, -18, -12, -14); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(4, -10); ctx.quadraticCurveTo(8, -18, 12, -14); ctx.stroke();
+
+            // Mandibles (for ants/spiders)
+            if (type.includes('ant') || type.includes('spider')) {
+                ctx.beginPath(); ctx.moveTo(-4, 4); ctx.lineTo(-2, 8); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(4, 4); ctx.lineTo(2, 8); ctx.stroke();
+            }
+            fx = 0; fy = -4;
+        }
+    }
+
+    // --- 8. PRIMATES / HUMANOIDS / ALIENS ---
+    else {
+        // Standard Head
+        drawRoundedRect(ctx, -10, -12, 20, 24, 8);
+
+        // Ears on side
+        ctx.fillStyle = skin;
+        ctx.beginPath(); ctx.arc(-10, 0, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, 0, 3, 0, Math.PI*2); ctx.fill();
+
+        if (type.includes('monkey') || type.includes('ape')) {
+            // Muzzle area
+            ctx.fillStyle = "#deb887"; // Light muzzle
+            ctx.beginPath(); ctx.ellipse(0, 4, 6, 4, 0, 0, Math.PI*2); ctx.fill();
+            // Nostrils
+            ctx.fillStyle = "#000";
+            ctx.beginPath(); ctx.arc(-2, 4, 1, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(2, 4, 1, 0, Math.PI*2); ctx.fill();
+            fx = 0; fy = -4;
+        } else {
+            fx = 0; fy = -2;
+        }
+    }
+
+    if (!name.includes("DARE")) {
         // Use new Face Rendering
         drawFaceFeatures(ctx, style, fx, fy);
     }
