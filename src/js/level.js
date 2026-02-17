@@ -264,13 +264,16 @@ export function generateLevel() {
             checkpointsPlaced++;
 
             // Checkpoints are safe zones, no enemies *directly* on them usually
-            // Spawn Mech nearby occasionally
-            if (difficulty >= 3 && secureRandom() < 0.3) {
-                 newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
-            }
         }
         else if (secureRandom() < 0.03 + (difficulty*0.01)) {
             if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
+        }
+
+        // Random Mech Suit Spawn (Difficulty 5+)
+        if (difficulty >= 5 && secureRandom() < 0.015) { // ~1.5% chance per column
+             if (newTiles[y-1][x].type === 0) {
+                 newEntities.push(new MechSuit(x * TILE_SIZE, (y-1) * TILE_SIZE));
+             }
         }
 
         // ENEMY ENCOUNTERS (Clusters)

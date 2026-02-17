@@ -44,6 +44,8 @@ export class Player {
         this.staminaRecharge = 1;
 
         this.dead = false;
+        this.inMech = false;
+        this.mech = null;
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
@@ -57,6 +59,8 @@ export class Player {
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
         this.stamina = 100;
         this.dead = false;
+        this.inMech = false;
+        this.mech = null;
         spawnExplosion(this.x, this.y, "#00ff41", 2);
         if(soundManager) soundManager.play('powerup'); // Respawn sound
     }
@@ -82,6 +86,13 @@ export class Player {
 
     update() {
         if (this.dead) return;
+        if (this.inMech) {
+            // Mech handles physics and position
+            this.invincible = 60; // Keep invincible while in mech? Or just no hitbox?
+            // Actually, if we return early, collisions aren't checked here, so player is effectively intangible
+            // But we need to update animation frame or something? Maybe not.
+            return;
+        }
         this.lastY = this.y;
         if(this.secondaryCooldown > 0) this.secondaryCooldown--;
         if(this.attackAnim.timer > 0) this.attackAnim.timer--;
