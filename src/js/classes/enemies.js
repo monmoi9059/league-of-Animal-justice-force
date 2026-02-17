@@ -115,14 +115,17 @@ export class Enemy {
         let ledgeCheckY = Math.floor((this.y + this.h + 2) / TILE_SIZE); // Look slightly down
 
         let hitLedge = false;
-        if (ledgeCheckY < LEVEL_HEIGHT && ledgeCheckX >= 0 && ledgeCheckX < LEVEL_WIDTH) {
-            let t = tiles[ledgeCheckY][ledgeCheckX];
-            // If air (0) or non-solid, it's a ledge.
-            if (!t || t.type === 0 || t.type === 4 || t.type === 6) {
-                hitLedge = true;
+        // Only check for ledge if we are grounded (not falling/jumping)
+        if (this.vy === 0) {
+            if (ledgeCheckY < LEVEL_HEIGHT && ledgeCheckX >= 0 && ledgeCheckX < LEVEL_WIDTH) {
+                let t = tiles[ledgeCheckY][ledgeCheckX];
+                // If air (0) or non-solid, it's a ledge.
+                if (!t || t.type === 0 || t.type === 4 || t.type === 6) {
+                    hitLedge = true;
+                }
+            } else {
+                 hitLedge = true; // Off map bottom
             }
-        } else {
-             hitLedge = true; // Off map bottom
         }
 
         // React to Obstacle
