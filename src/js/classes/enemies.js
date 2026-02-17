@@ -61,7 +61,7 @@ export class Enemy {
             }
 
             if (target) {
-                if (minDist < 400) {
+                if (minDist < 600) {
                     this.state = 'chase';
                 } else {
                     this.state = 'patrol';
@@ -260,7 +260,7 @@ export class FlyingEnemy extends Enemy {
         let targetVx = 0;
         let targetVy = 0;
 
-        if (dist < 500) {
+        if (dist < 700) {
             // Move towards player
             targetVx = (target.x - this.x) * 0.02; // Reduced speed for smoother flight
             targetVy = (target.y - this.y - 100) * 0.02; // Hover above
@@ -499,7 +499,7 @@ export class HeavyGunner extends Enemy {
         }
 
         if (target) {
-            if (minDist < 500) {
+            if (minDist < 700) {
                 this.facing = target.x < this.x ? -1 : 1;
                 this.shootTimer++;
                 if (this.shootTimer > 10) {
@@ -789,7 +789,7 @@ export class CaptainEnemy extends Enemy {
         }
 
         if (target) {
-            if (minDist < 600) {
+            if (minDist < 800) {
                 this.facing = target.x < this.x ? -1 : 1;
                 // No shooting for now
                 // this.shootTimer++;
