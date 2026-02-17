@@ -1,7 +1,7 @@
 import { secureRandom } from '../math.js';
 import { rectIntersect } from '../physics.js';
 import { spawnExplosion, destroyRadius } from '../utils.js';
-import { tiles, entities, player } from '../state.js';
+import { tiles, entities, player, players } from '../state.js';
 import { TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH, ASSETS } from '../constants.js';
 import { soundManager } from '../sound.js';
 import { drawRoundedRect } from '../graphics.js';
@@ -172,11 +172,14 @@ export class Bullet {
         }
 
         // PLAYER COLLISION (Enemy Bullets Only)
-        if (this.isEnemy && player) {
-             if(rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) {
-                  player.takeDamage(this.isSpecial ? 2 : 1);
-                  if (this.type !== 'boomerang') this.life = 0;
-                  else this.returnState = 1;
+        if (this.isEnemy && players) {
+             for (let p of players) {
+                 if(p.health > 0 && rectIntersect(this.x, this.y, this.w, this.h, p.x, p.y, p.w, p.h)) {
+                      p.takeDamage(this.isSpecial ? 2 : 1);
+                      if (this.type !== 'boomerang') this.life = 0;
+                      else this.returnState = 1;
+                      break; // Hit one player per frame is enough usually, but could hit multiple if overlapping
+                 }
              }
         }
     }
