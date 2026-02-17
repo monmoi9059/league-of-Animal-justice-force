@@ -57,6 +57,36 @@ export class SmokeParticle {
     }
 }
 
+export class DustParticle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (secureRandom() - 0.5) * 3;
+        this.vy = -secureRandom() * 2; // Slight rise
+        this.life = 1.0;
+        this.size = secureRandom() * 5 + 2;
+        this.color = color || "#fff";
+        this.decay = 0.05 + secureRandom() * 0.03;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.9;
+        this.size += 0.3; // Expand
+        this.life -= this.decay;
+    }
+    draw(ctx, camX, camY, now) {
+        if (this.life <= 0) return;
+        ctx.save();
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life * 0.6;
+        ctx.beginPath();
+        ctx.arc(this.x - camX, this.y - camY, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
 export class SparkParticle {
     constructor(x, y, color) {
         this.x = x;
