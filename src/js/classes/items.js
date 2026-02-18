@@ -233,6 +233,7 @@ export class HamsterBall {
         this.grounded = false;
         this.hp = 100; // Just for entity persistence, ball uses player HP
         this.cooldown = 0; // Minigun cooldown
+        this.interactionCooldown = 0; // Prevent immediate eject
         this.facing = 1;
     }
 
@@ -275,11 +276,13 @@ export class HamsterBall {
     }
 
     updateDriven(p) {
+        if(this.interactionCooldown > 0) this.interactionCooldown--;
+
         // Player Input
         let pKeys = playerKeys[p.index];
 
         // Eject
-        if (pKeys['f']) {
+        if (pKeys['f'] && this.interactionCooldown <= 0) {
             this.eject(p);
             return;
         }
@@ -365,6 +368,7 @@ export class HamsterBall {
         p.inHamsterBall = true;
         p.hamsterBall = this;
         p.vx = 0; p.vy = 0;
+        this.interactionCooldown = 30; // 0.5s cooldown to prevent immediate eject
         spawnExplosion(this.x + this.w/2, this.y + this.h/2, "cyan", 2);
     }
 
