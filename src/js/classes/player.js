@@ -3,6 +3,7 @@ import { updateUI } from '../ui.js';
 import { gameState, playerKeys, tiles, particles, entities, players } from '../state.js';
 import { winGame, endGame } from '../game-flow.js';
 import { spawnExplosion, spawnDamageNumber, shakeCamera } from '../utils.js';
+import { checkRectOverlap } from '../physics.js';
 import { Particle, DustParticle } from './particles.js';
 import { soundManager } from '../sound.js';
 import { Bullet, MeleeHitbox } from './projectiles.js';
@@ -288,11 +289,43 @@ export class Player {
             this.shoot(true, false); this.specialCooldown = 120;
         }
 
-        this.x += this.vx; this.checkCollisions(true);
-        this.y += this.vy; this.checkCollisions(false);
+        this.x += this.vx; this.checkCollisions(true); this.checkEntityCollisions(true);
+        this.y += this.vy; this.checkCollisions(false); this.checkEntityCollisions(false);
         this.stretchX += (1 - this.stretchX) * 0.1; this.stretchY += (1 - this.stretchY) * 0.1;
         if(this.invincible > 0) this.invincible--;
         if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
+    }
+
+    checkEntityCollisions(isX) {
+        if (!entities) return;
+
+        for(let e of entities) {
+            if (e.solid && checkRectOverlap(this, e)) {
+                if (isX) {
+                    if (this.vx > 0) {
+                        this.x = e.x - this.w;
+                        this.vx = 0;
+                    } else if (this.vx < 0) {
+                        this.x = e.x + e.w;
+                        this.vx = 0;
+                    }
+                } else {
+                    if (this.vy > 0) {
+                        // Land on top
+                        if (this.lastY + this.h <= e.y + 15) { // Tolerance
+                            this.y = e.y - this.h;
+                            this.vy = 0;
+                            this.grounded = true;
+                            if (e.vx) this.x += e.vx; // Carry player
+                        }
+                    } else if (this.vy < 0) {
+                        // Head bonk
+                        this.y = e.y + e.h;
+                        this.vy = 0;
+                    }
+                }
+            }
+        }
     }
 
     checkCollisions(isX) {

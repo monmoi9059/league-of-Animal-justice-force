@@ -2,12 +2,19 @@ import { gameState, setEntities } from './state.js';
 import { LEVEL_WIDTH, LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
 import { secureRandom } from './math.js';
 import { Enemy, CaptainEnemy, ShieldBearer, HeavyGunner, KamikazeEnemy, SniperEnemy, FlyingEnemy, Boss, HelicopterBoss } from './classes/enemies.js';
-import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast, HamsterBall } from './classes/items.js';
+import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast, HamsterBall, SpikeTrap, MovingPlatform, MovingHazard, BridgePlank, Decor, FallingBlock } from './classes/items.js';
 
 // --- LEVEL GENERATOR ---
 export function generateLevel() {
     let newTiles = [];
     let newEntities = [];
+
+    // Helpers
+    function spawnBridge(startX, startY, widthTiles) {
+        for(let i = 0; i < widthTiles * 2; i++) {
+            newEntities.push(new BridgePlank(startX * TILE_SIZE + (i * 20), startY * TILE_SIZE));
+        }
+    }
 
     let difficulty = gameState.currentLevel;
     let biome = 'forest';
@@ -160,7 +167,11 @@ export function generateLevel() {
 
                 // Bridge?
                 if (secureRandom() < 0.5) {
-                    newEntities.push(new BridgeBlock(x * TILE_SIZE, (currentHeight-1) * TILE_SIZE));
+                    if (difficulty >= 3 && secureRandom() < 0.2) {
+                         newEntities.push(new MovingPlatform(x * TILE_SIZE, (currentHeight-1) * TILE_SIZE, 60, 'y'));
+                    } else {
+                         spawnBridge(x, currentHeight-1, 1);
+                    }
                 }
 
                 continue;
@@ -228,6 +239,11 @@ export function generateLevel() {
                         let rand = secureRandom();
                         if (difficulty >= 3 && rand < 0.3) newEntities.push(new KamikazeEnemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
                         else newEntities.push(new Enemy(tx * TILE_SIZE, (tunnelY + 2) * TILE_SIZE));
+                    }
+
+                    // Moving Hazards in tunnels
+                    if (difficulty >= 4 && secureRandom() < 0.05 && j > 3) {
+                         newEntities.push(new MovingHazard(tx * TILE_SIZE, (tunnelY + 1) * TILE_SIZE, 80, 'x'));
                     }
 
                     // Hostage Check (Hidden in caves)
@@ -304,6 +320,44 @@ export function generateLevel() {
              if (difficulty >= 3) newEntities.push(new SniperEnemy(x * TILE_SIZE, (y-1) * TILE_SIZE));
         }
         if (secureRandom() < 0.02 && difficulty >= 2) newEntities.push(new FlyingEnemy(x * TILE_SIZE, (y-5) * TILE_SIZE));
+
+        // Spike Traps (Replace dirt)
+        if (y < LEVEL_HEIGHT-2 && newTiles[y][x] && newTiles[y][x].type === 1 && secureRandom() < 0.03) {
+             newTiles[y][x] = { type: 0 }; // Remove dirt
+             newEntities.push(new SpikeTrap(x * TILE_SIZE, y * TILE_SIZE));
+        }
+
+        // Falling Blocks (Ceiling)
+        let ceilingY = -1;
+        for(let cy = y - 3; cy > 5; cy--) {
+            if (newTiles[cy] && newTiles[cy][x] && newTiles[cy][x].type === 0 && newTiles[cy-1] && newTiles[cy-1][x] && newTiles[cy-1][x].type !== 0) {
+                ceilingY = cy; break;
+            }
+        }
+        if (ceilingY > 0 && secureRandom() < 0.01) {
+            newEntities.push(new FallingBlock(x * TILE_SIZE, ceilingY * TILE_SIZE));
+        }
+
+        // Decor
+        if (y < LEVEL_HEIGHT) {
+            // Ground Decor (Grass/Rock/Pipe)
+            let dType = 'grass';
+            if (biome === 'city') dType = 'pipe';
+            if (biome === 'volcano') dType = 'rock';
+
+            if (dType === 'pipe') {
+                 if(secureRandom() < 0.05) newEntities.push(new Decor(x * TILE_SIZE + 10, (y-1) * TILE_SIZE + 10, dType));
+            } else if (dType === 'rock') {
+                 if(secureRandom() < 0.1) newEntities.push(new Decor(x * TILE_SIZE + secureRandom()*20, y * TILE_SIZE - 10, dType));
+            } else { // Grass
+                 if(secureRandom() < 0.4) newEntities.push(new Decor(x * TILE_SIZE + secureRandom()*20, y * TILE_SIZE - 15, dType));
+            }
+
+            // Ceiling Decor (Vines)
+            if (biome === 'forest' && secureRandom() < 0.1 && ceilingY > 0) {
+                 newEntities.push(new Decor(x * TILE_SIZE + secureRandom()*20, ceilingY * TILE_SIZE, 'vine'));
+            }
+        }
     }
 
     // 5. FINISH
