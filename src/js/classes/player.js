@@ -44,6 +44,10 @@ export class Player {
         this.staminaRecharge = 1;
 
         this.dead = false;
+
+        // Vehicle State
+        this.inHamsterBall = false;
+        this.hamsterBall = null;
     }
     respawn() {
         gameState.lives--; updateUI(); if(gameState.lives <= 0) { endGame(); return; }
@@ -57,6 +61,11 @@ export class Player {
         this.vx = 0; this.vy = 0; this.health = 3; this.invincible = 120;
         this.stamina = 100;
         this.dead = false;
+
+        // Reset Vehicle
+        this.inHamsterBall = false;
+        this.hamsterBall = null;
+
         spawnExplosion(this.x, this.y, "#00ff41", 2);
         if(soundManager) soundManager.play('powerup'); // Respawn sound
     }
@@ -83,6 +92,20 @@ export class Player {
     update() {
         if (this.dead) return;
         this.lastY = this.y;
+
+        // --- VEHICLE LOGIC ---
+        if (this.inHamsterBall && this.hamsterBall) {
+            this.hamsterBall.updateDriven(this);
+            // Player state (invincible, etc) managed by ball collisions somewhat,
+            // but if we need to decrement cooldowns:
+            if(this.invincible > 0) this.invincible--;
+
+            // Check world bounds
+            if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
+
+            return; // Skip normal update
+        }
+
         if(this.secondaryCooldown > 0) this.secondaryCooldown--;
         if(this.attackAnim.timer > 0) this.attackAnim.timer--;
 
@@ -357,6 +380,12 @@ export class Player {
             // Multiplayer Logic
             if (players && players.length > 1) {
                 this.dead = true;
+                // Force exit vehicles
+                this.inHamsterBall = false;
+                this.hamsterBall = null;
+                this.inMech = false;
+                this.mech = null;
+
                 this.x = -9999; // Move offscreen
 
                 // Check if ALL are dead
@@ -475,6 +504,7 @@ export class Player {
 
     draw(ctx, camX, camY, now) {
         if (this.dead) return;
+        if (this.inHamsterBall) return; // HamsterBall draws the player
         if (this.invincible > 0 && Math.floor(gameState.frame / 4) % 2 === 0) return;
         let cx = this.x - camX + this.w/2;
         let cy = this.y - camY + this.h/2 + (this.h * (1-this.stretchY));

@@ -1,13 +1,16 @@
 import { TILE_SIZE, GRAVITY, LEVEL_HEIGHT, LEVEL_WIDTH, CHARACTERS } from '../constants.js';
 import { tiles, players, gameState } from '../state.js';
 import { checkRectOverlap } from '../physics.js';
-import { spawnExplosion, createExplosion, unlockCharacter, spawnDamageNumber } from '../utils.js';
+import { spawnExplosion, createExplosion, unlockCharacter, spawnDamageNumber, shakeCamera } from '../utils.js';
 import { drawRoundedRect, drawAnatomicalHero } from '../graphics.js';
-import { playerKeys } from '../state.js';
+import { playerKeys, particles } from '../state.js';
 import { winGame } from '../game-flow.js';
 import { updateUI } from '../ui.js';
 import { secureRandom } from '../math.js';
-import { entities } from '../state.js'; // TrappedBeast needs access to entities list implicitly? No, generated in level.js. But TrappedBeast adds to gameState via unlockCharacter.
+import { entities } from '../state.js';
+import { Bullet } from './projectiles.js';
+import { Particle } from './particles.js';
+import { soundManager } from '../sound.js';
 
 export class PropaneTank {
     constructor(x, y) {
@@ -213,6 +216,315 @@ export class MechSuit {
         // Arms
         ctx.fillRect(cx - 10, cy + 20, 10, 30);
         ctx.fillRect(cx + 60, cy + 20, 10, 30);
+    }
+}
+
+export class HamsterBall {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.w = 60; this.h = 60; // Hitbox size
+        this.r = 30; // Visual radius
+        this.vx = 0; this.vy = 0;
+        this.angle = 0;
+        this.occupied = false;
+        this.driver = null;
+        this.jumpCount = 0;
+        this.maxJumps = 3;
+        this.grounded = false;
+        this.hp = 100; // Just for entity persistence, ball uses player HP
+        this.cooldown = 0; // Minigun cooldown
+        this.interactionCooldown = 0; // Prevent immediate eject
+        this.facing = 1;
+    }
+
+    update() {
+        // Safety Check: If driver is dead or reset, free the ball
+        if (this.occupied && this.driver) {
+            if (this.driver.dead || !this.driver.inHamsterBall || this.driver.hamsterBall !== this) {
+                this.occupied = false;
+                this.driver = null;
+                // Don't call full eject() as player might be respawning elsewhere
+            }
+        }
+
+        if (!this.occupied) {
+            // Apply gravity
+            this.vy += GRAVITY;
+            this.y += this.vy;
+
+            // Apply simple friction when not occupied
+            this.vx *= 0.95;
+            this.x += this.vx;
+            this.angle += this.vx * 0.1;
+
+            this.checkCollisions();
+
+            // Interaction with player
+            if (players) {
+                for (let p of players) {
+                    if (p.health > 0 && !p.dead && !p.inHamsterBall && checkRectOverlap(this, p)) {
+                        // Check for 'F' key (Flex)
+                        let pKeys = playerKeys[p.index];
+                        if (pKeys && pKeys['f']) {
+                            this.enter(p);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    updateDriven(p) {
+        if(this.interactionCooldown > 0) this.interactionCooldown--;
+
+        // Player Input
+        let pKeys = playerKeys[p.index];
+
+        // Eject
+        if (pKeys['f'] && this.interactionCooldown <= 0) {
+            this.eject(p);
+            return;
+        }
+
+        let input = 0;
+        if (pKeys['arrowleft'] || pKeys['a']) input = -1;
+        if (pKeys['arrowright'] || pKeys['d']) input = 1;
+
+        if (input !== 0) this.facing = input;
+
+        // Apply Force (Acceleration)
+        const ACCEL = 0.5;
+        const MAX_SPEED = 12;
+        this.vx += input * ACCEL;
+
+        // Friction
+        this.vx *= 0.98;
+
+        // Cap Speed
+        if (Math.abs(this.vx) > MAX_SPEED) this.vx = Math.sign(this.vx) * MAX_SPEED;
+
+        // Rotation
+        this.angle += this.vx * 0.1;
+
+        // Jump (Triple Jump)
+        if (pKeys[' '] && !p.wallJumpLocked) {
+             if (this.jumpCount < this.maxJumps) {
+                 this.vy = -12; // High jump force
+                 this.jumpCount++;
+                 p.wallJumpLocked = true; // Use player's debounce
+                 if(soundManager) soundManager.play('jump');
+
+                 // Jetpack Visual
+                 for(let i=0; i<5; i++) {
+                    particles.push(new Particle(this.x + this.w/2, this.y + this.h, "orange", (Math.random()-0.5)*2, 2+Math.random()*2));
+                 }
+             }
+        }
+        if (!pKeys[' ']) p.wallJumpLocked = false;
+
+        // Minigun (Shoot)
+        if (this.cooldown > 0) this.cooldown--;
+        if (pKeys['z']) {
+            if (this.cooldown <= 0) {
+                this.shootMinigun();
+                this.cooldown = 4; // Fast fire rate
+            }
+        }
+
+        // Gravity
+        this.vy += GRAVITY;
+        this.y += this.vy;
+        this.x += this.vx;
+
+        this.checkCollisions();
+
+        // Sync Player Position
+        p.x = this.x + (this.w - p.w)/2;
+        p.y = this.y + (this.h - p.h)/2;
+        p.vx = this.vx;
+        p.vy = this.vy;
+        p.facing = this.facing;
+    }
+
+    shootMinigun() {
+        shakeCamera(1);
+        let spawnX = this.x + this.w/2 + (this.facing * 35);
+        let spawnY = this.y + this.h/2;
+
+        // Slightly inaccurate
+        let vy = (Math.random() - 0.5) * 2;
+
+        entities.push(new Bullet(spawnX, spawnY, this.facing, false, { pColor: '#ff0', pType: 'round' }));
+        if(soundManager) soundManager.play('shoot'); // Ideally a machine gun sound
+
+        // Shell casing
+        particles.push(new Particle(spawnX, spawnY, "gold", -this.facing * 2, -2));
+    }
+
+    enter(p) {
+        this.occupied = true;
+        this.driver = p;
+        p.inHamsterBall = true;
+        p.hamsterBall = this;
+        p.vx = 0; p.vy = 0;
+        this.interactionCooldown = 30; // 0.5s cooldown to prevent immediate eject
+        spawnExplosion(this.x + this.w/2, this.y + this.h/2, "cyan", 2);
+    }
+
+    eject(p) {
+        this.occupied = false;
+        this.driver = null;
+        p.inHamsterBall = false;
+        p.hamsterBall = null;
+
+        // Pop player up
+        p.vy = -10;
+        p.y -= 20;
+
+        // Push ball away slightly
+        this.vx = p.facing * 5;
+        this.vy = -5;
+
+        spawnExplosion(this.x + this.w/2, this.y + this.h/2, "white", 2);
+    }
+
+    checkCollisions() {
+        if (!tiles) return;
+
+        let l = Math.floor(this.x / TILE_SIZE);
+        let r = Math.floor((this.x + this.w - 0.01) / TILE_SIZE);
+        let t = Math.floor(this.y / TILE_SIZE);
+        let b = Math.floor((this.y + this.h - 0.01) / TILE_SIZE);
+
+        this.grounded = false;
+
+        for(let row = t; row <= b; row++) {
+            for(let col = l; col <= r; col++) {
+                if(row>=0 && row<LEVEL_HEIGHT && col>=0 && col<LEVEL_WIDTH && tiles[row] && tiles[row][col] && tiles[row][col].type !== 0) {
+                    let type = tiles[row][col].type;
+
+                    if(type === 6) continue; // Ignore ladders
+                    if(type === 4) {
+                        // Lava/Spikes - Damage Player if occupied
+                        if(this.occupied && this.driver) this.driver.takeDamage();
+                        else this.vy = -5; // Bounce prop
+                        return;
+                    }
+
+                    // Solid Block Collision
+                    if(type === 1 || type === 2 || type === 3 || type === 5) {
+                        // Vertical Collision
+                        if (this.vy > 0 && this.y + this.h < (row+1) * TILE_SIZE) { // Falling down
+                             let blockTop = row * TILE_SIZE;
+                             if (this.y + this.h > blockTop && this.y + this.h - this.vy <= blockTop + 5) {
+                                 this.y = blockTop - this.h;
+                                 this.vy = -this.vy * 0.4; // Bounce
+                                 if(Math.abs(this.vy) < 2) this.vy = 0;
+                                 this.grounded = true;
+                                 this.jumpCount = 0; // Reset jumps
+                             }
+                        } else if (this.vy < 0) { // Moving up
+                             let blockBot = (row+1) * TILE_SIZE;
+                             if (this.y < blockBot && this.y - this.vy >= blockBot - 5) {
+                                 this.y = blockBot;
+                                 this.vy = -this.vy * 0.4;
+                             }
+                        }
+
+                        // Horizontal Collision
+                        // Re-check overlap after Y adjustment
+                        if (this.y + this.h > row * TILE_SIZE && this.y < (row+1) * TILE_SIZE) {
+                            if (this.vx > 0) {
+                                let blockLeft = col * TILE_SIZE;
+                                if (this.x + this.w > blockLeft && this.x + this.w - this.vx <= blockLeft + 10) {
+                                    this.x = blockLeft - this.w;
+                                    this.vx = -this.vx * 0.6; // Bounce off wall
+                                }
+                            } else if (this.vx < 0) {
+                                let blockRight = (col+1) * TILE_SIZE;
+                                if (this.x < blockRight && this.x - this.vx >= blockRight - 10) {
+                                    this.x = blockRight;
+                                    this.vx = -this.vx * 0.6; // Bounce off wall
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    draw(ctx, camX, camY, now) {
+        let cx = this.x - camX + this.w/2;
+        let cy = this.y - camY + this.h/2;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        // Draw Player Inside
+        if (this.occupied && this.driver) {
+             // Calculate animation frame based on ball rotation/speed
+             let runFrame = Math.floor(Math.abs(this.angle * 2)); // Map rotation to frames
+
+             ctx.save();
+             // Counter-rotate player so they stay upright-ish?
+             // Or let them run inside like a hamster wheel?
+             // If we rotate the ball, the player should run at the bottom.
+             // So player stays upright relative to world, but feet move.
+
+             ctx.translate(0, 10); // Lower in ball
+             ctx.scale(this.driver.facing, 1);
+             drawAnatomicalHero(ctx, this.driver.charData, runFrame, { type: null, timer: 0 }, 0);
+             ctx.restore();
+        }
+
+        // Rotate Ball Context
+        ctx.rotate(this.angle);
+
+        // Draw Transparent Sphere
+        ctx.beginPath();
+        ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(100, 200, 255, 0.3)";
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.stroke();
+
+        // Draw "Hamster Wheel" bars/rims
+        ctx.beginPath();
+        ctx.moveTo(0, -this.r); ctx.lineTo(0, this.r);
+        ctx.moveTo(-this.r, 0); ctx.lineTo(this.r, 0);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.stroke();
+
+        ctx.restore(); // Undo rotation for attachments that should face direction
+
+        // Draw Attachments (Jetpack / Minigun) - Fixed orientation
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        let facing = this.occupied ? this.driver.facing : (this.vx > 0 ? 1 : -1);
+
+        // Jetpack (Back)
+        ctx.fillStyle = "#555";
+        ctx.fillRect(-10 - (facing*25), -10, 10, 20); // Behind ball
+
+        // Minigun (Front/Side)
+        ctx.fillStyle = "#222";
+        ctx.save();
+        ctx.translate(facing * 25, 5); // Mount point
+        // Barrels
+        ctx.fillStyle = "#888";
+        ctx.fillRect(0, -5, 20, 4);
+        ctx.fillRect(0, 0, 20, 4);
+        ctx.fillRect(0, 5, 20, 4);
+        // Base
+        ctx.fillStyle = "#333";
+        ctx.fillRect(-5, -8, 10, 20);
+        ctx.restore();
+
+        ctx.restore();
     }
 }
 

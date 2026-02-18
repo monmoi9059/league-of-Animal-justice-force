@@ -2,7 +2,7 @@ import { gameState, setEntities } from './state.js';
 import { LEVEL_WIDTH, LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
 import { secureRandom } from './math.js';
 import { Enemy, CaptainEnemy, ShieldBearer, HeavyGunner, KamikazeEnemy, SniperEnemy, FlyingEnemy, Boss, HelicopterBoss } from './classes/enemies.js';
-import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast } from './classes/items.js';
+import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast, HamsterBall } from './classes/items.js';
 
 // --- LEVEL GENERATOR ---
 export function generateLevel() {
@@ -271,6 +271,11 @@ export function generateLevel() {
             // Spawn Mech nearby occasionally
             if (difficulty >= 3 && secureRandom() < 0.3) {
                  newEntities.push(new MechSuit((x+2) * TILE_SIZE, (y-3) * TILE_SIZE));
+            }
+
+            // Spawn Hamster Ball occasionally (similar rarity to MechSuit)
+            if (secureRandom() < 0.2) {
+                 newEntities.push(new HamsterBall((x+4) * TILE_SIZE, (y-3) * TILE_SIZE));
             }
         }
         else if (secureRandom() < 0.03 + (difficulty*0.01)) {
