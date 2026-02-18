@@ -4,6 +4,7 @@ import { drawRoundedRect, drawAnatomicalHero } from './graphics.js';
 import { secureRandom } from './math.js';
 
 export function drawBackground(ctx, camX, camY) {
+    // --- SURFACE SKY LAYER (Base) ---
     let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
     grd.addColorStop(0, ASSETS.skyTop);
     grd.addColorStop(1, ASSETS.skyBot);
@@ -118,6 +119,58 @@ export function drawBackground(ctx, camX, camY) {
              ctx.fill();
         }
         ctx.fillStyle = closeGrd; // Reset
+    }
+
+    // --- UNDERGROUND LAYER (Overlay) ---
+    // Start fading in at Y=400 (10 tiles), Full at Y=1000 (25 tiles)
+    let caveAlpha = (camY - 400) / 600;
+    if (caveAlpha < 0) caveAlpha = 0;
+    if (caveAlpha > 1) caveAlpha = 1;
+
+    if (caveAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = caveAlpha;
+
+        // Dark Cave Backdrop
+        ctx.fillStyle = "#1a1a1d"; // Very dark grey/black
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Distant Cave Walls (Parallax 0.8 - Moves almost with camera)
+        ctx.fillStyle = "#2c2c30";
+        let caveW = 300;
+        let caveOffset = ((camX * 0.8) % caveW + caveW) % caveW;
+        for(let i = -1; i < ctx.canvas.width / caveW + 2; i++) {
+            let cx = i * caveW - caveOffset;
+            ctx.beginPath();
+            // Jagged Ceiling
+            ctx.moveTo(cx, 0);
+            ctx.lineTo(cx + 50, 80);
+            ctx.lineTo(cx + 150, 20);
+            ctx.lineTo(cx + 250, 100);
+            ctx.lineTo(cx + 300, 0);
+            // Jagged Floor
+            ctx.moveTo(cx, ctx.canvas.height);
+            ctx.lineTo(cx + 60, ctx.canvas.height - 120);
+            ctx.lineTo(cx + 180, ctx.canvas.height - 40);
+            ctx.lineTo(cx + 240, ctx.canvas.height - 100);
+            ctx.lineTo(cx + 300, ctx.canvas.height);
+            ctx.fill();
+        }
+
+        // Closer Pillars (Parallax 0.9)
+        ctx.fillStyle = "#3e3e42";
+        let pillarW = 500;
+        let pillarOffset = ((camX * 0.9) % pillarW + pillarW) % pillarW;
+        for(let i = -1; i < ctx.canvas.width / pillarW + 2; i++) {
+             let px = i * pillarW - pillarOffset + 100;
+             // Stalactite / Stalagmite pair
+             ctx.beginPath();
+             ctx.moveTo(px, 0); ctx.lineTo(px + 40, 250); ctx.lineTo(px + 80, 0); // Top
+             ctx.moveTo(px + 100, ctx.canvas.height); ctx.lineTo(px + 130, ctx.canvas.height - 300); ctx.lineTo(px + 160, ctx.canvas.height); // Bottom
+             ctx.fill();
+        }
+
+        ctx.restore();
     }
 }
 
