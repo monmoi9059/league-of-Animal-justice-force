@@ -99,6 +99,7 @@ export class FallingBlock {
         this.vx = 0; this.vy = 0;
         this.active = false;
         this.solid = true;
+        this.hp = 100; // Entity lifecycle
     }
     update() {
         if (!this.active) {
@@ -744,6 +745,7 @@ export class SpikeTrap {
         this.solid = true;
         this.state = 0; // 0: Idle, 1: Warning, 2: Active, 3: Retract
         this.timer = 0;
+        this.hp = 1000;
     }
     update() {
         if (this.state === 0) {
@@ -798,6 +800,7 @@ export class MovingPlatform {
         this.timer = 0;
         this.solid = true;
         this.vx = 0; this.vy = 0;
+        this.hp = 9999;
     }
     update() {
         this.timer += 0.05;
@@ -826,6 +829,7 @@ export class MovingHazard {
         this.range = range; this.axis = axis;
         this.timer = 0;
         this.solid = true; // Push player
+        this.hp = 9999;
     }
     update() {
         this.timer += 0.1;
@@ -865,6 +869,7 @@ export class BridgePlank {
         this.solid = true;
         this.anchorY = y;
         this.vy = 0;
+        this.hp = 50; // Breakable?
     }
     update() {
         // Spring physics
@@ -902,6 +907,7 @@ export class Decor {
         this.sway = 0;
         this.timer = Math.random() * 100;
         this.solid = false;
+        this.hp = 10; // Can be destroyed
     }
     update() {
         this.timer++;

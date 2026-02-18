@@ -4,133 +4,105 @@ import { drawRoundedRect, drawAnatomicalHero } from './graphics.js';
 import { secureRandom } from './math.js';
 
 export function drawBackground(ctx, camX, camY) {
-    // --- SURFACE SKY LAYER (Broforce Style) ---
-    // Deep Blue -> Purple -> Orange Sunset Gradient
+    let GROUND_LEVEL = 1400;
+
+    // --- SKY & MOUNTAINS (Visible when camera is high) ---
+    // If camera Y is way below ground, we don't need to render sky (optimization),
+    // but for transition we render it.
+
+    // Sky Gradient
     let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    grd.addColorStop(0, "#000033"); // Deep Night/Space Blue
-    grd.addColorStop(0.5, "#4B0082"); // Indigo/Purple
-    grd.addColorStop(0.8, "#FF4500"); // Orange Red
-    grd.addColorStop(1, "#FFD700"); // Gold Horizon
+    grd.addColorStop(0, "#87CEEB"); // Sky Blue
+    grd.addColorStop(1, "#E0F7FA"); // Light Cyan
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // Sun (Massive, Low, Hazy)
-    ctx.fillStyle = "rgba(255, 200, 50, 0.2)";
-    ctx.beginPath();
-    ctx.arc(ctx.canvas.width * 0.8, ctx.canvas.height * 0.8, 150, 0, Math.PI*2);
-    ctx.fill();
-
-    // Layer 1: Distant Mountains (Parallax 0.1) - Silhouette
-    // Dark Purple/Black
-    ctx.fillStyle = "rgba(20, 0, 40, 0.6)";
-    let mtnW = 300;
-    let mtnH = 400;
+    // Layer 1: Distant Mountains (Parallax 0.1)
+    ctx.fillStyle = "#a8dadc";
+    let mtnW = 400;
     let mtnOffset = ((camX * 0.1) % mtnW + mtnW) % mtnW;
+    // Base Y is relative to screen bottom, but we want mountains to disappear as we go down.
+    // So we position them relative to the "Surface" in screen space.
+    // Surface Y in screen space = GROUND_LEVEL - camY.
+    let screenSurfaceY = GROUND_LEVEL - camY;
+
+    // Clamp limits for visual sanity (sky shouldn't scroll infinitely)
+    // Actually, mountains should look fixed to the horizon.
+    // Horizon is roughly at screenSurfaceY.
+
+    let horizonY = screenSurfaceY - 100; // Horizon slightly above ground
 
     for(let i = -1; i < ctx.canvas.width / mtnW + 2; i++) {
         ctx.beginPath();
         let bx = i * mtnW - mtnOffset;
-        let by = ctx.canvas.height + 600; // Much Lower ground
-        ctx.moveTo(bx, by);
-        // Jagged mountain silhouette
-        ctx.lineTo(bx + mtnW*0.2, by - mtnH * 0.8);
-        ctx.lineTo(bx + mtnW*0.5, by - mtnH);
-        ctx.lineTo(bx + mtnW*0.8, by - mtnH * 0.7);
-        ctx.lineTo(bx + mtnW, by);
+        ctx.moveTo(bx, horizonY);
+        ctx.lineTo(bx + mtnW/2, horizonY - 300); // Peak
+        ctx.lineTo(bx + mtnW, horizonY);
         ctx.fill();
     }
 
-    // Layer 2: Mid-Range Jungle (Parallax 0.3) - Deep Teal Silhouette
-    ctx.fillStyle = "rgba(0, 40, 40, 0.8)";
-    let jungleW = 150;
-    let jungleH = 750; // Much Taller trees to compensate
-    let jungleOffset = ((camX * 0.3) % jungleW + jungleW) % jungleW;
+    // Layer 2: Closer Hills (Parallax 0.3)
+    ctx.fillStyle = "#457b9d";
+    let hillW = 200;
+    let hillOffset = ((camX * 0.3) % hillW + hillW) % hillW;
 
-    for(let i = -1; i < ctx.canvas.width / jungleW + 2; i++) {
-        let bx = i * jungleW - jungleOffset;
-        let by = ctx.canvas.height + 600; // Much Lower ground
-
-        // Draw Tree Trunks
-        ctx.fillRect(bx + 20, by - jungleH + 50, 20, jungleH);
-        ctx.fillRect(bx + 80, by - jungleH + 20, 15, jungleH);
-
-        // Draw Canopy (Cluster of circles/leaves)
+    for(let i = -1; i < ctx.canvas.width / hillW + 2; i++) {
         ctx.beginPath();
-        ctx.arc(bx + 30, by - jungleH + 50, 60, 0, Math.PI*2);
-        ctx.arc(bx + 90, by - jungleH + 20, 45, 0, Math.PI*2);
+        let bx = i * hillW - hillOffset;
+        ctx.moveTo(bx, horizonY + 50);
+        ctx.quadraticCurveTo(bx + hillW/2, horizonY - 150, bx + hillW, horizonY + 50);
         ctx.fill();
     }
 
-    // Layer 3: Near Foliage (Parallax 0.6) - Black Silhouette
-    ctx.fillStyle = "black";
-    let nearW = 100;
-    let nearH = 350; // Taller foliage
-    let nearOffset = ((camX * 0.6) % nearW + nearW) % nearW;
+    // --- UNDERGROUND BACK-WALL (The "Real" Background) ---
+    // This is drawn starting from GROUND_LEVEL downwards.
+    // Since it represents the "back wall" of the cave, it should move 1:1 with camera (Parallax 1.0)
+    // so it looks attached to the foreground blocks.
 
-    for(let i = -1; i < ctx.canvas.width / nearW + 2; i++) {
-        let bx = i * nearW - nearOffset;
-        let by = ctx.canvas.height + 600; // Much Lower ground
+    let wallY = GROUND_LEVEL - camY; // Screen Y where wall starts
 
-        // Grass/Bush shapes
-        ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(bx + 20, by - 50);
-        ctx.lineTo(bx + 40, by - 20);
-        ctx.lineTo(bx + 60, by - 80); // Tall grass blade
-        ctx.lineTo(bx + 80, by - 30);
-        ctx.lineTo(bx + 100, by);
-        ctx.fill();
-    }
+    if (wallY < ctx.canvas.height) { // Only draw if visible
+        ctx.fillStyle = "#263238"; // Dark Slate/Rock
+        // Draw from wallY down to bottom of screen
+        ctx.fillRect(0, wallY, ctx.canvas.width, ctx.canvas.height - wallY + 200); // +200 safety buffer
 
-    // --- UNDERGROUND LAYER (Overlay) ---
-    // Sudden Transition "right below the level of the starting platform"
-    // Starting platform is around y=1400.
-    // Camera Top (camY) when player is at 1400 is approx 1100.
-    // We want transition when player goes slightly below 1400.
-    // So threshold should be around 1200.
-    let caveAlpha = (camY > 1200) ? 1.0 : 0.0;
+        // Texture Pattern (Static noise relative to world)
+        // We use world coordinates to draw pattern so it scrolls with camera naturally
+        ctx.fillStyle = "#37474f";
+        let patternSize = 100;
 
-    if (caveAlpha > 0) {
-        ctx.save();
-        ctx.globalAlpha = caveAlpha;
+        // Optimization: Only loop over visible area
+        let startRow = Math.max(0, Math.floor(camY / patternSize));
+        let endRow = startRow + (ctx.canvas.height / patternSize) + 2;
+        let startCol = Math.floor(camX / patternSize);
+        let endCol = startCol + (ctx.canvas.width / patternSize) + 2;
 
-        // Earthy Background (Broforce "Dirt" Style)
-        ctx.fillStyle = "#2e1a0b"; // Dark Brown/Dirt Color
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        for(let r=startRow; r<endRow; r++) {
+            if (r * patternSize < GROUND_LEVEL) continue; // Don't draw pattern above ground
+            for(let c=startCol; c<endCol; c++) {
+                let px = c * patternSize - camX;
+                let py = r * patternSize - camY;
 
-        // Parallax Root/Rock Layer (Parallax 0.8)
-        ctx.fillStyle = "#1a0f06"; // Darker brown
-        let caveW = 400;
-        let caveOffset = ((camX * 0.8) % caveW + caveW) % caveW;
-
-        for(let i = -1; i < ctx.canvas.width / caveW + 2; i++) {
-            let cx = i * caveW - caveOffset;
-
-            // Random "Dirt Clumps" or "Rock Formations" in background
-            ctx.beginPath();
-            ctx.arc(cx + 100, 100, 60, 0, Math.PI*2);
-            ctx.arc(cx + 250, 400, 80, 0, Math.PI*2);
-            ctx.arc(cx + 50, 500, 50, 0, Math.PI*2);
-            ctx.fill();
-
-            // Hanging Roots (Ceiling)
-            ctx.strokeStyle = "#3e2723";
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(cx + 150, 0);
-            ctx.bezierCurveTo(cx + 140, 50, cx + 160, 100, cx + 150, 150);
-            ctx.stroke();
+                // Random-looking but deterministic based on coords
+                if ((r + c) % 3 === 0) {
+                    ctx.fillRect(px + 10, py + 10, 40, 20); // Brick/Rock
+                }
+                if ((r * c) % 5 === 0) {
+                    ctx.fillRect(px + 60, py + 50, 20, 20);
+                }
+            }
         }
 
-        // Darker Overlay Gradient for "Depth"
-        let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-        grd.addColorStop(0, "rgba(0,0,0,0.6)");
-        grd.addColorStop(0.5, "transparent");
-        grd.addColorStop(1, "rgba(0,0,0,0.6)");
-        ctx.fillStyle = grd;
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        // Top Edge "Grass/Dirt" Transition Line
+        ctx.fillStyle = "#5d4037"; // Dirt Brown
+        ctx.fillRect(0, wallY, ctx.canvas.width, 20);
 
-        ctx.restore();
+        // Shadow Gradient at the top of the cave (faking depth)
+        let shadowGrd = ctx.createLinearGradient(0, wallY, 0, wallY + 400);
+        shadowGrd.addColorStop(0, "rgba(0,0,0,0.8)");
+        shadowGrd.addColorStop(1, "transparent");
+        ctx.fillStyle = shadowGrd;
+        ctx.fillRect(0, wallY, ctx.canvas.width, 400);
     }
 }
 
