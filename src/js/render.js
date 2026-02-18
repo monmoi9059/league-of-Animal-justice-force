@@ -4,121 +4,82 @@ import { drawRoundedRect, drawAnatomicalHero } from './graphics.js';
 import { secureRandom } from './math.js';
 
 export function drawBackground(ctx, camX, camY) {
-    // --- SURFACE SKY LAYER (Base) ---
+    // --- SURFACE SKY LAYER (Broforce Style) ---
+    // Deep Blue -> Purple -> Orange Sunset Gradient
     let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    grd.addColorStop(0, ASSETS.skyTop);
-    grd.addColorStop(1, ASSETS.skyBot);
+    grd.addColorStop(0, "#000033"); // Deep Night/Space Blue
+    grd.addColorStop(0.5, "#4B0082"); // Indigo/Purple
+    grd.addColorStop(0.8, "#FF4500"); // Orange Red
+    grd.addColorStop(1, "#FFD700"); // Gold Horizon
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // Sun/Moon
-    ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+    // Sun (Massive, Low, Hazy)
+    ctx.fillStyle = "rgba(255, 200, 50, 0.2)";
     ctx.beginPath();
-    ctx.arc(ctx.canvas.width - 100, 100, 50, 0, Math.PI*2);
+    ctx.arc(ctx.canvas.width * 0.8, ctx.canvas.height * 0.8, 150, 0, Math.PI*2);
     ctx.fill();
 
-    // Layer 1: Very Distant Massive Peaks (Parallax 0.1) - Touching the top!
-    let peakH = ctx.canvas.height - 20; // 20px from top
-    let peakW = 400;
-    let peakOffset = ((camX * 0.1) % peakW + peakW) % peakW;
+    // Layer 1: Distant Mountains (Parallax 0.1) - Silhouette
+    // Dark Purple/Black
+    ctx.fillStyle = "rgba(20, 0, 40, 0.6)";
+    let mtnW = 300;
+    let mtnH = 400;
+    let mtnOffset = ((camX * 0.1) % mtnW + mtnW) % mtnW;
 
-    // Gradient for massive peaks
-    let peakGrd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    peakGrd.addColorStop(0, "rgba(20, 20, 50, 0.3)"); // Dark Blue top
-    peakGrd.addColorStop(1, "rgba(50, 50, 80, 0.1)"); // Fades out bottom
-    ctx.fillStyle = peakGrd;
-
-    for(let i = -1; i < ctx.canvas.width / peakW + 2; i++) {
+    for(let i = -1; i < ctx.canvas.width / mtnW + 2; i++) {
         ctx.beginPath();
-        ctx.moveTo(i * peakW - peakOffset, ctx.canvas.height);
-        // Jagged peak with extra points for detail
-        let tipX = i * peakW + peakW/2 - peakOffset;
-        let tipY = 20; // Near top
-
-        ctx.lineTo(tipX - 50, tipY + 150);
-        ctx.lineTo(tipX, tipY); // Peak
-        ctx.lineTo(tipX + 50, tipY + 150);
-
-        ctx.lineTo(i * peakW + peakW - peakOffset, ctx.canvas.height);
-        ctx.fill();
-
-        // Snow cap (Detailed)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-        ctx.beginPath();
-        ctx.moveTo(tipX, tipY);
-        ctx.lineTo(tipX - 30, tipY + 80 + (i%2)*20); // Random jaggedness
-        ctx.lineTo(tipX, tipY + 60);
-        ctx.lineTo(tipX + 30, tipY + 80 - (i%2)*20);
-        ctx.fill();
-        ctx.fillStyle = peakGrd; // Reset
-    }
-
-    // Layer 2: Mid-Range Mountains (Parallax 0.3) - As tall as old peaks (~500px)
-    let midH = 450;
-    let midW = 250;
-    let midOffset = ((camX * 0.3) % midW + midW) % midW;
-
-    // Gradient for mid range
-    let midGrd = ctx.createLinearGradient(0, ctx.canvas.height - midH, 0, ctx.canvas.height);
-    midGrd.addColorStop(0, "rgba(30, 30, 30, 0.4)");
-    midGrd.addColorStop(1, "rgba(10, 10, 10, 0.6)");
-    ctx.fillStyle = midGrd;
-
-    for(let i = -1; i < ctx.canvas.width / midW + 2; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * midW - midOffset, ctx.canvas.height);
-
-        // Complex shape
-        let baseY = ctx.canvas.height;
-        let topY = baseY - midH;
-        let cx = i * midW - midOffset;
-
-        ctx.lineTo(cx + midW*0.2, topY + 50);
-        ctx.lineTo(cx + midW*0.4, topY); // Peak
-        ctx.lineTo(cx + midW*0.6, topY + 80);
-        ctx.lineTo(cx + midW*0.8, topY + 40);
-
-        ctx.lineTo(cx + midW, baseY);
+        let bx = i * mtnW - mtnOffset;
+        let by = ctx.canvas.height;
+        ctx.moveTo(bx, by);
+        // Jagged mountain silhouette
+        ctx.lineTo(bx + mtnW*0.2, by - mtnH * 0.8);
+        ctx.lineTo(bx + mtnW*0.5, by - mtnH);
+        ctx.lineTo(bx + mtnW*0.8, by - mtnH * 0.7);
+        ctx.lineTo(bx + mtnW, by);
         ctx.fill();
     }
 
-    // Layer 3: Closer Hills/Forest (Parallax 0.6) - Higher (~300px)
-    let closeH = 300;
-    let closeW = 180;
-    let closeOffset = ((camX * 0.6) % closeW + closeW) % closeW;
+    // Layer 2: Mid-Range Jungle (Parallax 0.3) - Deep Teal Silhouette
+    ctx.fillStyle = "rgba(0, 40, 40, 0.8)";
+    let jungleW = 150;
+    let jungleH = 300;
+    let jungleOffset = ((camX * 0.3) % jungleW + jungleW) % jungleW;
 
-    // Gradient for hills
-    let closeGrd = ctx.createLinearGradient(0, ctx.canvas.height - closeH, 0, ctx.canvas.height);
-    closeGrd.addColorStop(0, "rgba(20, 50, 20, 0.6)"); // Forest Green
-    closeGrd.addColorStop(1, "rgba(10, 30, 10, 0.8)");
-    ctx.fillStyle = closeGrd;
+    for(let i = -1; i < ctx.canvas.width / jungleW + 2; i++) {
+        let bx = i * jungleW - jungleOffset;
+        let by = ctx.canvas.height;
 
-    for(let i = -1; i < ctx.canvas.width / closeW + 2; i++) {
+        // Draw Tree Trunks
+        ctx.fillRect(bx + 20, by - jungleH + 50, 20, jungleH);
+        ctx.fillRect(bx + 80, by - jungleH + 20, 15, jungleH);
+
+        // Draw Canopy (Cluster of circles/leaves)
         ctx.beginPath();
-        ctx.moveTo(i * closeW - closeOffset, ctx.canvas.height);
-        // Rolling hills with variation
-        let cx = i * closeW - closeOffset;
-        let cy = ctx.canvas.height;
-
-        ctx.bezierCurveTo(
-            cx + closeW*0.3, cy - closeH - (i%3)*30,
-            cx + closeW*0.7, cy - closeH + (i%2)*20,
-            cx + closeW, cy
-        );
+        ctx.arc(bx + 30, by - jungleH + 50, 40, 0, Math.PI*2);
+        ctx.arc(bx + 90, by - jungleH + 20, 30, 0, Math.PI*2);
         ctx.fill();
+    }
 
-        // Add "Trees" (Simple triangles on ridges)
-        ctx.fillStyle = "rgba(5, 20, 5, 0.3)";
-        for(let t=0; t<3; t++) {
-             ctx.beginPath();
-             let tx = cx + closeW/2 + (t-1)*20;
-             let ty = cy - closeH + 40;
-             ctx.moveTo(tx, ty);
-             ctx.lineTo(tx - 5, ty + 15);
-             ctx.lineTo(tx + 5, ty + 15);
-             ctx.fill();
-        }
-        ctx.fillStyle = closeGrd; // Reset
+    // Layer 3: Near Foliage (Parallax 0.6) - Black Silhouette
+    ctx.fillStyle = "black";
+    let nearW = 100;
+    let nearH = 150;
+    let nearOffset = ((camX * 0.6) % nearW + nearW) % nearW;
+
+    for(let i = -1; i < ctx.canvas.width / nearW + 2; i++) {
+        let bx = i * nearW - nearOffset;
+        let by = ctx.canvas.height;
+
+        // Grass/Bush shapes
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + 20, by - 50);
+        ctx.lineTo(bx + 40, by - 20);
+        ctx.lineTo(bx + 60, by - 80); // Tall grass blade
+        ctx.lineTo(bx + 80, by - 30);
+        ctx.lineTo(bx + 100, by);
+        ctx.fill();
     }
 
     // --- UNDERGROUND LAYER (Overlay) ---
@@ -131,44 +92,41 @@ export function drawBackground(ctx, camX, camY) {
         ctx.save();
         ctx.globalAlpha = caveAlpha;
 
-        // Dark Cave Backdrop
-        ctx.fillStyle = "#1a1a1d"; // Very dark grey/black
+        // Earthy Background (Broforce "Dirt" Style)
+        ctx.fillStyle = "#2e1a0b"; // Dark Brown/Dirt Color
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Distant Cave Walls (Parallax 0.8 - Moves almost with camera)
-        ctx.fillStyle = "#2c2c30";
-        let caveW = 300;
+        // Parallax Root/Rock Layer (Parallax 0.8)
+        ctx.fillStyle = "#1a0f06"; // Darker brown
+        let caveW = 400;
         let caveOffset = ((camX * 0.8) % caveW + caveW) % caveW;
+
         for(let i = -1; i < ctx.canvas.width / caveW + 2; i++) {
             let cx = i * caveW - caveOffset;
+
+            // Random "Dirt Clumps" or "Rock Formations" in background
             ctx.beginPath();
-            // Jagged Ceiling
-            ctx.moveTo(cx, 0);
-            ctx.lineTo(cx + 50, 80);
-            ctx.lineTo(cx + 150, 20);
-            ctx.lineTo(cx + 250, 100);
-            ctx.lineTo(cx + 300, 0);
-            // Jagged Floor
-            ctx.moveTo(cx, ctx.canvas.height);
-            ctx.lineTo(cx + 60, ctx.canvas.height - 120);
-            ctx.lineTo(cx + 180, ctx.canvas.height - 40);
-            ctx.lineTo(cx + 240, ctx.canvas.height - 100);
-            ctx.lineTo(cx + 300, ctx.canvas.height);
+            ctx.arc(cx + 100, 100, 60, 0, Math.PI*2);
+            ctx.arc(cx + 250, 400, 80, 0, Math.PI*2);
+            ctx.arc(cx + 50, 500, 50, 0, Math.PI*2);
             ctx.fill();
+
+            // Hanging Roots (Ceiling)
+            ctx.strokeStyle = "#3e2723";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(cx + 150, 0);
+            ctx.bezierCurveTo(cx + 140, 50, cx + 160, 100, cx + 150, 150);
+            ctx.stroke();
         }
 
-        // Closer Pillars (Parallax 0.9)
-        ctx.fillStyle = "#3e3e42";
-        let pillarW = 500;
-        let pillarOffset = ((camX * 0.9) % pillarW + pillarW) % pillarW;
-        for(let i = -1; i < ctx.canvas.width / pillarW + 2; i++) {
-             let px = i * pillarW - pillarOffset + 100;
-             // Stalactite / Stalagmite pair
-             ctx.beginPath();
-             ctx.moveTo(px, 0); ctx.lineTo(px + 40, 250); ctx.lineTo(px + 80, 0); // Top
-             ctx.moveTo(px + 100, ctx.canvas.height); ctx.lineTo(px + 130, ctx.canvas.height - 300); ctx.lineTo(px + 160, ctx.canvas.height); // Bottom
-             ctx.fill();
-        }
+        // Darker Overlay Gradient for "Depth"
+        let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+        grd.addColorStop(0, "rgba(0,0,0,0.6)");
+        grd.addColorStop(0.5, "transparent");
+        grd.addColorStop(1, "rgba(0,0,0,0.6)");
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         ctx.restore();
     }
