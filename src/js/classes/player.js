@@ -380,6 +380,12 @@ export class Player {
             // Multiplayer Logic
             if (players && players.length > 1) {
                 this.dead = true;
+                // Force exit vehicles
+                this.inHamsterBall = false;
+                this.hamsterBall = null;
+                this.inMech = false;
+                this.mech = null;
+
                 this.x = -9999; // Move offscreen
 
                 // Check if ALL are dead
