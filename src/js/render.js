@@ -16,26 +16,58 @@ export function drawBackground(ctx, camX, camY) {
     ctx.arc(ctx.canvas.width - 100, 100, 50, 0, Math.PI*2);
     ctx.fill();
 
-    // Distant Mountains (Parallax 0.2)
-    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
-    let mountainW = 200;
-    let offset = ((camX * 0.2) % mountainW + mountainW) % mountainW;
-    for(let i = -1; i < ctx.canvas.width / mountainW + 2; i++) {
+    // Layer 1: Very Distant Massive Peaks (Parallax 0.1)
+    ctx.fillStyle = "rgba(0, 0, 20, 0.15)";
+    let peakW = 300;
+    let peakH = 500; // Much higher
+    let peakOffset = ((camX * 0.1) % peakW + peakW) % peakW;
+    for(let i = -1; i < ctx.canvas.width / peakW + 2; i++) {
         ctx.beginPath();
-        ctx.moveTo(i * mountainW - offset, ctx.canvas.height);
-        ctx.lineTo(i * mountainW + mountainW/2 - offset, ctx.canvas.height - 400);
-        ctx.lineTo(i * mountainW + mountainW - offset, ctx.canvas.height);
+        ctx.moveTo(i * peakW - peakOffset, ctx.canvas.height);
+        // Jagged peak
+        ctx.lineTo(i * peakW + peakW/2 - peakOffset, ctx.canvas.height - peakH);
+        ctx.lineTo(i * peakW + peakW - peakOffset, ctx.canvas.height);
+        ctx.fill();
+
+        // Snow cap
+        ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.beginPath();
+        ctx.moveTo(i * peakW + peakW/2 - peakOffset, ctx.canvas.height - peakH);
+        ctx.lineTo(i * peakW + peakW/2 - 40 - peakOffset, ctx.canvas.height - peakH + 80);
+        ctx.lineTo(i * peakW + peakW/2 + 40 - peakOffset, ctx.canvas.height - peakH + 80);
+        ctx.fill();
+        ctx.fillStyle = "rgba(0, 0, 20, 0.15)"; // Reset
+    }
+
+    // Layer 2: Mid-Range Mountains (Parallax 0.3)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+    let midW = 200;
+    let midH = 350;
+    let midOffset = ((camX * 0.3) % midW + midW) % midW;
+    for(let i = -1; i < ctx.canvas.width / midW + 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * midW - midOffset, ctx.canvas.height);
+        ctx.lineTo(i * midW + midW*0.3 - midOffset, ctx.canvas.height - midH * 0.8);
+        ctx.lineTo(i * midW + midW*0.5 - midOffset, ctx.canvas.height - midH);
+        ctx.lineTo(i * midW + midW*0.8 - midOffset, ctx.canvas.height - midH * 0.7);
+        ctx.lineTo(i * midW + midW - midOffset, ctx.canvas.height);
         ctx.fill();
     }
 
-    // Closer Hills (Parallax 0.5)
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-    let hillW = 100;
-    let hillOffset = ((camX * 0.5) % hillW + hillW) % hillW;
-    for(let i = -1; i < ctx.canvas.width / hillW + 2; i++) {
+    // Layer 3: Closer Hills/Forest (Parallax 0.6)
+    ctx.fillStyle = "rgba(10, 30, 10, 0.4)";
+    let closeW = 150;
+    let closeH = 200;
+    let closeOffset = ((camX * 0.6) % closeW + closeW) % closeW;
+    for(let i = -1; i < ctx.canvas.width / closeW + 2; i++) {
         ctx.beginPath();
-        ctx.moveTo(i * hillW - hillOffset, ctx.canvas.height);
-        ctx.quadraticCurveTo(i * hillW + hillW/2 - hillOffset, ctx.canvas.height - 250, i * hillW + hillW - hillOffset, ctx.canvas.height);
+        ctx.moveTo(i * closeW - closeOffset, ctx.canvas.height);
+        // Smooth hills
+        ctx.bezierCurveTo(
+            i * closeW + closeW*0.3 - closeOffset, ctx.canvas.height - closeH,
+            i * closeW + closeW*0.7 - closeOffset, ctx.canvas.height - closeH,
+            i * closeW + closeW - closeOffset, ctx.canvas.height
+        );
         ctx.fill();
     }
 }
