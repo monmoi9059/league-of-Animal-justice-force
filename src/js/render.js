@@ -16,59 +16,108 @@ export function drawBackground(ctx, camX, camY) {
     ctx.arc(ctx.canvas.width - 100, 100, 50, 0, Math.PI*2);
     ctx.fill();
 
-    // Layer 1: Very Distant Massive Peaks (Parallax 0.1)
-    ctx.fillStyle = "rgba(0, 0, 20, 0.15)";
-    let peakW = 300;
-    let peakH = 500; // Much higher
+    // Layer 1: Very Distant Massive Peaks (Parallax 0.1) - Touching the top!
+    let peakH = ctx.canvas.height - 20; // 20px from top
+    let peakW = 400;
     let peakOffset = ((camX * 0.1) % peakW + peakW) % peakW;
+
+    // Gradient for massive peaks
+    let peakGrd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    peakGrd.addColorStop(0, "rgba(20, 20, 50, 0.3)"); // Dark Blue top
+    peakGrd.addColorStop(1, "rgba(50, 50, 80, 0.1)"); // Fades out bottom
+    ctx.fillStyle = peakGrd;
+
     for(let i = -1; i < ctx.canvas.width / peakW + 2; i++) {
         ctx.beginPath();
         ctx.moveTo(i * peakW - peakOffset, ctx.canvas.height);
-        // Jagged peak
-        ctx.lineTo(i * peakW + peakW/2 - peakOffset, ctx.canvas.height - peakH);
+        // Jagged peak with extra points for detail
+        let tipX = i * peakW + peakW/2 - peakOffset;
+        let tipY = 20; // Near top
+
+        ctx.lineTo(tipX - 50, tipY + 150);
+        ctx.lineTo(tipX, tipY); // Peak
+        ctx.lineTo(tipX + 50, tipY + 150);
+
         ctx.lineTo(i * peakW + peakW - peakOffset, ctx.canvas.height);
         ctx.fill();
 
-        // Snow cap
-        ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+        // Snow cap (Detailed)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
         ctx.beginPath();
-        ctx.moveTo(i * peakW + peakW/2 - peakOffset, ctx.canvas.height - peakH);
-        ctx.lineTo(i * peakW + peakW/2 - 40 - peakOffset, ctx.canvas.height - peakH + 80);
-        ctx.lineTo(i * peakW + peakW/2 + 40 - peakOffset, ctx.canvas.height - peakH + 80);
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX - 30, tipY + 80 + (i%2)*20); // Random jaggedness
+        ctx.lineTo(tipX, tipY + 60);
+        ctx.lineTo(tipX + 30, tipY + 80 - (i%2)*20);
         ctx.fill();
-        ctx.fillStyle = "rgba(0, 0, 20, 0.15)"; // Reset
+        ctx.fillStyle = peakGrd; // Reset
     }
 
-    // Layer 2: Mid-Range Mountains (Parallax 0.3)
-    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-    let midW = 200;
-    let midH = 350;
+    // Layer 2: Mid-Range Mountains (Parallax 0.3) - As tall as old peaks (~500px)
+    let midH = 450;
+    let midW = 250;
     let midOffset = ((camX * 0.3) % midW + midW) % midW;
+
+    // Gradient for mid range
+    let midGrd = ctx.createLinearGradient(0, ctx.canvas.height - midH, 0, ctx.canvas.height);
+    midGrd.addColorStop(0, "rgba(30, 30, 30, 0.4)");
+    midGrd.addColorStop(1, "rgba(10, 10, 10, 0.6)");
+    ctx.fillStyle = midGrd;
+
     for(let i = -1; i < ctx.canvas.width / midW + 2; i++) {
         ctx.beginPath();
         ctx.moveTo(i * midW - midOffset, ctx.canvas.height);
-        ctx.lineTo(i * midW + midW*0.3 - midOffset, ctx.canvas.height - midH * 0.8);
-        ctx.lineTo(i * midW + midW*0.5 - midOffset, ctx.canvas.height - midH);
-        ctx.lineTo(i * midW + midW*0.8 - midOffset, ctx.canvas.height - midH * 0.7);
-        ctx.lineTo(i * midW + midW - midOffset, ctx.canvas.height);
+
+        // Complex shape
+        let baseY = ctx.canvas.height;
+        let topY = baseY - midH;
+        let cx = i * midW - midOffset;
+
+        ctx.lineTo(cx + midW*0.2, topY + 50);
+        ctx.lineTo(cx + midW*0.4, topY); // Peak
+        ctx.lineTo(cx + midW*0.6, topY + 80);
+        ctx.lineTo(cx + midW*0.8, topY + 40);
+
+        ctx.lineTo(cx + midW, baseY);
         ctx.fill();
     }
 
-    // Layer 3: Closer Hills/Forest (Parallax 0.6)
-    ctx.fillStyle = "rgba(10, 30, 10, 0.4)";
-    let closeW = 150;
-    let closeH = 200;
+    // Layer 3: Closer Hills/Forest (Parallax 0.6) - Higher (~300px)
+    let closeH = 300;
+    let closeW = 180;
     let closeOffset = ((camX * 0.6) % closeW + closeW) % closeW;
+
+    // Gradient for hills
+    let closeGrd = ctx.createLinearGradient(0, ctx.canvas.height - closeH, 0, ctx.canvas.height);
+    closeGrd.addColorStop(0, "rgba(20, 50, 20, 0.6)"); // Forest Green
+    closeGrd.addColorStop(1, "rgba(10, 30, 10, 0.8)");
+    ctx.fillStyle = closeGrd;
+
     for(let i = -1; i < ctx.canvas.width / closeW + 2; i++) {
         ctx.beginPath();
         ctx.moveTo(i * closeW - closeOffset, ctx.canvas.height);
-        // Smooth hills
+        // Rolling hills with variation
+        let cx = i * closeW - closeOffset;
+        let cy = ctx.canvas.height;
+
         ctx.bezierCurveTo(
-            i * closeW + closeW*0.3 - closeOffset, ctx.canvas.height - closeH,
-            i * closeW + closeW*0.7 - closeOffset, ctx.canvas.height - closeH,
-            i * closeW + closeW - closeOffset, ctx.canvas.height
+            cx + closeW*0.3, cy - closeH - (i%3)*30,
+            cx + closeW*0.7, cy - closeH + (i%2)*20,
+            cx + closeW, cy
         );
         ctx.fill();
+
+        // Add "Trees" (Simple triangles on ridges)
+        ctx.fillStyle = "rgba(5, 20, 5, 0.3)";
+        for(let t=0; t<3; t++) {
+             ctx.beginPath();
+             let tx = cx + closeW/2 + (t-1)*20;
+             let ty = cy - closeH + 40;
+             ctx.moveTo(tx, ty);
+             ctx.lineTo(tx - 5, ty + 15);
+             ctx.lineTo(tx + 5, ty + 15);
+             ctx.fill();
+        }
+        ctx.fillStyle = closeGrd; // Reset
     }
 }
 
