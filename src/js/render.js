@@ -84,8 +84,11 @@ export function drawBackground(ctx, camX, camY) {
 
     // --- UNDERGROUND LAYER (Overlay) ---
     // Sudden Transition "right below the level of the starting platform"
-    // Starting platform is around y=1400 (35 * 40). Let's set it to 1450.
-    let caveAlpha = (camY > 1450) ? 1.0 : 0.0;
+    // Starting platform is around y=1400.
+    // Camera Top (camY) when player is at 1400 is approx 1100.
+    // We want transition when player goes slightly below 1400.
+    // So threshold should be around 1200.
+    let caveAlpha = (camY > 1200) ? 1.0 : 0.0;
 
     if (caveAlpha > 0) {
         ctx.save();
