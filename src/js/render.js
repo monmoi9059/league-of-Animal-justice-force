@@ -83,8 +83,9 @@ export function drawBackground(ctx, camX, camY) {
     }
 
     // --- UNDERGROUND LAYER (Overlay) ---
-    // Sudden Transition at Y=600 (15 tiles)
-    let caveAlpha = (camY > 600) ? 1.0 : 0.0;
+    // Sudden Transition "right below the level of the starting platform"
+    // Starting platform is around y=1400 (35 * 40). Let's set it to 1450.
+    let caveAlpha = (camY > 1450) ? 1.0 : 0.0;
 
     if (caveAlpha > 0) {
         ctx.save();
