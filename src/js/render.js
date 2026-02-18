@@ -23,7 +23,7 @@ export function drawBackground(ctx, camX, camY) {
     for(let i = -1; i < ctx.canvas.width / mountainW + 2; i++) {
         ctx.beginPath();
         ctx.moveTo(i * mountainW - offset, ctx.canvas.height);
-        ctx.lineTo(i * mountainW + mountainW/2 - offset, ctx.canvas.height - 150);
+        ctx.lineTo(i * mountainW + mountainW/2 - offset, ctx.canvas.height - 400);
         ctx.lineTo(i * mountainW + mountainW - offset, ctx.canvas.height);
         ctx.fill();
     }
@@ -35,7 +35,7 @@ export function drawBackground(ctx, camX, camY) {
     for(let i = -1; i < ctx.canvas.width / hillW + 2; i++) {
         ctx.beginPath();
         ctx.moveTo(i * hillW - hillOffset, ctx.canvas.height);
-        ctx.quadraticCurveTo(i * hillW + hillW/2 - hillOffset, ctx.canvas.height - 100, i * hillW + hillW - hillOffset, ctx.canvas.height);
+        ctx.quadraticCurveTo(i * hillW + hillW/2 - hillOffset, ctx.canvas.height - 250, i * hillW + hillW - hillOffset, ctx.canvas.height);
         ctx.fill();
     }
 }

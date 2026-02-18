@@ -98,39 +98,56 @@ export class FallingBlock {
         this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
         this.vx = 0; this.vy = 0;
         this.active = false;
-        this.hp = 100;
+        this.solid = true;
     }
     update() {
-        // Trigger fall if player is near/under? Or just physics object?
-        // Let's make it a physics object that falls if unsupported
-        this.vy += GRAVITY;
-        this.y += this.vy;
-
-        let r = Math.floor((this.y + this.h) / TILE_SIZE);
-        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
-
-        let maxW = tiles && tiles[0] ? tiles[0].length : LEVEL_WIDTH;
-        let maxH = tiles ? tiles.length : LEVEL_HEIGHT;
-
-        if (r >= 0 && r < maxH && c >= 0 && c < maxW && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
-             this.y = r * TILE_SIZE - this.h;
-             this.vy = 0;
-        }
-
-        // Damage player if falls on head?
-        if ((Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) && players) {
-            for (let p of players) {
-                if (p.health > 0 && checkRectOverlap(this, p)) {
-                    p.takeDamage(10);
+        if (!this.active) {
+            // Trigger check
+            if (players) {
+                for (let p of players) {
+                    // Check horizontal proximity (underneath)
+                    if (Math.abs((p.x + p.w/2) - (this.x + this.w/2)) < 40 && p.y > this.y) {
+                        this.active = true;
+                        spawnExplosion(this.x + this.w/2, this.y, "grey", 0.5); // Dust
+                    }
                 }
+            }
+        } else {
+            this.vy += GRAVITY;
+            this.y += this.vy;
+
+            // Collision with floor or players
+            if (players) {
+                for (let p of players) {
+                    if (checkRectOverlap(this, p)) {
+                        p.takeDamage(2); // Heavy damage
+                        this.shatter();
+                        return;
+                    }
+                }
+            }
+
+            // Floor check
+            let r = Math.floor((this.y + this.h) / TILE_SIZE);
+            let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+            if (tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+                 this.shatter();
             }
         }
     }
+    shatter() {
+        spawnExplosion(this.x + this.w/2, this.y + this.h/2, "grey", 2);
+        this.x = -9999;
+    }
     draw(ctx, camX, camY, now) {
+        let cx = this.x - camX; let cy = this.y - camY;
         ctx.fillStyle = "#7f8c8d";
-        ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        ctx.fillRect(cx, cy, this.w, this.h);
+        // Cracks
         ctx.strokeStyle = "#2c3e50";
-        ctx.strokeRect(this.x - camX, this.y - camY, this.w, this.h);
+        ctx.beginPath();
+        ctx.moveTo(cx+5, cy+5); ctx.lineTo(cx+15, cy+20); ctx.lineTo(cx+10, cy+30);
+        ctx.stroke();
     }
 }
 
@@ -718,5 +735,221 @@ export class Mailman {
         ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
         ctx.fillStyle = "#ecf0f1"; // Bag
         ctx.fillRect(this.x - camX - 5, this.y - camY + 20, 10, 20);
+    }
+}
+
+export class SpikeTrap {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = TILE_SIZE; this.h = TILE_SIZE;
+        this.solid = true;
+        this.state = 0; // 0: Idle, 1: Warning, 2: Active, 3: Retract
+        this.timer = 0;
+    }
+    update() {
+        if (this.state === 0) {
+            if (players) {
+                for (let p of players) {
+                    if (p.health > 0 && Math.abs(p.x - this.x) < 20 && Math.abs((p.y + p.h) - (this.y + this.h)) < 10) {
+                        this.state = 1; this.timer = 20; break;
+                    }
+                }
+            }
+        } else if (this.state === 1) {
+            this.timer--;
+            if (this.timer <= 0) { this.state = 2; this.timer = 60; this.checkDamage(); }
+        } else if (this.state === 2) {
+             this.checkDamage();
+             this.timer--;
+             if (this.timer <= 0) { this.state = 3; this.timer = 30; }
+        } else if (this.state === 3) {
+            this.timer--;
+            if (this.timer <= 0) this.state = 0;
+        }
+    }
+    checkDamage() {
+        if (players) {
+            for (let p of players) {
+                 if (checkRectOverlap(this, p)) { p.takeDamage(1); p.vy = -8; }
+            }
+        }
+    }
+    draw(ctx, camX, camY, now) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        ctx.fillStyle = "#555"; ctx.fillRect(cx, cy + 10, this.w, this.h - 10);
+        ctx.fillStyle = "#222";
+        ctx.beginPath(); ctx.arc(cx+10, cy+15, 3, 0, 6.28); ctx.arc(cx+30, cy+15, 3, 0, 6.28); ctx.fill();
+        if (this.state === 1) {
+             if (Math.floor(now/100)%2===0) { ctx.fillStyle = "red"; ctx.fillRect(cx+15, cy+12, 10, 5); }
+        } else if (this.state === 2) {
+            ctx.fillStyle = "#bdc3c7";
+            ctx.beginPath();
+            ctx.moveTo(cx + 5, cy + 15); ctx.lineTo(cx + 10, cy - 20); ctx.lineTo(cx + 15, cy + 15);
+            ctx.moveTo(cx + 25, cy + 15); ctx.lineTo(cx + 30, cy - 20); ctx.lineTo(cx + 35, cy + 15);
+            ctx.fill();
+        }
+    }
+}
+
+export class MovingPlatform {
+    constructor(x, y, range, axis = 'x') {
+        this.x = x; this.y = y; this.w = 60; this.h = 20;
+        this.startX = x; this.startY = y;
+        this.range = range; this.axis = axis;
+        this.timer = 0;
+        this.solid = true;
+        this.vx = 0; this.vy = 0;
+    }
+    update() {
+        this.timer += 0.05;
+        let offset = Math.sin(this.timer) * this.range;
+        let prevX = this.x; let prevY = this.y;
+
+        if (this.axis === 'x') this.x = this.startX + offset;
+        else this.y = this.startY + offset;
+
+        this.vx = this.x - prevX;
+        this.vy = this.y - prevY;
+    }
+    draw(ctx, camX, camY, now) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        ctx.fillStyle = "#34495e";
+        drawRoundedRect(ctx, cx, cy, this.w, this.h, 5);
+        ctx.fillStyle = "#f39c12"; // Hazard stripes
+        for(let i=0; i<this.w; i+=10) ctx.fillRect(cx+i, cy, 5, this.h);
+    }
+}
+
+export class MovingHazard {
+    constructor(x, y, range, axis = 'x') {
+        this.x = x; this.y = y; this.w = 40; this.h = 40;
+        this.startX = x; this.startY = y;
+        this.range = range; this.axis = axis;
+        this.timer = 0;
+        this.solid = true; // Push player
+    }
+    update() {
+        this.timer += 0.1;
+        let offset = Math.sin(this.timer) * this.range;
+        if (this.axis === 'x') this.x = this.startX + offset;
+        else this.y = this.startY + offset;
+
+        // Spin
+        this.angle = this.timer * 5;
+
+        if (players) {
+            for (let p of players) {
+                if (checkRectOverlap(this, p)) { p.takeDamage(1); }
+            }
+        }
+    }
+    draw(ctx, camX, camY, now) {
+        let cx = this.x - camX + this.w/2; let cy = this.y - camY + this.h/2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(this.angle);
+        ctx.fillStyle = "#7f8c8d";
+        ctx.beginPath();
+        for(let i=0; i<8; i++) {
+            ctx.rotate(Math.PI/4);
+            ctx.moveTo(0, -20); ctx.lineTo(10, 0); ctx.lineTo(-10, 0);
+        }
+        ctx.fill();
+        ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.arc(0,0,10,0,6.28); ctx.fill();
+        ctx.restore();
+    }
+}
+
+export class BridgePlank {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 20; this.h = 10;
+        this.solid = true;
+        this.anchorY = y;
+        this.vy = 0;
+    }
+    update() {
+        // Spring physics
+        let targetY = this.anchorY;
+        // Check if player stands on it
+        let weight = 0;
+        if (players) {
+            for (let p of players) {
+                if (p.grounded && Math.abs((p.x+p.w/2) - (this.x+this.w/2)) < 15 && Math.abs(p.y+p.h - this.y) < 20) {
+                    weight = 10;
+                }
+            }
+        }
+
+        let force = (targetY + weight - this.y) * 0.1;
+        this.vy += force;
+        this.vy *= 0.8; // Damping
+        this.y += this.vy;
+    }
+    draw(ctx, camX, camY, now) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        ctx.fillStyle = "#8e44ad"; // Wood color
+        drawRoundedRect(ctx, cx, cy, this.w, this.h, 2);
+        // Rope lines
+        ctx.strokeStyle = "#555";
+        ctx.beginPath(); ctx.moveTo(cx, cy+5); ctx.lineTo(cx-5, cy-5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx+this.w, cy+5); ctx.lineTo(cx+this.w+5, cy-5); ctx.stroke();
+    }
+}
+
+export class Decor {
+    constructor(x, y, type) {
+        this.x = x; this.y = y; this.type = type;
+        this.w = 20; this.h = 20;
+        this.sway = 0;
+        this.timer = Math.random() * 100;
+        this.solid = false;
+    }
+    update() {
+        this.timer++;
+        // Idle sway
+        this.sway = Math.sin(this.timer * 0.05) * 5;
+
+        // Player interaction
+        if (players) {
+            for (let p of players) {
+                if (Math.abs(p.x - this.x) < 30 && Math.abs(p.y - this.y) < 30) {
+                    this.sway += (p.vx || 0) * 2;
+                }
+            }
+        }
+        // Damping done by sin wave mostly, but let's clamp
+    }
+    draw(ctx, camX, camY, now) {
+        let cx = this.x - camX; let cy = this.y - camY;
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        if (this.type === 'grass') {
+            ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 2;
+            for(let i=0; i<3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(5 + this.sway/2, -10, 10*i - 10 + this.sway, -15 - Math.abs(this.sway));
+                ctx.stroke();
+            }
+        } else if (this.type === 'vine') {
+            ctx.strokeStyle = "#27ae60"; ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo(this.sway, 10, -this.sway, 20, this.sway/2, 30);
+            ctx.stroke();
+            // Leaves
+            ctx.fillStyle = "#2ecc71";
+            ctx.beginPath(); ctx.arc(this.sway/2, 30, 3, 0, 6.28); ctx.fill();
+        } else if (this.type === 'rock') {
+            ctx.fillStyle = "#7f8c8d";
+            ctx.beginPath();
+            ctx.moveTo(0,0); ctx.lineTo(10, -10); ctx.lineTo(20, 0); ctx.fill();
+        } else if (this.type === 'pipe') {
+             ctx.fillStyle = "#555";
+             ctx.fillRect(0, -10, 20, 40);
+             ctx.strokeStyle="#333";
+             ctx.strokeRect(0, -10, 20, 40);
+        }
+        ctx.restore();
     }
 }
