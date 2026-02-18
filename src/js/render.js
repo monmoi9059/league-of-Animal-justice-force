@@ -1,144 +1,15 @@
 import { CANVAS, CTX, CHARACTERS, ASSETS, LEVEL_HEIGHT, LEVEL_WIDTH, TILE_SIZE } from './constants.js';
-import { gameState, tiles, debris, entities, players, particles, damageNumbers } from './state.js';
+import { gameState, tiles, bgTiles, debris, entities, players, particles, damageNumbers } from './state.js';
 import { drawRoundedRect, drawAnatomicalHero } from './graphics.js';
 import { secureRandom } from './math.js';
 
 export function drawBackground(ctx, camX, camY) {
-    let GROUND_LEVEL = 1400;
-
-    // --- SKY & MOUNTAINS (Visible when camera is high) ---
-    // If camera Y is way below ground, we don't need to render sky (optimization),
-    // but for transition we render it.
-
-    // Sky Gradient
+    // Basic Sky (always visible behind everything)
     let grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
     grd.addColorStop(0, "#87CEEB"); // Sky Blue
     grd.addColorStop(1, "#E0F7FA"); // Light Cyan
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    // Layer 1: Distant Mountains (Parallax 0.1)
-    ctx.fillStyle = "#a8dadc";
-    let mtnW = 400;
-    let mtnOffset = ((camX * 0.1) % mtnW + mtnW) % mtnW;
-    // Base Y is relative to screen bottom, but we want mountains to disappear as we go down.
-    // So we position them relative to the "Surface" in screen space.
-    // Surface Y in screen space = GROUND_LEVEL - camY.
-    let screenSurfaceY = GROUND_LEVEL - camY;
-
-    // Clamp limits for visual sanity (sky shouldn't scroll infinitely)
-    // Actually, mountains should look fixed to the horizon.
-    // Horizon is roughly at screenSurfaceY.
-
-    let horizonY = screenSurfaceY - 100; // Horizon slightly above ground
-
-    for(let i = -1; i < ctx.canvas.width / mtnW + 2; i++) {
-        ctx.beginPath();
-        let bx = i * mtnW - mtnOffset;
-        ctx.moveTo(bx, horizonY);
-        ctx.lineTo(bx + mtnW/2, horizonY - 300); // Peak
-        ctx.lineTo(bx + mtnW, horizonY);
-        ctx.fill();
-    }
-
-    // Layer 2: Closer Hills (Parallax 0.3)
-    ctx.fillStyle = "#457b9d";
-    let hillW = 200;
-    let hillOffset = ((camX * 0.3) % hillW + hillW) % hillW;
-
-    for(let i = -1; i < ctx.canvas.width / hillW + 2; i++) {
-        ctx.beginPath();
-        let bx = i * hillW - hillOffset;
-        ctx.moveTo(bx, horizonY + 50);
-        ctx.quadraticCurveTo(bx + hillW/2, horizonY - 150, bx + hillW, horizonY + 50);
-        ctx.fill();
-    }
-
-    // --- UNDERGROUND BACK-WALL (Follows Terrain) ---
-    // Instead of a flat line, we scan the tiles array to find the surface height for each column.
-
-    let startCol = Math.floor(camX / TILE_SIZE);
-    let endCol = startCol + Math.ceil(ctx.canvas.width / TILE_SIZE) + 1;
-
-    // 1. Draw Solid Back Wall Shape
-    ctx.fillStyle = "#263238"; // Dark Slate/Rock
-    ctx.beginPath();
-    ctx.moveTo(0, ctx.canvas.height); // Start bottom-left
-
-    for (let c = startCol; c <= endCol; c++) {
-        let surfaceY = LEVEL_HEIGHT * TILE_SIZE; // Default deep
-
-        // Find highest solid block in this column
-        if (c >= 0 && c < LEVEL_WIDTH && tiles) {
-            for (let r = 0; r < LEVEL_HEIGHT; r++) {
-                if (tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
-                    surfaceY = r * TILE_SIZE;
-                    break;
-                }
-            }
-        }
-
-        let screenX = c * TILE_SIZE - camX;
-        let screenY = surfaceY - camY;
-
-        if (c === startCol) ctx.lineTo(screenX, screenY);
-        ctx.lineTo(screenX + TILE_SIZE, screenY);
-    }
-
-    ctx.lineTo(ctx.canvas.width, ctx.canvas.height); // Bottom-right
-    ctx.closePath();
-    ctx.fill();
-
-    // 2. Texture Pattern (Overlay on the filled shape)
-    ctx.save();
-    ctx.clip(); // Clip to the terrain shape we just drew
-
-    ctx.fillStyle = "#37474f";
-    let patternSize = 100;
-    let patStartRow = Math.floor(camY / patternSize);
-    let patEndRow = patStartRow + Math.ceil(ctx.canvas.height / patternSize) + 1;
-    let patStartCol = Math.floor(camX / patternSize);
-    let patEndCol = patStartCol + Math.ceil(ctx.canvas.width / patternSize) + 1;
-
-    for(let r=patStartRow; r<patEndRow; r++) {
-        for(let c=patStartCol; c<patEndCol; c++) {
-            let px = c * patternSize - camX;
-            let py = r * patternSize - camY;
-            if ((r + c) % 3 === 0) ctx.fillRect(px + 10, py + 10, 40, 20);
-            if ((r * c) % 5 === 0) ctx.fillRect(px + 60, py + 50, 20, 20);
-        }
-    }
-
-    // Top Edge Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    ctx.restore();
-
-    // 3. Draw Dirt Border Line (Reuse loop logic for performance or just rely on fill)
-    // The previous loop drew the fill. We can re-run or just assume the fill edge is enough.
-    // Let's add a brown stroke to the top edge for definition.
-    ctx.strokeStyle = "#5d4037";
-    ctx.lineWidth = 20;
-    ctx.beginPath();
-    let first = true;
-    for (let c = startCol; c <= endCol; c++) {
-        let surfaceY = LEVEL_HEIGHT * TILE_SIZE;
-        if (c >= 0 && c < LEVEL_WIDTH && tiles) {
-            for (let r = 0; r < LEVEL_HEIGHT; r++) {
-                if (tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
-                    surfaceY = r * TILE_SIZE;
-                    break;
-                }
-            }
-        }
-        let screenX = c * TILE_SIZE - camX;
-        let screenY = surfaceY - camY;
-        if(first) { ctx.moveTo(screenX, screenY); first=false; }
-        else ctx.lineTo(screenX, screenY);
-        ctx.lineTo(screenX + TILE_SIZE, screenY);
-    }
-    ctx.stroke();
 }
 
 export function drawMenu() {
@@ -261,10 +132,24 @@ export function drawGame() {
     let startRow = Math.floor(gameState.cameraY / TILE_SIZE); let endRow = startRow + (visibleH / TILE_SIZE) + 4;
 
     for(let r=startRow; r<endRow && r<LEVEL_HEIGHT; r++) {
-        for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) { // Use constant LEVEL_WIDTH for loop bound if array is large enough, or better check array length?
-            // Actually tiles[r] might not exist if r is out of bounds, but we check r<LEVEL_HEIGHT
+        for(let c=startCol; c<endCol && c<LEVEL_WIDTH; c++) {
+            let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
+
+            // DRAW BACKGROUND TILES
+            if(bgTiles && bgTiles[r] && bgTiles[r][c] && bgTiles[r][c].type !== 0) {
+                if(bgTiles[r][c].type === 1) {
+                    // Dirt Wall
+                    CTX.fillStyle = "#4e342e"; // Darker dirt
+                    CTX.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                    // Texture
+                    CTX.fillStyle = "rgba(0,0,0,0.2)";
+                    if ((r + c) % 2 === 0) CTX.fillRect(tx + 10, ty + 10, 20, 20);
+                }
+            }
+
+            // DRAW FOREGROUND TILES
             if(tiles && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
-                let t = tiles[r][c]; let tx = c*TILE_SIZE; let ty = r*TILE_SIZE;
+                let t = tiles[r][c];
 
                 if(t.type === 6) {
                     CTX.fillStyle = ASSETS.ladder;

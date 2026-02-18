@@ -26,6 +26,7 @@ export const gameState = {
 };
 
 export let tiles = [];
+export let bgTiles = []; // Background Layer
 export let entities = [];
 export let particles = [];
 export let damageNumbers = [];
@@ -39,8 +40,10 @@ export let lastTime = 0;
 // Inputs
 export let playerKeys = [{}, {}, {}, {}];
 
-export function setTiles(newTiles) {
+export function setTiles(newTiles, newBgTiles) {
     tiles = newTiles;
+    if (newBgTiles) bgTiles = newBgTiles;
+    else bgTiles = []; // Clear if not provided
 }
 
 export function setEntities(newEntities) {

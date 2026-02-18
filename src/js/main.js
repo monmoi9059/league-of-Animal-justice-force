@@ -192,7 +192,8 @@ function updateLobbyUI() {
 window.startGame = function() {
     console.log("STARTGAME() CALLED");
     try {
-        setTiles(generateLevel());
+        let level = generateLevel();
+        setTiles(level.tiles, level.bgTiles);
         console.log("LEVEL GENERATED. TILES:", tiles.length);
         setParticles([]);
         setDamageNumbers([]);

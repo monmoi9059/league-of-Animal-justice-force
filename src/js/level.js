@@ -7,6 +7,7 @@ import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast, HamsterBall, SpikeTra
 // --- LEVEL GENERATOR ---
 export function generateLevel() {
     let newTiles = [];
+    let newBgTiles = []; // Parallel array for background
     let newEntities = [];
 
     // Helpers
@@ -111,10 +112,13 @@ export function generateLevel() {
     // 1. Init Empty Grid
     for (let r = 0; r < LEVEL_HEIGHT; r++) {
         const row = new Array(currentLevelWidth);
+        const bgRow = new Array(currentLevelWidth);
         for (let c = 0; c < currentLevelWidth; c++) {
             row[c] = { type: 0 };
+            bgRow[c] = { type: 0 };
         }
         newTiles[r] = row;
+        newBgTiles[r] = bgRow;
     }
 
     // 2. Terrain Walker
@@ -199,6 +203,12 @@ export function generateLevel() {
 
         // Fill Column
         for (let y = 0; y < LEVEL_HEIGHT; y++) {
+            // Background Wall Logic (Underground)
+            if (y >= currentHeight) {
+                newBgTiles[y][x] = { type: 1 }; // 1 = Dirt Wall
+            }
+
+            // Foreground Terrain
             if (y >= currentHeight) {
                 let type = 1; // Dirt
                 if (x < 15 || (difficulty >= 20 && x > currentLevelWidth - 40)) type = 2; // Stone safe zones / Arena floor
@@ -423,5 +433,5 @@ export function generateLevel() {
     }
 
     setEntities(newEntities);
-    return newTiles;
+    return { tiles: newTiles, bgTiles: newBgTiles };
 }
