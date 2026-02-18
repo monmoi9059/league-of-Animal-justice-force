@@ -30,7 +30,7 @@ export function drawBackground(ctx, camX, camY) {
     for(let i = -1; i < ctx.canvas.width / mtnW + 2; i++) {
         ctx.beginPath();
         let bx = i * mtnW - mtnOffset;
-        let by = ctx.canvas.height;
+        let by = ctx.canvas.height + 200; // Lower ground
         ctx.moveTo(bx, by);
         // Jagged mountain silhouette
         ctx.lineTo(bx + mtnW*0.2, by - mtnH * 0.8);
@@ -43,12 +43,12 @@ export function drawBackground(ctx, camX, camY) {
     // Layer 2: Mid-Range Jungle (Parallax 0.3) - Deep Teal Silhouette
     ctx.fillStyle = "rgba(0, 40, 40, 0.8)";
     let jungleW = 150;
-    let jungleH = 300;
+    let jungleH = 450; // Taller trees
     let jungleOffset = ((camX * 0.3) % jungleW + jungleW) % jungleW;
 
     for(let i = -1; i < ctx.canvas.width / jungleW + 2; i++) {
         let bx = i * jungleW - jungleOffset;
-        let by = ctx.canvas.height;
+        let by = ctx.canvas.height + 200; // Lower ground
 
         // Draw Tree Trunks
         ctx.fillRect(bx + 20, by - jungleH + 50, 20, jungleH);
@@ -56,8 +56,8 @@ export function drawBackground(ctx, camX, camY) {
 
         // Draw Canopy (Cluster of circles/leaves)
         ctx.beginPath();
-        ctx.arc(bx + 30, by - jungleH + 50, 40, 0, Math.PI*2);
-        ctx.arc(bx + 90, by - jungleH + 20, 30, 0, Math.PI*2);
+        ctx.arc(bx + 30, by - jungleH + 50, 60, 0, Math.PI*2);
+        ctx.arc(bx + 90, by - jungleH + 20, 45, 0, Math.PI*2);
         ctx.fill();
     }
 
@@ -69,7 +69,7 @@ export function drawBackground(ctx, camX, camY) {
 
     for(let i = -1; i < ctx.canvas.width / nearW + 2; i++) {
         let bx = i * nearW - nearOffset;
-        let by = ctx.canvas.height;
+        let by = ctx.canvas.height + 150; // Slightly closer
 
         // Grass/Bush shapes
         ctx.beginPath();
