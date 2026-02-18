@@ -54,56 +54,91 @@ export function drawBackground(ctx, camX, camY) {
         ctx.fill();
     }
 
-    // --- UNDERGROUND BACK-WALL (The "Real" Background) ---
-    // This is drawn starting from GROUND_LEVEL downwards.
-    // Since it represents the "back wall" of the cave, it should move 1:1 with camera (Parallax 1.0)
-    // so it looks attached to the foreground blocks.
+    // --- UNDERGROUND BACK-WALL (Follows Terrain) ---
+    // Instead of a flat line, we scan the tiles array to find the surface height for each column.
 
-    let wallY = GROUND_LEVEL - camY; // Screen Y where wall starts
+    let startCol = Math.floor(camX / TILE_SIZE);
+    let endCol = startCol + Math.ceil(ctx.canvas.width / TILE_SIZE) + 1;
 
-    if (wallY < ctx.canvas.height) { // Only draw if visible
-        ctx.fillStyle = "#263238"; // Dark Slate/Rock
-        // Draw from wallY down to bottom of screen
-        ctx.fillRect(0, wallY, ctx.canvas.width, ctx.canvas.height - wallY + 200); // +200 safety buffer
+    // 1. Draw Solid Back Wall Shape
+    ctx.fillStyle = "#263238"; // Dark Slate/Rock
+    ctx.beginPath();
+    ctx.moveTo(0, ctx.canvas.height); // Start bottom-left
 
-        // Texture Pattern (Static noise relative to world)
-        // We use world coordinates to draw pattern so it scrolls with camera naturally
-        ctx.fillStyle = "#37474f";
-        let patternSize = 100;
+    for (let c = startCol; c <= endCol; c++) {
+        let surfaceY = LEVEL_HEIGHT * TILE_SIZE; // Default deep
 
-        // Optimization: Only loop over visible area
-        let startRow = Math.max(0, Math.floor(camY / patternSize));
-        let endRow = startRow + (ctx.canvas.height / patternSize) + 2;
-        let startCol = Math.floor(camX / patternSize);
-        let endCol = startCol + (ctx.canvas.width / patternSize) + 2;
-
-        for(let r=startRow; r<endRow; r++) {
-            if (r * patternSize < GROUND_LEVEL) continue; // Don't draw pattern above ground
-            for(let c=startCol; c<endCol; c++) {
-                let px = c * patternSize - camX;
-                let py = r * patternSize - camY;
-
-                // Random-looking but deterministic based on coords
-                if ((r + c) % 3 === 0) {
-                    ctx.fillRect(px + 10, py + 10, 40, 20); // Brick/Rock
-                }
-                if ((r * c) % 5 === 0) {
-                    ctx.fillRect(px + 60, py + 50, 20, 20);
+        // Find highest solid block in this column
+        if (c >= 0 && c < LEVEL_WIDTH && tiles) {
+            for (let r = 0; r < LEVEL_HEIGHT; r++) {
+                if (tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+                    surfaceY = r * TILE_SIZE;
+                    break;
                 }
             }
         }
 
-        // Top Edge "Grass/Dirt" Transition Line
-        ctx.fillStyle = "#5d4037"; // Dirt Brown
-        ctx.fillRect(0, wallY, ctx.canvas.width, 20);
+        let screenX = c * TILE_SIZE - camX;
+        let screenY = surfaceY - camY;
 
-        // Shadow Gradient at the top of the cave (faking depth)
-        let shadowGrd = ctx.createLinearGradient(0, wallY, 0, wallY + 400);
-        shadowGrd.addColorStop(0, "rgba(0,0,0,0.8)");
-        shadowGrd.addColorStop(1, "transparent");
-        ctx.fillStyle = shadowGrd;
-        ctx.fillRect(0, wallY, ctx.canvas.width, 400);
+        if (c === startCol) ctx.lineTo(screenX, screenY);
+        ctx.lineTo(screenX + TILE_SIZE, screenY);
     }
+
+    ctx.lineTo(ctx.canvas.width, ctx.canvas.height); // Bottom-right
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Texture Pattern (Overlay on the filled shape)
+    ctx.save();
+    ctx.clip(); // Clip to the terrain shape we just drew
+
+    ctx.fillStyle = "#37474f";
+    let patternSize = 100;
+    let patStartRow = Math.floor(camY / patternSize);
+    let patEndRow = patStartRow + Math.ceil(ctx.canvas.height / patternSize) + 1;
+    let patStartCol = Math.floor(camX / patternSize);
+    let patEndCol = patStartCol + Math.ceil(ctx.canvas.width / patternSize) + 1;
+
+    for(let r=patStartRow; r<patEndRow; r++) {
+        for(let c=patStartCol; c<patEndCol; c++) {
+            let px = c * patternSize - camX;
+            let py = r * patternSize - camY;
+            if ((r + c) % 3 === 0) ctx.fillRect(px + 10, py + 10, 40, 20);
+            if ((r * c) % 5 === 0) ctx.fillRect(px + 60, py + 50, 20, 20);
+        }
+    }
+
+    // Top Edge Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    ctx.restore();
+
+    // 3. Draw Dirt Border Line (Reuse loop logic for performance or just rely on fill)
+    // The previous loop drew the fill. We can re-run or just assume the fill edge is enough.
+    // Let's add a brown stroke to the top edge for definition.
+    ctx.strokeStyle = "#5d4037";
+    ctx.lineWidth = 20;
+    ctx.beginPath();
+    let first = true;
+    for (let c = startCol; c <= endCol; c++) {
+        let surfaceY = LEVEL_HEIGHT * TILE_SIZE;
+        if (c >= 0 && c < LEVEL_WIDTH && tiles) {
+            for (let r = 0; r < LEVEL_HEIGHT; r++) {
+                if (tiles[r] && tiles[r][c] && tiles[r][c].type !== 0) {
+                    surfaceY = r * TILE_SIZE;
+                    break;
+                }
+            }
+        }
+        let screenX = c * TILE_SIZE - camX;
+        let screenY = surfaceY - camY;
+        if(first) { ctx.moveTo(screenX, screenY); first=false; }
+        else ctx.lineTo(screenX, screenY);
+        ctx.lineTo(screenX + TILE_SIZE, screenY);
+    }
+    ctx.stroke();
 }
 
 export function drawMenu() {
