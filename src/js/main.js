@@ -379,18 +379,59 @@ function loop(timestamp) {
                     });
                 }
 
-                // Filter dead entities (using reassignment)
-                setEntities(entities.filter(e => (e.hp > 0) || (e.life > 0)));
-                entities.forEach(e => e.update());
+                // Entities: Filter dead (in-place) then update
+                let eCount = 0;
+                for (let i = 0; i < entities.length; i++) {
+                    const e = entities[i];
+                    if ((e.hp > 0) || (e.life > 0)) {
+                        entities[eCount++] = e;
+                    }
+                }
+                entities.length = eCount;
+                for (let i = 0; i < entities.length; i++) {
+                    entities[i].update();
+                }
 
-                setParticles(particles.filter(p => p.life > 0));
-                particles.forEach(p => p.update());
+                // Particles: Filter (in-place) then update
+                let pCount = 0;
+                for (let i = 0; i < particles.length; i++) {
+                    const p = particles[i];
+                    if (p.life > 0) {
+                        particles[pCount++] = p;
+                    }
+                }
+                particles.length = pCount;
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update();
+                }
 
-                setDamageNumbers(damageNumbers.filter(d => d.life > 0));
-                damageNumbers.forEach(d => { d.y += d.vy; d.life--; });
+                // Damage Numbers: Filter (in-place) then update
+                let dCount = 0;
+                for (let i = 0; i < damageNumbers.length; i++) {
+                    const d = damageNumbers[i];
+                    if (d.life > 0) {
+                        damageNumbers[dCount++] = d;
+                    }
+                }
+                damageNumbers.length = dCount;
+                for (let i = 0; i < damageNumbers.length; i++) {
+                    const d = damageNumbers[i];
+                    d.y += d.vy;
+                    d.life--;
+                }
 
-                setDebris(debris.filter(d => d.life > 0));
-                debris.forEach(d => d.update());
+                // Debris: Filter (in-place) then update
+                let dbCount = 0;
+                for (let i = 0; i < debris.length; i++) {
+                    const d = debris[i];
+                    if (d.life > 0) {
+                        debris[dbCount++] = d;
+                    }
+                }
+                debris.length = dbCount;
+                for (let i = 0; i < debris.length; i++) {
+                    debris[i].update();
+                }
             }
 
             // Camera Logic: Average Position
