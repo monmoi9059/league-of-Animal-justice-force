@@ -1,6 +1,6 @@
 {
   "name": "loajf",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "League of Animal Justice Avenger Force: Operation Dumpster Fire",
   "main": "src/js/main.js",
   "scripts": {
