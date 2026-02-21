@@ -374,9 +374,10 @@ function loop(timestamp) {
 
                 // Update all players
                 if (players) {
-                    players.forEach(p => {
+                    for (let i = 0; i < players.length; i++) {
+                        const p = players[i];
                         if (p.health > 0) p.update();
-                    });
+                    }
                 }
 
                 // Entities: Filter dead (in-place) then update
@@ -397,51 +398,54 @@ function loop(timestamp) {
                 for (let i = 0; i < particles.length; i++) {
                     const p = particles[i];
                     if (p.life > 0) {
-                        particles[pCount++] = p;
+                        particles[pCount] = p;
+                        particles[pCount].update();
+                        pCount++;
                     }
                 }
                 particles.length = pCount;
-                for (let i = 0; i < particles.length; i++) {
-                    particles[i].update();
-                }
 
                 // Damage Numbers: Filter (in-place) then update
                 let dCount = 0;
                 for (let i = 0; i < damageNumbers.length; i++) {
                     const d = damageNumbers[i];
                     if (d.life > 0) {
+                        d.y += d.vy;
+                        d.life--;
                         damageNumbers[dCount++] = d;
                     }
                 }
                 damageNumbers.length = dCount;
-                for (let i = 0; i < damageNumbers.length; i++) {
-                    const d = damageNumbers[i];
-                    d.y += d.vy;
-                    d.life--;
-                }
 
                 // Debris: Filter (in-place) then update
                 let dbCount = 0;
                 for (let i = 0; i < debris.length; i++) {
                     const d = debris[i];
                     if (d.life > 0) {
-                        debris[dbCount++] = d;
+                        debris[dbCount] = d;
+                        debris[dbCount].update();
+                        dbCount++;
                     }
                 }
                 debris.length = dbCount;
-                for (let i = 0; i < debris.length; i++) {
-                    debris[i].update();
-                }
             }
 
             // Camera Logic: Average Position
-            let activePlayers = players.filter(p => p.health > 0);
-            if (activePlayers.length > 0) {
-                let avgX = 0;
-                let avgY = 0;
-                activePlayers.forEach(p => { avgX += p.x; avgY += p.y; });
-                avgX /= activePlayers.length;
-                avgY /= activePlayers.length;
+            let avgX = 0;
+            let avgY = 0;
+            let activeCount = 0;
+            for (let i = 0; i < players.length; i++) {
+                const p = players[i];
+                if (p.health > 0) {
+                    avgX += p.x;
+                    avgY += p.y;
+                    activeCount++;
+                }
+            }
+
+            if (activeCount > 0) {
+                avgX /= activeCount;
+                avgY /= activeCount;
 
                 let zoom = gameState.zoom || 1.0;
                 let visibleW = CANVAS.width / zoom;
