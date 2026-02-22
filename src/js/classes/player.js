@@ -425,25 +425,28 @@ export class Player {
     }
 
     performSecondary() {
-        if (this.charData.melee) {
-            // Melee chars get a secondary ranged attack (Throwable/Gun)
-            entities.push(new Bullet(
-                this.x + (this.facing > 0 ? this.w : 0),
-                this.y + 10,
-                this.facing,
-                false,
-                this.charData, // Inherit mainly for safety, but isSecondary overrides most stats
-                false, // isDown
-                true   // isSecondary
-            ));
-            this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
-            if(soundManager) soundManager.play('shoot');
+        let weapon = WEAPONS[this.charData.id];
+
+        let pKeys = playerKeys[this.index] || {};
+        let isDown = pKeys['arrowdown'] || pKeys['s'];
+
+        if (weapon && weapon.secondary) {
+            this.aimDown = isDown;
+            weapon.secondary(this);
+            this.aimDown = false; // Reset
+            let animType = this.charData.melee ? 'shoot' : 'kick';
+            this.attackAnim = { type: animType, timer: 15, max: 15 };
         } else {
-            // Ranged chars get a secondary melee attack (Kick)
-            entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
-            // Visual
-            particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
-            this.attackAnim = { type: 'kick', timer: 15, max: 15 };
+            // Fallback (Legacy)
+            if (this.charData.melee) {
+                entities.push(new Bullet(this.x + (this.facing > 0 ? this.w : 0), this.y + 10, this.facing, false, this.charData, false, true));
+                this.attackAnim = { type: 'shoot', timer: 10, max: 10 };
+                if(soundManager) soundManager.play('shoot');
+            } else {
+                entities.push(new MeleeHitbox(this.x + (this.facing===1?0:-40), this.y, 40, 40, this, 1));
+                particles.push(new Particle(this.x + (this.facing*20), this.y + 10, "white"));
+                this.attackAnim = { type: 'kick', timer: 15, max: 15 };
+            }
         }
     }
 

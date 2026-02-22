@@ -4,32 +4,27 @@ import { secureRandom } from '../math.js';
 import { spawnExplosion, shakeCamera, spawnDamageNumber } from '../utils.js';
 import { soundManager } from '../sound.js';
 import { drawRoundedRect } from '../graphics.js';
+import { CHARACTERS } from '../constants.js';
 
 // --- HELPER FUNCTIONS ---
 
-function createBullet(player, config) {
-    // Clone config to prevent mutation of shared objects
-    config = { ...config };
+function playSound(name) {
+    if(soundManager) soundManager.play(name);
+}
 
+function createBullet(player, config) {
+    config = { ...config };
     // BUFF LOGIC for non-travelers
     if (!player.charData.trait) {
-        // 1. DAMAGE BUFF
         if(config.damage) config.damage = Math.ceil(config.damage * 1.5);
-
-        // 2. SIZE BUFF
         if(config.w) config.w *= 1.3;
         if(config.h) config.h *= 1.3;
-
-        // 3. VELOCITY BUFF
         if (config.vx) config.vx *= 1.3;
         if (config.vy) config.vy *= 1.3;
-
-        // Extra Bazaze Visuals
         spawnExplosion(player.x + (player.facing*20), player.y, player.charData.pColor || "white", 1);
         shakeCamera(2);
     }
-
-    config.owner = player; // Set owner for behaviors
+    config.owner = player;
     let b = new Bullet(
         player.x + (player.facing > 0 ? player.w : 0),
         player.y + player.h/2 - 5,
@@ -41,51 +36,63 @@ function createBullet(player, config) {
     return b;
 }
 
-function createMelee(player, range, power, height=40, offset=0) {
-    // BUFF LOGIC for non-travelers
+// Updated createMelee to support new config or legacy args
+function createMelee(player, arg1, arg2, arg3, arg4) {
+    let config = {};
+    if (typeof arg1 === 'object') {
+        config = { ...arg1 };
+    } else {
+        // Legacy: range, power, height, offset
+        config = {
+            w: arg1,
+            h: arg3 || 40,
+            power: arg2,
+            offset: { x: arg4 || 0, y: 0 }
+        };
+    }
+
+    // Buff Logic
     if (!player.charData.trait) {
-        power = Math.ceil(power * 1.5);
-        range *= 1.3;
-        height *= 1.3;
-        // Extra Bazaze Visuals
-        spawnExplosion(player.x + (player.facing*range), player.y, "white", 1);
+        if (config.power) config.power = Math.ceil(config.power * 1.5);
+        if (config.w) config.w *= 1.3;
+        if (config.h) config.h *= 1.3;
+        spawnExplosion(player.x + (player.facing*20), player.y, "white", 1);
         shakeCamera(3);
     }
 
-    let hitbox = new MeleeHitbox(
-        player.x + (player.facing === 1 ? player.w + offset : -range - offset),
-        player.y + (player.h - height)/2,
-        range,
-        height,
-        player,
-        power
-    );
+    config.owner = player;
+
+    // Handle Aim Down Ground Break
+    // If not explicitly set, default to false unless aim down
+    if (config.breakGround === undefined) {
+        config.breakGround = false;
+        // Check if player is aiming down via 'aimDown' property set in Player.performSecondary
+        // or passed via config.isDown
+        if (player.aimDown || config.isDown) config.breakGround = true;
+    }
+
+    // Calculate spawn position if not provided or if dynamic
+    // For melee, it's usually relative to player facing
+    let spawnX = player.x + (player.facing === 1 ? player.w : -config.w);
+    let spawnY = player.y + (player.h - (config.h || 40))/2;
+
+    if (config.offset) {
+        spawnX += config.offset.x * player.facing;
+        spawnY += config.offset.y;
+    }
+
+    let hitbox = new MeleeHitbox(spawnX, spawnY, config.w || 40, config.h || 40, config);
     entities.push(hitbox);
     return hitbox;
 }
 
-function playSound(name) {
-    if(soundManager) soundManager.play(name);
-}
-
-// --- BEHAVIORS ---
+// --- BEHAVIORS (Projectile) ---
 
 const Behaviors = {
-    basic: (speed) => (b) => {
-        b.x += b.vx; b.y += b.vy;
-    },
-    wave: (freq, amp) => (b) => {
-        b.x += b.vx;
-        b.y += Math.sin(b.x * freq) * amp;
-    },
-    accelerate: (acc) => (b) => {
-        b.vx *= acc;
-        b.x += b.vx; b.y += b.vy;
-    },
-    decelerate: (dec) => (b) => {
-        if(Math.abs(b.vx) > 1) b.vx *= dec;
-        b.x += b.vx; b.y += b.vy;
-    },
+    basic: (b) => { b.x += b.vx; b.y += b.vy; },
+    wave: (freq, amp) => (b) => { b.x += b.vx; b.y += Math.sin(b.x * freq) * amp; },
+    accelerate: (acc) => (b) => { b.vx *= acc; b.x += b.vx; b.y += b.vy; },
+    decelerate: (dec) => (b) => { if(Math.abs(b.vx) > 1) b.vx *= dec; b.x += b.vx; b.y += b.vy; },
     boomerang: (turnSpeed) => (b) => {
         if (b.returnState === 0) {
             b.x += b.vx; b.vx *= 0.95;
@@ -102,24 +109,18 @@ const Behaviors = {
         }
     },
     homing: (turnRate) => (b) => {
-        // Simple homing towards nearest enemy
         let target = null;
         let minDist = 400;
         for(let e of entities) {
-            if(e.hp && e.hp > 0 && e !== b.owner && e !== b && !e.dead) { // Added !e.dead check
+            if(e.hp && e.hp > 0 && e !== b.owner && e !== b && !e.dead) {
                 let d = Math.hypot(e.x - b.x, e.y - b.y);
                 if(d < minDist) { minDist = d; target = e; }
             }
         }
         if(target) {
             let angle = Math.atan2((target.y + target.h/2) - b.y, (target.x + target.w/2) - b.x);
-            // Smooth turn
-            let currentAngle = Math.atan2(b.vy, b.vx);
-            // Simple approach: just nudge velocity vector
             b.vx += Math.cos(angle) * turnRate;
             b.vy += Math.sin(angle) * turnRate;
-
-            // Normalize to max speed
             let speed = Math.hypot(b.vx, b.vy);
             let maxSpeed = 12;
             if(speed > maxSpeed) { b.vx = (b.vx/speed)*maxSpeed; b.vy = (b.vy/speed)*maxSpeed; }
@@ -136,37 +137,23 @@ const Behaviors = {
 };
 
 const Renderers = {
-    circle: (color, radius) => (ctx, b, cx, cy, now) => {
-        ctx.fillStyle = color;
-        ctx.beginPath(); ctx.arc(cx + b.w/2, cy + b.h/2, radius, 0, Math.PI*2); ctx.fill();
+    circle: (color, radius) => (ctx, b, cx, cy) => {
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cx + b.w/2, cy + b.h/2, radius, 0, Math.PI*2); ctx.fill();
     },
-    rect: (color) => (ctx, b, cx, cy, now) => {
-        ctx.fillStyle = color;
-        ctx.fillRect(cx, cy, b.w, b.h);
+    rect: (color) => (ctx, b, cx, cy) => {
+        ctx.fillStyle = color; ctx.fillRect(cx, cy, b.w, b.h);
     },
-    laser: (color) => (ctx, b, cx, cy, now) => {
-        ctx.fillStyle = color;
-        ctx.shadowBlur = 10; ctx.shadowColor = color;
-        ctx.fillRect(cx, cy, b.w, b.h);
-        ctx.shadowBlur = 0;
+    laser: (color) => (ctx, b, cx, cy) => {
+        ctx.fillStyle = color; ctx.shadowBlur = 10; ctx.shadowColor = color; ctx.fillRect(cx, cy, b.w, b.h); ctx.shadowBlur = 0;
     },
     star: (color) => (ctx, b, cx, cy, now) => {
-        ctx.save();
-        ctx.translate(cx + b.w/2, cy + b.h/2);
-        ctx.rotate(now * 0.1);
-        ctx.fillStyle = color;
+        ctx.save(); ctx.translate(cx + b.w/2, cy + b.h/2); ctx.rotate(now * 0.1); ctx.fillStyle = color;
         ctx.beginPath();
         for(let i=0; i<5; i++) {
             ctx.lineTo(Math.cos((18+i*72)/180*Math.PI)*10, -Math.sin((18+i*72)/180*Math.PI)*10);
             ctx.lineTo(Math.cos((54+i*72)/180*Math.PI)*5, -Math.sin((54+i*72)/180*Math.PI)*5);
         }
-        ctx.fill();
-        ctx.restore();
-    },
-    note: (color) => (ctx, b, cx, cy, now) => {
-        ctx.fillStyle = color;
-        ctx.font = "20px Arial";
-        ctx.fillText("♪", cx, cy + 15);
+        ctx.fill(); ctx.restore();
     },
     bone: (ctx, b, cx, cy, now) => {
         ctx.save(); ctx.translate(cx + b.w/2, cy + b.h/2); ctx.rotate(now * 0.2);
@@ -177,346 +164,295 @@ const Renderers = {
         ctx.beginPath(); ctx.arc(12, -4, 4, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(12, 4, 4, 0, Math.PI*2); ctx.fill();
         ctx.restore();
+    }
+};
+
+// --- MELEE ARCHETYPES ---
+const MeleeStyles = {
+    slash: (p, color) => {
+        playSound('swish');
+        createMelee(p, {
+            w: 50, h: 50, power: 3, life: 10,
+            renderer: (ctx, b, cx, cy, now) => {
+                ctx.save(); ctx.translate(cx + (p.facing===1?0:50), cy+50);
+                if(p.facing===-1) ctx.scale(-1, 1);
+                ctx.rotate(-Math.PI/4 + (10-b.life)*0.2);
+                ctx.fillStyle = color || "white";
+                ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI/4, 0); ctx.lineTo(0,0); ctx.fill();
+                ctx.restore();
+            }
+        });
     },
-    shuriken: (color) => (ctx, b, cx, cy, now) => {
-        ctx.save(); ctx.translate(cx + b.w/2, cy + b.h/2); ctx.rotate(now * 0.5);
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(0, -10); ctx.lineTo(3, -3); ctx.lineTo(10, 0); ctx.lineTo(3, 3);
-        ctx.lineTo(0, 10); ctx.lineTo(-3, 3); ctx.lineTo(-10, 0); ctx.lineTo(-3, -3);
-        ctx.fill();
-        ctx.restore();
+    lunge: (p, color) => {
+        playSound('swish');
+        p.vx = p.facing * 15; // Dash forward
+        createMelee(p, {
+            w: 40, h: 20, power: 4, life: 15, followOwner: true, offset: {x: 20, y: 0},
+            renderer: (ctx, b, cx, cy) => {
+                ctx.fillStyle = color || "white";
+                ctx.beginPath(); ctx.moveTo(cx, cy+10); ctx.lineTo(cx+40, cy); ctx.lineTo(cx+40, cy+20); ctx.fill();
+            }
+        });
+    },
+    spin: (p, color) => {
+        playSound('swish');
+        createMelee(p, {
+            w: 80, h: 80, power: 3, life: 15, followOwner: true, offset: {x: 0, y: 0},
+            renderer: (ctx, b, cx, cy, now) => {
+                ctx.save(); ctx.translate(cx+40, cy+40); ctx.rotate(now*0.5);
+                ctx.strokeStyle = color || "white"; ctx.lineWidth=4;
+                ctx.beginPath(); ctx.arc(0,0,35,0,Math.PI*2); ctx.stroke();
+                ctx.restore();
+            }
+        });
+    },
+    smash: (p, color) => {
+        playSound('explosion');
+        shakeCamera(5);
+        createMelee(p, {
+            w: 60, h: 60, power: 6, life: 20,
+            renderer: (ctx, b, cx, cy, now) => {
+                ctx.fillStyle = color || "white";
+                ctx.globalAlpha = b.life/20;
+                ctx.fillRect(cx, cy, 60, 60);
+                ctx.globalAlpha = 1;
+            }
+        });
+    },
+    stab: (p, color) => {
+        playSound('swish');
+        createMelee(p, {
+            w: 60, h: 10, power: 4, life: 10,
+            renderer: (ctx, b, cx, cy) => {
+                ctx.fillStyle = color || "#ccc";
+                ctx.fillRect(cx, cy+2, 60, 6);
+            }
+        });
+    },
+    bite: (p, color) => {
+        playSound('hurt');
+        createMelee(p, {
+            w: 30, h: 30, power: 5, life: 10,
+            renderer: (ctx, b, cx, cy, now) => {
+                 let open = Math.abs(Math.sin(now*0.5))*15;
+                 ctx.fillStyle = color || "white";
+                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+30, cy+15-open); ctx.lineTo(cx, cy+30); ctx.fill();
+                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+30, cy+15+open); ctx.lineTo(cx, cy+30); ctx.fill();
+            }
+        });
     }
 };
 
 // --- WEAPON REGISTRY ---
 
-export const WEAPONS = {
-    // 1. Pug - Laser Eyes
-    'pug': {
-        shoot: (p) => {
-            playSound('shoot');
-            createBullet(p, { pColor: '#f00', vx: p.facing * 25, w: 40, h: 4, damage: 2, renderer: Renderers.laser('red') });
-        },
-        special: (p) => {
-            playSound('shoot');
-            // Giant Laser
-            createBullet(p, { pColor: '#f00', vx: p.facing * 30, w: 400, h: 20, damage: 10, life: 10, renderer: Renderers.laser('#ffaaaa') });
-            shakeCamera(5);
+export const WEAPONS = {};
+
+// --- GENERATOR LOGIC ---
+
+function assignWeaponry(char) {
+    if (WEAPONS[char.id]) return;
+
+    let primary, secondary;
+    let pColor = char.pColor || "white";
+
+    // 1. DETERMINE PRIMARY ATTACK
+    if (char.melee) {
+        if (char.body === 'muscular' || char.body === 'brute') {
+            primary = (p) => MeleeStyles.smash(p, pColor);
+        } else if (char.type.includes('cat') || char.type.includes('lizard') || char.type.includes('fish')) {
+            primary = (p) => MeleeStyles.slash(p, pColor);
+        } else if (char.type.includes('dog') || char.type.includes('wolf')) {
+            primary = (p) => MeleeStyles.bite(p, "red");
+        } else if (char.name.includes('NINJA') || char.name.includes('KNIGHT')) {
+            primary = (p) => MeleeStyles.slash(p, "silver");
+        } else {
+            primary = (p) => MeleeStyles.lunge(p, pColor);
         }
-    },
-    // 2. Raccoon - Trash Lid Boomerang
-    'raccoon': {
-        shoot: (p) => {
-            playSound('throw');
-            createBullet(p, {
-                vx: p.facing * 15, w: 20, h: 20, life: 100, damage: 2,
-                behavior: Behaviors.boomerang(1),
-                renderer: (ctx, b, cx, cy, now) => {
-                    ctx.save(); ctx.translate(cx+10, cy+10); ctx.rotate(now*0.3);
-                    ctx.fillStyle = "#888"; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle = "#555"; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
-                    ctx.restore();
-                }
-            });
-        },
-        special: (p) => {
-            // Dumpster Drop
-            let b = createBullet(p, { vx: p.facing * 5, vy: -5, w: 40, h: 40, damage: 10 });
-            b.type = 'grenade'; // Uses gravity
+    } else {
+        if (char.pType.includes('laser')) {
+            primary = (p) => { playSound('shoot'); createBullet(p, { vx: p.facing * 25, w: 30, h: 4, damage: 3, renderer: Renderers.laser(pColor) }); };
+        } else if (char.pType.includes('grenade')) {
+            primary = (p) => { playSound('throw'); createBullet(p, { vx: p.facing * 12, vy: -8, w: 12, h: 12, damage: 4, type: 'grenade' }); };
+        } else if (char.pType.includes('boomerang')) {
+            primary = (p) => { playSound('throw'); createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 3, behavior: Behaviors.boomerang(1), renderer: Renderers.circle(pColor, 8) }); };
+        } else if (char.pType.includes('spread') || char.pType.includes('shotgun')) {
+            primary = (p) => { playSound('shoot'); for(let i=-1; i<=1; i++) createBullet(p, { vx: p.facing*15, vy: i*2, w: 8, h: 8, damage: 2, pColor: pColor }); };
+        } else {
+            primary = (p) => { playSound('shoot'); createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3, pColor: pColor }); };
         }
-    },
-    // 3. Cat - Vampire Cat (Updated Theme)
-    'cat': {
-        shoot: (p) => {
-             // Bat Swarm
-             for(let i=-1; i<=1; i++) {
-                 createBullet(p, { vx: p.facing*15, vy: i*2, w: 15, h: 10, damage: 2, renderer: (ctx, b, cx, cy, now) => {
-                     ctx.fillStyle = "#000";
-                     ctx.beginPath(); ctx.arc(cx+b.w/2, cy+b.h/2, 5, 0, Math.PI*2); ctx.fill();
-                     // Wings
-                     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx-5, cy-5); ctx.lineTo(cx+5, cy); ctx.stroke();
+    }
+
+    // 2. DETERMINE SECONDARY ATTACK
+    if (char.melee) {
+        if (char.type.includes('dog') || char.type.includes('wolf')) {
+             secondary = (p) => {
+                 createBullet(p, { vx: p.facing * 10, w: 10, h: 40, damage: 2, life: 30, type: 'sonic_wave', pColor: 'white' });
+                 playSound('shoot');
+             };
+        } else if (char.type.includes('cat') || char.type.includes('lion')) {
+             secondary = (p) => {
+                 p.vx = p.facing * 25; p.vy = -5;
+                 createMelee(p, { w: 40, h: 30, power: 4, life: 20, followOwner: true });
+             };
+        } else if (char.body === 'muscular') {
+             secondary = (p) => {
+                 createBullet(p, { vx: p.facing * 15, vy: -5, w: 20, h: 20, damage: 5, type: 'grenade', renderer: Renderers.rect('grey') });
+             };
+        } else if (char.name.includes('NINJA')) {
+             secondary = (p) => {
+                 createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 2, type: 'shuriken' });
+             };
+        } else {
+             secondary = (p) => {
+                 createBullet(p, { vx: p.facing * 15, w: 12, h: 12, damage: 3, pColor: pColor });
+             };
+        }
+    } else {
+        if (char.trait === 'fly') {
+             secondary = (p) => {
+                 createMelee(p, { w: 60, h: 60, power: 1, knockback: 10, life: 10, offset: {x: 30, y: 0}, renderer: (ctx,b,cx,cy) => {
+                     ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(cx+30,cy+30,30,0,Math.PI*2); ctx.fill();
                  }});
-             }
-        },
-        special: (p) => {
-             // Life Drain Dash
-             p.invincible = 60;
-             p.vx = p.facing * 25;
-             createMelee(p, 60, 5);
-             if (p.health < 3) p.health++; // Lifesteal
-             spawnDamageNumber(p.x, p.y-20, "DRAIN!", "red");
+             };
+        } else if (char.type.includes('bird')) {
+             secondary = (p) => { MeleeStyles.stab(p, "orange"); };
+        } else if (char.type.includes('stone') || char.type.includes('robot')) {
+             secondary = (p) => { MeleeStyles.smash(p, "grey"); };
+        } else {
+             secondary = (p) => {
+                 createMelee(p, { w: 30, h: 30, power: 3, life: 10, offset: {x: 15, y: 10}, renderer: (ctx,b,cx,cy) => {
+                     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(cx, cy, 30, 30);
+                 }});
+             };
         }
+    }
+
+    let special = (p) => {
+        shakeCamera(5);
+        if (char.melee) {
+            MeleeStyles.spin(p, pColor);
+            for(let i=0; i<8; i++) {
+                 let a = i * (Math.PI/4);
+                 createBullet(p, { vx: Math.cos(a)*10, vy: Math.sin(a)*10, w: 10, h: 10, damage: 5, pColor: pColor });
+            }
+        } else {
+             for(let i=0; i<5; i++) setTimeout(() => primary(p), i*50);
+        }
+    };
+
+    WEAPONS[char.id] = { shoot: primary, secondary: secondary, special: special };
+}
+
+// 3. APPLY TO ALL CHARACTERS
+CHARACTERS.forEach(char => assignWeaponry(char));
+
+// 4. OVERRIDE SPECIFICS
+const specificWeapons = {
+    'pug': {
+        shoot: (p) => { playSound('shoot'); createBullet(p, { pColor: '#f00', vx: p.facing * 25, w: 40, h: 4, damage: 2, renderer: Renderers.laser('red') }); },
+        secondary: (p) => { MeleeStyles.bite(p, "red"); },
+        special: (p) => { playSound('shoot'); createBullet(p, { pColor: '#f00', vx: p.facing * 30, w: 400, h: 20, damage: 10, life: 10, renderer: Renderers.laser('#ffaaaa') }); shakeCamera(5); }
     },
-    // 4. Corgi - Thunder Corgi
+    'raccoon': {
+        shoot: (p) => { playSound('throw'); createBullet(p, { vx: p.facing * 15, w: 20, h: 20, life: 100, damage: 2, behavior: Behaviors.boomerang(1), renderer: (ctx,b,cx,cy,now) => { ctx.save(); ctx.translate(cx+10, cy+10); ctx.rotate(now*0.3); ctx.fillStyle="#888"; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill(); ctx.restore(); }}); },
+        secondary: (p) => { MeleeStyles.spin(p, "grey"); },
+        special: (p) => { createBullet(p, { vx: p.facing * 5, vy: -5, w: 40, h: 40, damage: 10, type: 'grenade' }); }
+    },
+    'cat': {
+        shoot: (p) => { for(let i=-1; i<=1; i++) createBullet(p, { vx: p.facing*15, vy: i*2, w: 15, h: 10, damage: 2, pColor: "#000" }); },
+        secondary: (p) => { MeleeStyles.lunge(p, "black"); },
+        special: (p) => { p.invincible = 60; p.vx = p.facing * 25; createMelee(p, 60, 5); if (p.health < 3) p.health++; spawnDamageNumber(p.x, p.y-20, "DRAIN!", "red"); }
+    },
     'corgi': {
-        shoot: (p) => {
-             // Lightning Bolt
-             createBullet(p, { vx: p.facing * 30, w: 40, h: 4, damage: 3, renderer: Renderers.laser('cyan') });
-        },
-        special: (p) => {
-             // Thunder Storm (Vertical Strikes)
-             for(let i=0; i<5; i++) {
-                 createBullet(p, { x: p.x + (i*50 - 100), y: p.y - 300, vx: 0, vy: 40, w: 10, h: 300, damage: 8, renderer: Renderers.laser('white') });
-             }
-             shakeCamera(10);
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 30, w: 40, h: 4, damage: 3, renderer: Renderers.laser('cyan') }); },
+        secondary: (p) => { createBullet(p, { vx: p.facing * 10, w: 10, h: 40, damage: 2, life: 30, type: 'sonic_wave', pColor: 'white' }); },
+        special: (p) => { for(let i=0; i<5; i++) createBullet(p, { x: p.x + (i*50 - 100), y: p.y - 300, vx: 0, vy: 40, w: 10, h: 300, damage: 8, renderer: Renderers.laser('white') }); shakeCamera(10); }
     },
-    // 5. Hulk Poodle - Gamma Poodle
     'hulk': {
-        shoot: (p) => {
-             createMelee(p, 60, 4);
-             shakeCamera(2);
-        },
-        special: (p) => {
-             // Ground Smash Shockwave
-             createBullet(p, { vx: p.facing * 10, vy: 0, w: 60, h: 40, damage: 6, life: 30, renderer: Renderers.rect('#00ff00') });
-             createBullet(p, { vx: -p.facing * 10, vy: 0, w: 60, h: 40, damage: 6, life: 30, renderer: Renderers.rect('#00ff00') });
-             shakeCamera(10);
-        }
+        shoot: (p) => MeleeStyles.smash(p, "#0f0"),
+        secondary: (p) => { createBullet(p, { vx: p.facing*15, vy: 0, w: 40, h: 40, damage: 4, type: 'sonic_wave', pColor: '#0f0' }); },
+        special: (p) => { createBullet(p, { vx: p.facing * 10, vy: 0, w: 60, h: 40, damage: 6, life: 30, renderer: Renderers.rect('#00ff00') }); createBullet(p, { vx: -p.facing * 10, vy: 0, w: 60, h: 40, damage: 6, life: 30, renderer: Renderers.rect('#00ff00') }); shakeCamera(10); }
     },
-    // 6. Spider-Pig - Web Shot
     'spider': {
-        shoot: (p) => {
-             createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 2, behavior: Behaviors.decelerate(0.95), renderer: Renderers.circle('white', 5) });
-        },
-        special: (p) => {
-             // Web Trap (Stationary hitbox)
-             createBullet(p, { vx: 0, vy: 0, w: 60, h: 60, damage: 1, life: 200, renderer: (ctx, b, cx, cy) => {
-                 ctx.strokeStyle = "white"; ctx.lineWidth = 1;
-                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+60, cy+60); ctx.moveTo(cx+60, cy); ctx.lineTo(cx, cy+60); ctx.stroke();
-             }});
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 2, behavior: Behaviors.decelerate(0.95), renderer: Renderers.circle('white', 5) }); },
+        secondary: (p) => MeleeStyles.bite(p, "red"),
+        special: (p) => { createBullet(p, { vx: 0, vy: 0, w: 60, h: 60, damage: 1, life: 200, renderer: (ctx, b, cx, cy) => { ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+60, cy+60); ctx.moveTo(cx+60, cy); ctx.lineTo(cx, cy+60); ctx.stroke(); }}); }
     },
-    // 7. Wolvie - Berserker Wolf
     'wolvie': {
-        shoot: (p) => {
-             // Rapid Slash
-             createMelee(p, 40, 3, 30);
-        },
-        special: (p) => {
-             // Frenzy
-             p.vx = p.facing * 20;
-             for(let i=0; i<5; i++) {
-                 setTimeout(() => createMelee(p, 60, 3, 40), i * 100);
-             }
-        }
+        shoot: (p) => MeleeStyles.slash(p, "silver"),
+        secondary: (p) => MeleeStyles.lunge(p, "silver"),
+        special: (p) => { p.vx = p.facing * 20; for(let i=0; i<5; i++) setTimeout(() => MeleeStyles.slash(p, "silver"), i * 100); }
     },
-    // 8. Dead-Poodle - Undead Guns
     'dead': {
-        shoot: (p) => {
-             // Ricochet Shot
-             createBullet(p, { vx: p.facing * 20, w: 5, h: 5, damage: 3, renderer: Renderers.rect('yellow') }); // TODO: Add bounce behavior later
-        },
-        special: (p) => {
-             // Grenade Bouquet
-             for(let i=0; i<3; i++) {
-                createBullet(p, { vx: p.facing * 10 + i*2, vy: -8 - i, w: 15, h: 15, damage: 8, type: 'grenade' });
-             }
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 20, w: 5, h: 5, damage: 3, renderer: Renderers.rect('yellow') }); },
+        secondary: (p) => { createBullet(p, { vx: p.facing * 25, w: 20, h: 5, damage: 4, renderer: Renderers.rect('silver') }); }, // Knife
+        special: (p) => { for(let i=0; i<3; i++) createBullet(p, { vx: p.facing * 10 + i*2, vy: -8 - i, w: 15, h: 15, damage: 8, type: 'grenade' }); }
     },
-    // 9. Captain Eagle - Patriot Eagle
     'cap': {
-        shoot: (p) => {
-             createBullet(p, { vx: p.facing * 18, w: 20, h: 20, damage: 3, behavior: Behaviors.boomerang(1.2), renderer: (ctx, b, cx, cy) => {
-                 ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(cx+10, cy+10, 10, 0, Math.PI*2); ctx.fill();
-                 ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(cx+10, cy+10, 7, 0, Math.PI*2); ctx.fill();
-                 ctx.fillStyle = "blue"; ctx.beginPath(); ctx.arc(cx+10, cy+10, 4, 0, Math.PI*2); ctx.fill();
-             }});
-        },
-        special: (p) => {
-             // Freedom Dive
-             p.vy = -10; p.vx = p.facing * 15;
-             createMelee(p, 60, 6);
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 18, w: 20, h: 20, damage: 3, behavior: Behaviors.boomerang(1.2), renderer: (ctx,b,cx,cy) => { ctx.fillStyle="red"; ctx.beginPath(); ctx.arc(cx+10,cy+10,10,0,Math.PI*2); ctx.fill(); ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(cx+10,cy+10,7,0,Math.PI*2); ctx.fill(); ctx.fillStyle="blue"; ctx.beginPath(); ctx.arc(cx+10,cy+10,4,0,Math.PI*2); ctx.fill(); }}); },
+        secondary: (p) => MeleeStyles.smash(p, "blue"),
+        special: (p) => { p.vy = -10; p.vx = p.facing * 15; createMelee(p, 60, 6); }
     },
-    // 10. Iron Mouse - Mech Mouse
     'ironmouse': {
-        shoot: (p) => {
-             createBullet(p, { vx: p.facing * 20, w: 10, h: 4, damage: 2, renderer: Renderers.laser('cyan') });
-        },
-        special: (p) => {
-             // Micro Missiles
-             for(let i=0; i<6; i++) {
-                 createBullet(p, { vx: p.facing * 10, vy: (i-2.5)*3, w: 8, h: 8, damage: 4, behavior: Behaviors.homing(0.5), renderer: Renderers.rect('orange') });
-             }
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 20, w: 10, h: 4, damage: 2, renderer: Renderers.laser('cyan') }); },
+        secondary: (p) => MeleeStyles.lunge(p, "cyan"),
+        special: (p) => { for(let i=0; i<6; i++) createBullet(p, { vx: p.facing * 10, vy: (i-2.5)*3, w: 8, h: 8, damage: 4, behavior: Behaviors.homing(0.5), renderer: Renderers.rect('orange') }); }
     },
-    // 16. Star-Lord Fox - Space Fox
     'starlord': {
-        shoot: (p) => {
-             // Plasma Splitter (splits on impact logic could be added, for now double shot)
-             createBullet(p, { vx: p.facing * 20, vy: -1, w: 8, h: 8, damage: 3, renderer: Renderers.circle('cyan', 4) });
-             createBullet(p, { vx: p.facing * 20, vy: 1, w: 8, h: 8, damage: 3, renderer: Renderers.circle('magenta', 4) });
-        },
-        special: (p) => {
-             // Gravity Well
-             let b = createBullet(p, { vx: p.facing * 8, vy: 0, w: 40, h: 40, damage: 1, life: 120, renderer: (ctx, b, cx, cy, now) => {
-                 ctx.strokeStyle = "purple"; ctx.lineWidth = 2;
-                 ctx.beginPath(); ctx.arc(cx+20, cy+20, 20 + Math.sin(now*0.2)*5, 0, Math.PI*2); ctx.stroke();
-             }});
-             // TODO: Add pull effect in update if possible, for now it just hurts
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 20, vy: -1, w: 8, h: 8, damage: 3, renderer: Renderers.circle('cyan', 4) }); createBullet(p, { vx: p.facing * 20, vy: 1, w: 8, h: 8, damage: 3, renderer: Renderers.circle('magenta', 4) }); },
+        secondary: (p) => MeleeStyles.smash(p, "purple"),
+        special: (p) => { createBullet(p, { vx: p.facing * 8, vy: 0, w: 40, h: 40, damage: 1, life: 120, renderer: (ctx, b, cx, cy, now) => { ctx.strokeStyle = "purple"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx+20, cy+20, 20 + Math.sin(now*0.2)*5, 0, Math.PI*2); ctx.stroke(); }}); }
     },
-    // 17. Gamora Gecko - Jungle Gecko
     'gamora': {
-        shoot: (p) => {
-             // Poison Dart
-             createBullet(p, { vx: p.facing * 25, w: 10, h: 2, damage: 2, renderer: Renderers.rect('lime') });
-        },
-        special: (p) => {
-             // Tribal Spear Dash
-             p.vx = p.facing * 30;
-             createMelee(p, 80, 8);
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 25, w: 10, h: 2, damage: 2, renderer: Renderers.rect('lime') }); },
+        secondary: (p) => MeleeStyles.slash(p, "green"),
+        special: (p) => { p.vx = p.facing * 30; createMelee(p, 80, 8); }
     },
-    // 18. Drax Bulldog - Boulder Dog
     'drax': {
-        shoot: (p) => {
-             // Rock Throw (Physics)
-             createBullet(p, { vx: p.facing * 15, vy: -5, w: 15, h: 15, damage: 5, type: 'grenade', renderer: Renderers.circle('grey', 8) });
-        },
-        special: (p) => {
-             // Boulder Roll
-             createBullet(p, { vx: p.facing * 10, vy: 0, w: 40, h: 40, damage: 8, life: 60, renderer: Renderers.circle('#555', 20) });
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 15, vy: -5, w: 15, h: 15, damage: 5, type: 'grenade', renderer: Renderers.circle('grey', 8) }); },
+        secondary: (p) => MeleeStyles.smash(p, "grey"),
+        special: (p) => { createBullet(p, { vx: p.facing * 10, vy: 0, w: 40, h: 40, damage: 8, life: 60, renderer: Renderers.circle('#555', 20) }); }
     },
-    // 21. Vision Zebra - Android Zebra
     'vision': {
-        shoot: (p) => {
-             // Laser Beam
-             createBullet(p, { vx: p.facing * 30, w: 40, h: 6, damage: 4, renderer: Renderers.laser('#ff00ff') });
-        },
-        special: (p) => {
-             // Phase Shift (Invincibility + AoE)
-             p.invincible = 90;
-             createBullet(p, { vx: 0, vy: 0, w: 100, h: 100, damage: 5, life: 10, renderer: Renderers.circle('rgba(255,0,255,0.3)', 50) });
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 30, w: 40, h: 6, damage: 4, renderer: Renderers.laser('#ff00ff') }); },
+        secondary: (p) => { createBullet(p, { vx: p.facing*25, w: 10, h: 4, damage: 3, renderer: Renderers.laser('yellow') }); },
+        special: (p) => { p.invincible = 90; createBullet(p, { vx: 0, vy: 0, w: 100, h: 100, damage: 5, life: 10, renderer: Renderers.circle('rgba(255,0,255,0.3)', 50) }); }
     },
-    // 22. Scarlet Skunk - Magic Skunk
     'scarlet': {
-        shoot: (p) => {
-             // Magic Bolt Homing
-             createBullet(p, { vx: p.facing * 12, w: 12, h: 12, damage: 3, behavior: Behaviors.homing(0.8), renderer: Renderers.circle('red', 6) });
-        },
-        special: (p) => {
-             // Chaos Blast
-             for(let i=0; i<8; i++) {
-                 let angle = i * (Math.PI/4);
-                 createBullet(p, { vx: Math.cos(angle)*10, vy: Math.sin(angle)*10, w: 15, h: 15, damage: 5, renderer: Renderers.circle('red', 8) });
-             }
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 12, w: 12, h: 12, damage: 3, behavior: Behaviors.homing(0.8), renderer: Renderers.circle('red', 6) }); },
+        secondary: (p) => MeleeStyles.spin(p, "red"),
+        special: (p) => { for(let i=0; i<8; i++) { let angle = i * (Math.PI/4); createBullet(p, { vx: Math.cos(angle)*10, vy: Math.sin(angle)*10, w: 15, h: 15, damage: 5, renderer: Renderers.circle('red', 8) }); } }
     },
-    // 33. Ghost Goat
     'ghost': {
-        shoot: (p) => {
-             // Ethereal Chain
-             createBullet(p, { vx: p.facing * 20, w: 30, h: 5, damage: 4, renderer: Renderers.rect('rgba(200,255,255,0.8)') });
-        },
-        special: (p) => {
-             // Haunt (Orbiting skulls)
-             for(let i=0; i<3; i++) {
-                 let b = createBullet(p, { vx: 0, vy: 0, w: 15, h: 15, damage: 5, life: 200, behavior: Behaviors.orbit(50, 0.1 + (i*2)), renderer: Renderers.circle('white', 8) });
-                 b.angle = i * (Math.PI*2/3);
-             }
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 20, w: 30, h: 5, damage: 4, renderer: Renderers.rect('rgba(200,255,255,0.8)') }); },
+        secondary: (p) => MeleeStyles.slash(p, "cyan"),
+        special: (p) => { for(let i=0; i<3; i++) { let b = createBullet(p, { vx: 0, vy: 0, w: 15, h: 15, damage: 5, life: 200, behavior: Behaviors.orbit(50, 0.1 + (i*2)), renderer: Renderers.circle('white', 8) }); b.angle = i * (Math.PI*2/3); } }
     },
-    // 37. Galaxy God
     'galaxygod': {
-        shoot: (p) => {
-             // Star Throw
-             createBullet(p, { vx: p.facing * 18, w: 15, h: 15, damage: 5, renderer: Renderers.star('gold') });
-        },
-        special: (p) => {
-             // Big Bang
-             createBullet(p, { vx: 0, vy: 0, w: 200, h: 200, damage: 20, life: 10, renderer: Renderers.circle('white', 100) });
-             shakeCamera(15);
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 18, w: 15, h: 15, damage: 5, renderer: Renderers.star('gold') }); },
+        secondary: (p) => { createBullet(p, { vx: p.facing * 15, vy: -10, w: 20, h: 20, damage: 6, type: 'grenade', renderer: Renderers.circle('orange', 10) }); },
+        special: (p) => { createBullet(p, { vx: 0, vy: 0, w: 200, h: 200, damage: 20, life: 10, renderer: Renderers.circle('white', 100) }); shakeCamera(15); }
     },
-    // 44. Skeleton Ram
     'skeletonram': {
-        shoot: (p) => {
-             // Bone Throw (Arc)
-             createBullet(p, { vx: p.facing * 15, vy: -8, w: 20, h: 8, damage: 4, type: 'grenade', renderer: Renderers.bone });
-        },
-        special: (p) => {
-             // Bone Storm
-             for(let i=0; i<5; i++) {
-                 createBullet(p, { vx: p.facing * 10 + (Math.random()*10), vy: -10 - Math.random()*5, w: 20, h: 8, damage: 5, type: 'grenade', renderer: Renderers.bone });
-             }
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 15, vy: -8, w: 20, h: 8, damage: 4, type: 'grenade', renderer: Renderers.bone }); },
+        secondary: (p) => MeleeStyles.lunge(p, "white"),
+        special: (p) => { for(let i=0; i<5; i++) { createBullet(p, { vx: p.facing * 10 + (Math.random()*10), vy: -10 - Math.random()*5, w: 20, h: 8, damage: 5, type: 'grenade', renderer: Renderers.bone }); } }
     },
-    // 49. Robber Eagle
     'robbereagle': {
-        shoot: (p) => {
-             // Coin Shot
-             createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 2, renderer: Renderers.circle('gold', 5) });
-        },
-        special: (p) => {
-             // Money Bag Drop
-             createBullet(p, { vx: 0, vy: 5, w: 30, h: 30, damage: 15, renderer: Renderers.rect('brown') });
-        }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 2, renderer: Renderers.circle('gold', 5) }); },
+        secondary: (p) => MeleeStyles.stab(p, "gold"),
+        special: (p) => { createBullet(p, { vx: 0, vy: 5, w: 30, h: 30, damage: 15, renderer: Renderers.rect('brown') }); }
     },
-    // 97. Police Croc
     'policecroc': {
-        shoot: (p) => {
-             createMelee(p, 50, 5); // Bite
-        },
-        special: (p) => {
-             // Donut Throw (Stun)
-             createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 2, behavior: Behaviors.boomerang(1), renderer: (ctx, b, cx, cy) => {
-                 ctx.strokeStyle = "pink"; ctx.lineWidth = 4;
-                 ctx.beginPath(); ctx.arc(cx+8, cy+8, 6, 0, Math.PI*2); ctx.stroke();
-             }});
-        }
+        shoot: (p) => { MeleeStyles.bite(p, "green"); },
+        secondary: (p) => { createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 2, behavior: Behaviors.boomerang(1), renderer: (ctx,b,cx,cy) => { ctx.strokeStyle="pink"; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(cx+8,cy+8,6,0,Math.PI*2); ctx.stroke(); }}); },
+        special: (p) => { createBullet(p, { vx: p.facing * 15, w: 15, h: 15, damage: 2, behavior: Behaviors.boomerang(1), renderer: (ctx,b,cx,cy) => { ctx.strokeStyle="pink"; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(cx+8,cy+8,6,0,Math.PI*2); ctx.stroke(); }}); }
     },
-    // 100. Home Pumpkin
     'homepumpkin': {
-        shoot: (p) => {
-             // Pumpkin Seed Machine Gun
-             createBullet(p, { vx: p.facing * 22, w: 6, h: 4, damage: 2, renderer: Renderers.circle('orange', 3) });
-        },
-        special: (p) => {
-             // Vine Wall
-             createBullet(p, { vx: 0, vy: 0, w: 20, h: 80, damage: 5, life: 100, renderer: Renderers.rect('green') });
-        }
-    },
-    // FALLBACK FOR OTHERS (Generic implementations for the massive roster)
-    'default': {
-        shoot: (p) => { createBullet(p, { vx: p.facing * 20, w: 10, h: 10, damage: 3 }); }
+        shoot: (p) => { createBullet(p, { vx: p.facing * 22, w: 6, h: 4, damage: 2, renderer: Renderers.circle('orange', 3) }); },
+        secondary: (p) => MeleeStyles.spin(p, "orange"),
+        special: (p) => { createBullet(p, { vx: 0, vy: 0, w: 20, h: 80, damage: 5, life: 100, renderer: Renderers.rect('green') }); }
     }
 };
 
-// --- DEFAULT FILLER ---
-// Fill in missing characters with generic but thematic attacks based on pType from constants
-// This ensures we don't crash and still have variety
-import { CHARACTERS } from '../constants.js';
-
-CHARACTERS.forEach(char => {
-    if (!WEAPONS[char.id]) {
-        WEAPONS[char.id] = {
-            shoot: (p) => {
-                let conf = { vx: p.facing * 20, w: 12, h: 12, damage: 3, pColor: char.pColor };
-                // Adapt based on pType hints
-                if (char.pType.includes('grenade')) { conf.type = 'grenade'; conf.vy = -8; }
-                else if (char.pType.includes('boomerang')) { conf.behavior = Behaviors.boomerang(1); }
-                else if (char.pType.includes('laser')) { conf.renderer = Renderers.laser(char.pColor); conf.w = 30; conf.h = 4; }
-                else if (char.pType.includes('spread')) {
-                    for(let i=-1; i<=1; i++) createBullet(p, { ...conf, vy: i*3 });
-                    return;
-                }
-                else if (char.pType.includes('melee')) { createMelee(p, 40, 3); return; }
-
-                createBullet(p, conf);
-            },
-            special: (p) => {
-                // Generic Special: Big version of normal
-                let conf = { vx: p.facing * 15, w: 30, h: 30, damage: 8, pColor: char.pColor };
-                if (char.pType.includes('grenade')) { conf.type = 'grenade'; conf.vy = -10; }
-                else if (char.pType.includes('laser')) { conf.renderer = Renderers.laser(char.pColor); conf.w = 200; conf.h = 10; }
-                else { conf.type = 'rocket'; } // Default to rocket for impact
-                createBullet(p, conf);
-            }
-        };
-    }
-});
+Object.assign(WEAPONS, specificWeapons);
