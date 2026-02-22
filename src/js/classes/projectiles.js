@@ -251,31 +251,94 @@ export class Bullet {
 }
 
 export class MeleeHitbox {
-    constructor(x, y, w, h, owner, power=1) {
+    constructor(x, y, w, h, ownerOrConfig, power=1) {
+        // Detect if ownerOrConfig is a config object or the owner instance (Legacy)
+        let config = {};
+        if (ownerOrConfig && (ownerOrConfig.owner || ownerOrConfig.renderer || ownerOrConfig.behavior)) {
+            config = ownerOrConfig;
+            this.owner = config.owner;
+            this.power = config.power || power;
+        } else {
+            // Legacy Call: new MeleeHitbox(x, y, w, h, player, power)
+            this.owner = ownerOrConfig;
+            this.power = power;
+        }
+
         this.x = x; this.y = y; this.w = w; this.h = h;
-        this.life = 15; this.power = power;
+        this.life = config.life || 15;
         this.hp = 1;
-        spawnExplosion(x + w/2, y + h/2, "#fff", 0.5);
+
+        // New Features
+        this.renderer = config.renderer || null;
+        this.behavior = config.behavior || null;
+        this.followOwner = config.followOwner || false;
+        this.offset = config.offset || { x: 0, y: 0 }; // Relative to owner center if followOwner is true
+        this.knockback = config.knockback || 0;
+        this.onHit = config.onHit || null;
+
+        if (!this.renderer) {
+            spawnExplosion(x + w/2, y + h/2, "#fff", 0.5);
+        }
     }
+
     update() {
         this.life--;
         if (this.life <= 0) this.hp = 0;
+
+        // Follow Owner Logic
+        if (this.followOwner && this.owner) {
+            // Center on owner + offset
+            let ox = this.owner.x + this.owner.w/2;
+            let oy = this.owner.y + this.owner.h/2;
+
+            // Adjust offset based on facing
+            let finalOffsetX = this.offset.x * (this.owner.facing || 1);
+
+            this.x = ox + finalOffsetX - this.w/2;
+            this.y = oy + this.offset.y - this.h/2;
+        }
+
+        // Custom Behavior
+        if (this.behavior) {
+            this.behavior(this);
+        }
+
+        // Collision Logic
         let c = Math.floor((this.x + this.w/2) / TILE_SIZE);
         let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
         destroyRadius(c, r, 1);
+
         for(let i=0; i<entities.length; i++) {
             let e = entities[i];
-            if(e !== this && ((e.hp !== undefined && e.hp > 0))) {
+            if(e !== this && e !== this.owner && ((e.hp !== undefined && e.hp > 0))) {
                 if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
-                    if(e.takeDamage) e.takeDamage(this.power * 2);
+                    if(e.takeDamage) {
+                        e.takeDamage(this.power * 2);
+                        // Knockback
+                        if (this.knockback && e.vx !== undefined) {
+                            let dir = Math.sign((e.x + e.w/2) - (this.x + this.w/2)) || (this.owner ? this.owner.facing : 0);
+                            e.vx += dir * this.knockback;
+                            e.vy -= this.knockback * 0.5; // Slight lift
+                        }
+                        // Custom OnHit
+                        if (this.onHit) this.onHit(this, e);
+                    }
                 }
             }
         }
     }
+
     draw(ctx, camX, camY, now) {
-        // Invisible Hitbox
-        // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        // ctx.fillRect(this.x - camX, this.y - camY, this.w, this.h);
+        let cx = this.x - camX;
+        let cy = this.y - camY;
+
+        if (this.renderer) {
+            this.renderer(ctx, this, cx, cy, now);
+        } else {
+            // Invisible Hitbox or Debug
+            // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            // ctx.fillRect(cx, cy, this.w, this.h);
+        }
     }
     takeDamage() {}
 }
