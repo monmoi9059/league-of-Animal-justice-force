@@ -132,7 +132,11 @@ export class Enemy {
         }
 
         // React to Obstacle
-        if (hitWall || hitLedge) {
+        if (hitLedge && !hitWall && this.state === 'chase') {
+             // If chasing and hit a ledge (but not a wall), stop and shoot instead of turning back
+             this.vx = 0;
+             // Do NOT set blockedTimer, so AI can keep shooting
+        } else if (hitWall || hitLedge) {
             this.vx = 0;
             this.facing *= -1; // Turn around
             this.blockedTimer = 60; // Ignore player/patrol logic for 1 second
