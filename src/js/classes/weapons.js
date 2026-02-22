@@ -62,6 +62,15 @@ function createMelee(player, arg1, arg2, arg3, arg4) {
 
     config.owner = player;
 
+    // Handle Aim Down Ground Break
+    // If not explicitly set, default to false unless aim down
+    if (config.breakGround === undefined) {
+        config.breakGround = false;
+        // Check if player is aiming down via 'aimDown' property set in Player.performSecondary
+        // or passed via config.isDown
+        if (player.aimDown || config.isDown) config.breakGround = true;
+    }
+
     // Calculate spawn position if not provided or if dynamic
     // For melee, it's usually relative to player facing
     let spawnX = player.x + (player.facing === 1 ? player.w : -config.w);

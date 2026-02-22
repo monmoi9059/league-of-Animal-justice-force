@@ -426,8 +426,14 @@ export class Player {
 
     performSecondary() {
         let weapon = WEAPONS[this.charData.id];
+
+        let pKeys = playerKeys[this.index] || {};
+        let isDown = pKeys['arrowdown'] || pKeys['s'];
+
         if (weapon && weapon.secondary) {
+            this.aimDown = isDown;
             weapon.secondary(this);
+            this.aimDown = false; // Reset
             let animType = this.charData.melee ? 'shoot' : 'kick';
             this.attackAnim = { type: animType, timer: 15, max: 15 };
         } else {

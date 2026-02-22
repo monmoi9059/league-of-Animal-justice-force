@@ -275,6 +275,7 @@ export class MeleeHitbox {
         this.offset = config.offset || { x: 0, y: 0 }; // Relative to owner center if followOwner is true
         this.knockback = config.knockback || 0;
         this.onHit = config.onHit || null;
+        this.breakGround = config.breakGround || false;
 
         if (!this.renderer) {
             spawnExplosion(x + w/2, y + h/2, "#fff", 0.5);
@@ -306,7 +307,10 @@ export class MeleeHitbox {
         // Collision Logic
         let c = Math.floor((this.x + this.w/2) / TILE_SIZE);
         let r = Math.floor((this.y + this.h/2) / TILE_SIZE);
-        destroyRadius(c, r, 1);
+
+        if (this.breakGround) {
+            destroyRadius(c, r, 1);
+        }
 
         for(let i=0; i<entities.length; i++) {
             let e = entities[i];
