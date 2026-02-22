@@ -310,6 +310,20 @@ export class MeleeHitbox {
 
         if (this.breakGround) {
             destroyRadius(c, r, 1);
+        } else {
+            // Only break walls in front/side, ensure we don't break the floor below.
+            // Check tiles at c (horizontal center) and r (vertical center)
+            // destroyRadius(1) would destroy r-1, r, r+1. r+1 is likely the floor.
+            // So we explicitly destroy r-1 and r only.
+            for(let ty = r - 1; ty <= r; ty++) {
+                for(let tx = c; tx <= c; tx++) { // Only destroy horizontally aligned tiles to avoid excessive radius
+                    if(ty>=0 && ty<LEVEL_HEIGHT && tx>=0 && tx<LEVEL_WIDTH && tiles[ty] && tiles[ty][tx] && tiles[ty][tx].type === 1) {
+                        spawnExplosion(tx*TILE_SIZE + TILE_SIZE/2, ty*TILE_SIZE + TILE_SIZE/2, ASSETS.dirtLight, 0.5);
+                        tiles[ty][tx] = { type: 0 };
+                        if(soundManager) soundManager.play('brick_break');
+                    }
+                }
+            }
         }
 
         for(let i=0; i<entities.length; i++) {
