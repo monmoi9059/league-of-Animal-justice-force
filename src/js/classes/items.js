@@ -770,19 +770,52 @@ export class Decor {
         } else if (type === 'trash') {
              this.w = 40; this.h = 30;
              this.hp = 30;
+        } else if (type === 'stalactite') {
+             this.w = 20; this.h = 60;
+             this.hp = 100;
+        } else if (type === 'stalagmite') {
+             this.w = 20; this.h = 40;
+             this.hp = 100;
+        } else if (type === 'shack') {
+             this.w = 80; this.h = 60;
+             this.foreground = false; // Background building
+             this.hp = 300;
+        } else if (type === 'ruin_column') {
+             this.w = 30; this.h = 100;
+             this.hp = 200;
+        } else if (type === 'lamp_post') {
+             this.w = 10; this.h = 80;
+             this.foreground = true;
+             this.hp = 50;
         }
 
         // Adjust Y to sit on ground (assuming passed y is top-left of a standard tile)
         this.y = (y + TILE_SIZE) - this.h;
+
+        // Special case for Stalactite (hanging from ceiling)
+        if (type === 'stalactite') {
+            this.y = y; // Should attach to top tile
+        }
     }
 
     update() {
-        let r = Math.floor((this.y + this.h + 1) / TILE_SIZE);
-        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+        if (this.type === 'stalactite') {
+            // Check ceiling support
+            let r = Math.floor((this.y - 1) / TILE_SIZE);
+            let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+            if (!(r >= 0 && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0)) {
+                 this.hp = 0; // Fall? For now just destroy
+                 spawnExplosion(this.x + this.w/2, this.y + 10, "grey", 0.5);
+            }
+        } else {
+            // Floor support check
+            let r = Math.floor((this.y + this.h + 1) / TILE_SIZE);
+            let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
 
-        if (!(r >= 0 && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0)) {
-             this.hp = 0;
-             if(Math.random() < 0.1) spawnExplosion(this.x + this.w/2, this.y + this.h/2, "brown", 0.5);
+            if (!(r >= 0 && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0)) {
+                 this.hp = 0;
+                 if(Math.random() < 0.1) spawnExplosion(this.x + this.w/2, this.y + this.h/2, "brown", 0.5);
+            }
         }
 
         if (this.type === 'tree' || this.type === 'bush' || this.type === 'mushroom' || this.type === 'flower') {
@@ -892,6 +925,49 @@ export class Decor {
              ctx.fillRect(cx+5, cy, 20, this.h);
              ctx.fillStyle = "#2ecc71";
              ctx.fillRect(cx, cy, 30, 10);
+         }
+         else if (this.type === 'stalactite') {
+             ctx.fillStyle = this.biome === 'volcano' ? "#553333" : "#7f8c8d";
+             ctx.beginPath();
+             ctx.moveTo(cx, cy);
+             ctx.lineTo(cx + this.w, cy);
+             ctx.lineTo(cx + this.w/2, cy + this.h);
+             ctx.fill();
+         }
+         else if (this.type === 'stalagmite') {
+             ctx.fillStyle = this.biome === 'volcano' ? "#553333" : "#7f8c8d";
+             ctx.beginPath();
+             ctx.moveTo(cx + this.w/2, cy);
+             ctx.lineTo(cx + this.w, cy + this.h);
+             ctx.lineTo(cx, cy + this.h);
+             ctx.fill();
+         }
+         else if (this.type === 'shack') {
+             ctx.fillStyle = "#5d4037"; // Wood
+             if (this.biome === 'city') ctx.fillStyle = "#555"; // Concrete
+             ctx.fillRect(cx, cy, this.w, this.h);
+             ctx.fillStyle = "#000"; // Door
+             ctx.fillRect(cx + 20, cy + this.h - 30, 20, 30);
+             ctx.fillStyle = "#8d6e63"; // Roof
+             ctx.beginPath(); ctx.moveTo(cx-10, cy); ctx.lineTo(cx+this.w+10, cy); ctx.lineTo(cx+this.w/2, cy-20); ctx.fill();
+         }
+         else if (this.type === 'ruin_column') {
+             ctx.fillStyle = "#95a5a6";
+             ctx.fillRect(cx + 5, cy, 20, this.h);
+             ctx.fillStyle = "#7f8c8d";
+             ctx.fillRect(cx, cy, 30, 10); // Cap
+             ctx.fillRect(cx, cy + this.h - 10, 30, 10); // Base
+             // Cracks
+             ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+             ctx.beginPath(); ctx.moveTo(cx+10, cy+20); ctx.lineTo(cx+20, cy+30); ctx.stroke();
+         }
+         else if (this.type === 'lamp_post') {
+             ctx.fillStyle = "#2c3e50";
+             ctx.fillRect(cx + 2, cy + 10, 6, this.h - 10);
+             ctx.fillStyle = "#f1c40f"; // Light
+             ctx.beginPath(); ctx.arc(cx + 5, cy + 10, 8, 0, Math.PI*2); ctx.fill();
+             ctx.fillStyle = "rgba(241, 196, 15, 0.3)"; // Glow
+             ctx.beginPath(); ctx.arc(cx + 5, cy + 10, 20, 0, Math.PI*2); ctx.fill();
          }
     }
 }

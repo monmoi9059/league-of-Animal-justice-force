@@ -223,6 +223,16 @@ export function generateLevel() {
                         }
                     }
 
+                    // DECOR IN TUNNELS
+                    // Stalactites (Ceiling)
+                    if (secureRandom() < 0.2 && newTiles[tunnelY-1] && newTiles[tunnelY-1][tx] && newTiles[tunnelY-1][tx].type !== 0) {
+                        newEntities.push(new Decor(tx * TILE_SIZE, tunnelY * TILE_SIZE, 'stalactite', biome));
+                    }
+                    // Stalagmites (Floor)
+                    if (secureRandom() < 0.2 && newTiles[tunnelY+3] && newTiles[tunnelY+3][tx] && newTiles[tunnelY+3][tx].type !== 0) {
+                        newEntities.push(new Decor(tx * TILE_SIZE, (tunnelY+2) * TILE_SIZE, 'stalagmite', biome));
+                    }
+
                     // Enemies in tunnels (Ambush style)
                     if (secureRandom() < 0.1 && j > 5 && (j % 5 === 0)) {
                         let rand = secureRandom();
@@ -284,31 +294,52 @@ export function generateLevel() {
 
         // DECOR SPAWNING
         if (newTiles[y][x].type !== 5 && newTiles[y-1][x].type === 0 && newTiles[y][x].type !== 0) {
-            let decorChance = 0.20;
+            // Base chance higher for forest (0.5), normal for others (0.25)
+            let decorChance = (biome === 'forest') ? 0.60 : 0.30;
+
             if (secureRandom() < decorChance) {
                  let type = 'rock';
                  let rnd = secureRandom();
 
                  if (biome === 'forest') {
-                     if (rnd < 0.3) type = 'tree';
-                     else if (rnd < 0.6) type = 'bush';
-                     else if (rnd < 0.7) type = 'mushroom';
+                     if (rnd < 0.5) type = 'tree'; // 50% Tree
+                     else if (rnd < 0.7) type = 'bush';
                      else if (rnd < 0.8) type = 'rock';
+                     else if (rnd < 0.85) type = 'mushroom';
                      else if (rnd < 0.9) type = 'fence';
+                     else if (rnd < 0.95) type = 'shack';
                      else type = 'sign';
                  } else if (biome === 'city') {
-                     if (rnd < 0.3) type = 'fence';
-                     else if (rnd < 0.6) type = 'hydrant';
-                     else if (rnd < 0.8) type = 'trash';
-                     else type = 'pipe';
+                     if (rnd < 0.25) type = 'fence';
+                     else if (rnd < 0.4) type = 'hydrant';
+                     else if (rnd < 0.6) type = 'trash';
+                     else if (rnd < 0.75) type = 'lamp_post';
+                     else if (rnd < 0.9) type = 'pipe';
+                     else type = 'ruin_column';
                  } else if (biome === 'volcano') {
-                     if (rnd < 0.5) type = 'rock';
-                     else if (rnd < 0.8) type = 'crystal';
+                     if (rnd < 0.4) type = 'rock';
+                     else if (rnd < 0.7) type = 'crystal';
+                     else if (rnd < 0.9) type = 'ruin_column';
                      else type = 'sign';
                  }
 
-                 if (type === 'tree' || type === 'pipe') {
-                     if (y-3 > 0 && newTiles[y-3][x].type === 0) {
+                 // Large item checks
+                 if (type === 'tree' || type === 'pipe' || type === 'shack' || type === 'ruin_column' || type === 'lamp_post') {
+                     let heightReq = 3;
+                     if(type === 'ruin_column' || type === 'lamp_post') heightReq = 3;
+                     if(type === 'shack') heightReq = 2; // Wide but not super tall collision-wise
+
+                     // Ensure sky clearance
+                     let clear = true;
+                     for(let k=1; k<=heightReq; k++) {
+                         if (y-k <= 0 || newTiles[y-k][x].type !== 0) clear = false;
+                     }
+                     // Ensure width clearance for shack
+                     if (type === 'shack') {
+                         if (x+1 >= currentLevelWidth || newTiles[y][x+1].type === 0) clear = false;
+                     }
+
+                     if (clear) {
                          newEntities.push(new Decor(x * TILE_SIZE, (y-1) * TILE_SIZE, type, biome));
                      }
                  } else {
