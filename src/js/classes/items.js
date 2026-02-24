@@ -728,6 +728,7 @@ export class Decor {
         this.biome = biome;
         this.hp = 50;
         this.foreground = false;
+        this.projectilePassThrough = true;
         this.sway = 0;
         this.swaySpeed = 0.05 + Math.random() * 0.05;
         this.swayOffset = Math.random() * 100;

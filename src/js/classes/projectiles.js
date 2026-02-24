@@ -164,8 +164,12 @@ export class Bullet {
                 if((e.hp !== undefined && e.hp > 0)) {
                     if(rectIntersect(this.x, this.y, this.w, this.h, e.x, e.y, e.w, e.h)) {
                         if(e.takeDamage) e.takeDamage(this.damage); // Use stored damage
-                        if (this.type !== 'boomerang') this.life = 0;
-                        else this.returnState = 1;
+
+                        // Pass through decor
+                        if (!e.projectilePassThrough) {
+                            if (this.type !== 'boomerang') this.life = 0;
+                            else this.returnState = 1;
+                        }
                     }
                 }
             }
