@@ -720,3 +720,178 @@ export class Mailman {
         ctx.fillRect(this.x - camX - 5, this.y - camY + 20, 10, 20);
     }
 }
+
+export class Decor {
+    constructor(x, y, type, biome = 'forest') {
+        this.x = x; this.y = y;
+        this.type = type;
+        this.biome = biome;
+        this.hp = 50;
+        this.foreground = false;
+        this.sway = 0;
+        this.swaySpeed = 0.05 + Math.random() * 0.05;
+        this.swayOffset = Math.random() * 100;
+
+        this.w = 40; this.h = 40;
+        this.vx = 0; this.vy = 0;
+
+        if (type === 'tree') {
+            this.w = 40; this.h = 120;
+            this.foreground = true;
+            this.hp = 200;
+        } else if (type === 'bush') {
+            this.w = 40; this.h = 30;
+            this.foreground = true;
+            this.hp = 20;
+        } else if (type === 'rock') {
+            this.w = 40; this.h = 30;
+            this.hp = 500;
+        } else if (type === 'sign') {
+            this.w = 20; this.h = 40;
+            this.hp = 50;
+        } else if (type === 'fence') {
+             this.w = 40; this.h = 30;
+             this.foreground = true;
+             this.hp = 50;
+        } else if (type === 'crystal') {
+             this.w = 30; this.h = 50;
+             this.hp = 100;
+        } else if (type === 'mushroom') {
+             this.w = 30; this.h = 30;
+             this.foreground = true;
+             this.hp = 10;
+        } else if (type === 'pipe') {
+             this.w = 30; this.h = 60;
+             this.hp = 200;
+        } else if (type === 'hydrant') {
+             this.w = 20; this.h = 30;
+             this.foreground = true;
+             this.hp = 80;
+        } else if (type === 'trash') {
+             this.w = 40; this.h = 30;
+             this.hp = 30;
+        }
+
+        // Adjust Y to sit on ground (assuming passed y is top-left of a standard tile)
+        this.y = (y + TILE_SIZE) - this.h;
+    }
+
+    update() {
+        let r = Math.floor((this.y + this.h + 1) / TILE_SIZE);
+        let c = Math.floor((this.x + this.w / 2) / TILE_SIZE);
+
+        if (!(r >= 0 && tiles[r] && tiles[r][c] && tiles[r][c].type !== 0)) {
+             this.hp = 0;
+             if(Math.random() < 0.1) spawnExplosion(this.x + this.w/2, this.y + this.h/2, "brown", 0.5);
+        }
+
+        if (this.type === 'tree' || this.type === 'bush' || this.type === 'mushroom' || this.type === 'flower') {
+             let swayTarget = 0;
+             if (players) {
+                 for (let p of players) {
+                     if (Math.abs(p.x - (this.x + this.w/2)) < 60 && Math.abs(p.y - (this.y + this.h/2)) < 60) {
+                         swayTarget = (p.vx || 0) * 0.1;
+                         if (swayTarget > 0.5) swayTarget = 0.5;
+                         if (swayTarget < -0.5) swayTarget = -0.5;
+                     }
+                 }
+             }
+             let wind = Math.sin((Date.now() / 1000) + this.swayOffset) * 0.05;
+             this.sway += (swayTarget + wind - this.sway) * 0.1;
+        }
+    }
+
+    takeDamage(amt) {
+        this.hp -= amt;
+        this.sway += 0.2; // Shake on hit
+        if (this.hp <= 0) {
+            this.x = -9999;
+            spawnExplosion(this.x, this.y, this.type === 'rock' ? "grey" : "green", 1);
+        }
+    }
+
+    draw(ctx, camX, camY, now) {
+         let cx = this.x - camX;
+         let cy = this.y - camY;
+
+         if (this.type === 'tree') {
+             ctx.fillStyle = "#5d4037";
+             ctx.fillRect(cx + this.w/2 - 10, cy + 40, 20, this.h - 40);
+             ctx.save();
+             ctx.translate(cx + this.w/2, cy + 40);
+             ctx.rotate(this.sway);
+             ctx.fillStyle = this.biome === 'volcano' ? "#333" : "#2e7d32";
+             if (this.biome === 'city') ctx.fillStyle = "#555";
+             ctx.beginPath(); ctx.arc(0, -20, 40, 0, Math.PI*2); ctx.fill();
+             ctx.fillStyle = "rgba(255,255,255,0.1)";
+             ctx.beginPath(); ctx.arc(-10, -30, 10, 0, Math.PI*2); ctx.fill();
+             ctx.restore();
+         }
+         else if (this.type === 'rock') {
+             ctx.fillStyle = "#7f8c8d";
+             if (this.biome === 'volcano') ctx.fillStyle = "#444";
+             ctx.beginPath();
+             ctx.moveTo(cx, cy + this.h);
+             ctx.lineTo(cx + 10, cy + 10);
+             ctx.lineTo(cx + 30, cy + 5);
+             ctx.lineTo(cx + this.w, cy + this.h);
+             ctx.fill();
+         }
+         else if (this.type === 'bush') {
+             ctx.save();
+             ctx.translate(cx + this.w/2, cy + this.h);
+             ctx.rotate(this.sway);
+             ctx.fillStyle = "#2ecc71";
+             ctx.beginPath(); ctx.arc(0, -15, 20, 0, Math.PI*2); ctx.fill();
+             ctx.restore();
+         }
+         else if (this.type === 'mushroom') {
+             ctx.save();
+             ctx.translate(cx + this.w/2, cy + this.h);
+             ctx.rotate(this.sway);
+             ctx.fillStyle = "#ecf0f1"; ctx.fillRect(-5, -15, 10, 15);
+             ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(0, -15, 15, Math.PI, 0); ctx.fill();
+             ctx.restore();
+         }
+         else if (this.type === 'crystal') {
+             ctx.fillStyle = "#9b59b6";
+             ctx.beginPath();
+             ctx.moveTo(cx + 15, cy + this.h);
+             ctx.lineTo(cx + 5, cy + 20);
+             ctx.lineTo(cx + 15, cy);
+             ctx.lineTo(cx + 25, cy + 20);
+             ctx.fill();
+         }
+         else if (this.type === 'sign') {
+             ctx.fillStyle = "#8b4513";
+             ctx.fillRect(cx + 8, cy + 10, 4, 30);
+             ctx.fillStyle = "#deb887";
+             ctx.fillRect(cx, cy, 20, 15);
+             ctx.fillStyle = "#5d4037";
+             ctx.font = "8px Arial"; ctx.fillText("-->", cx+2, cy+10);
+         }
+         else if (this.type === 'fence') {
+             ctx.fillStyle = "#8b4513";
+             ctx.fillRect(cx, cy+10, 5, 20);
+             ctx.fillRect(cx+35, cy+10, 5, 20);
+             ctx.fillRect(cx, cy+15, 40, 5);
+             ctx.fillRect(cx, cy+25, 40, 5);
+         }
+         else if (this.type === 'hydrant') {
+             ctx.fillStyle = "#e74c3c";
+             ctx.fillRect(cx+5, cy+10, 10, 20);
+             ctx.fillRect(cx+2, cy+5, 16, 5);
+         }
+         else if (this.type === 'trash') {
+             ctx.fillStyle = "#222";
+             ctx.beginPath(); ctx.arc(cx+20, cy+30, 15, Math.PI, 0); ctx.fill();
+             ctx.fillRect(cx+5, cy+20, 30, 10);
+         }
+         else if (this.type === 'pipe') {
+             ctx.fillStyle = "#27ae60";
+             ctx.fillRect(cx+5, cy, 20, this.h);
+             ctx.fillStyle = "#2ecc71";
+             ctx.fillRect(cx, cy, 30, 10);
+         }
+    }
+}

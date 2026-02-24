@@ -2,7 +2,7 @@ import { gameState, setEntities } from './state.js';
 import { LEVEL_WIDTH, LEVEL_HEIGHT, TILE_SIZE } from './constants.js';
 import { secureRandom } from './math.js';
 import { Enemy, CaptainEnemy, ShieldBearer, HeavyGunner, KamikazeEnemy, SniperEnemy, FlyingEnemy, Boss, HelicopterBoss } from './classes/enemies.js';
-import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast, HamsterBall } from './classes/items.js';
+import { BridgeBlock, PropaneTank, MechSuit, TrappedBeast, HamsterBall, Decor } from './classes/items.js';
 
 // --- LEVEL GENERATOR ---
 export function generateLevel() {
@@ -280,6 +280,41 @@ export function generateLevel() {
         }
         else if (secureRandom() < 0.03 + (difficulty*0.01)) {
             if (newTiles[y-1][x].type === 0) newEntities.push(new PropaneTank(x * TILE_SIZE, (y-1) * TILE_SIZE));
+        }
+
+        // DECOR SPAWNING
+        if (newTiles[y][x].type !== 5 && newTiles[y-1][x].type === 0 && newTiles[y][x].type !== 0) {
+            let decorChance = 0.20;
+            if (secureRandom() < decorChance) {
+                 let type = 'rock';
+                 let rnd = secureRandom();
+
+                 if (biome === 'forest') {
+                     if (rnd < 0.3) type = 'tree';
+                     else if (rnd < 0.6) type = 'bush';
+                     else if (rnd < 0.7) type = 'mushroom';
+                     else if (rnd < 0.8) type = 'rock';
+                     else if (rnd < 0.9) type = 'fence';
+                     else type = 'sign';
+                 } else if (biome === 'city') {
+                     if (rnd < 0.3) type = 'fence';
+                     else if (rnd < 0.6) type = 'hydrant';
+                     else if (rnd < 0.8) type = 'trash';
+                     else type = 'pipe';
+                 } else if (biome === 'volcano') {
+                     if (rnd < 0.5) type = 'rock';
+                     else if (rnd < 0.8) type = 'crystal';
+                     else type = 'sign';
+                 }
+
+                 if (type === 'tree' || type === 'pipe') {
+                     if (y-3 > 0 && newTiles[y-3][x].type === 0) {
+                         newEntities.push(new Decor(x * TILE_SIZE, (y-1) * TILE_SIZE, type, biome));
+                     }
+                 } else {
+                     newEntities.push(new Decor(x * TILE_SIZE, (y-1) * TILE_SIZE, type, biome));
+                 }
+            }
         }
 
         // ENEMY ENCOUNTERS (Clusters)
