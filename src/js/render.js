@@ -251,12 +251,22 @@ export function drawGame() {
     }
 
     debris.forEach(d => d.draw(CTX, 0, 0, now));
-    entities.forEach(e => e.draw(CTX, 0, 0, now));
+
+    // Background / Standard Entities
+    entities.forEach(e => {
+        if (!e.foreground) e.draw(CTX, 0, 0, now);
+    });
+
     if (players) {
         players.forEach(p => {
             if (p.health > 0) p.draw(CTX, 0, 0, now);
         });
     }
+
+    // Foreground Entities (e.g. Trees that hide players)
+    entities.forEach(e => {
+        if (e.foreground) e.draw(CTX, 0, 0, now);
+    });
     particles.forEach(p => p.draw(CTX, 0, 0, now));
 
     CTX.font = "900 20px 'Segoe UI'";
