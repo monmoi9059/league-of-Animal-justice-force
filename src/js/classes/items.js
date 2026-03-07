@@ -1,5 +1,5 @@
 import { TILE_SIZE, GRAVITY, LEVEL_HEIGHT, LEVEL_WIDTH, CHARACTERS } from '../constants.js';
-import { tiles, players, gameState } from '../state.js';
+import { tiles, activePlayers, playerBounds, gameState, players } from '../state.js';
 import { checkRectOverlap } from '../physics.js';
 import { spawnExplosion, createExplosion, unlockCharacter, spawnDamageNumber, shakeCamera } from '../utils.js';
 import { drawRoundedRect, drawAnatomicalHero } from '../graphics.js';
@@ -118,10 +118,12 @@ export class FallingBlock {
         }
 
         // Damage player if falls on head?
-        if ((Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) && players) {
-            for (let p of players) {
-                if (p.health > 0 && checkRectOverlap(this, p)) {
-                    p.takeDamage(10);
+        if ((Math.abs(this.vx) > 0 || Math.abs(this.vy) > 2) && activePlayers.length > 0) {
+            if (checkRectOverlap(this, playerBounds)) {
+                for (let p of activePlayers) {
+                    if (checkRectOverlap(this, p)) {
+                        p.takeDamage(10);
+                    }
                 }
             }
         }
@@ -174,8 +176,8 @@ export class MechSuit {
              }
 
             // Interaction
-            if (players) {
-                for (let p of players) {
+            if (activePlayers.length > 0) {
+                for (let p of activePlayers) {
                     if (Math.abs(p.x - this.x) < 50 && Math.abs(p.y - this.y) < 50 && playerKeys[p.index]['e']) {
                         this.enter(p);
                         break;
@@ -260,14 +262,16 @@ export class HamsterBall {
             this.checkCollisions();
 
             // Interaction with player
-            if (players) {
-                for (let p of players) {
-                    if (p.health > 0 && !p.dead && !p.inHamsterBall && checkRectOverlap(this, p)) {
-                        // Check for 'F' key (Flex)
-                        let pKeys = playerKeys[p.index];
-                        if (pKeys && pKeys['f']) {
-                            this.enter(p);
-                            break;
+            if (activePlayers.length > 0) {
+                if (checkRectOverlap(this, playerBounds)) {
+                    for (let p of activePlayers) {
+                        if (!p.dead && !p.inHamsterBall && checkRectOverlap(this, p)) {
+                            // Check for 'F' key (Flex)
+                            let pKeys = playerKeys[p.index];
+                            if (pKeys && pKeys['f']) {
+                                this.enter(p);
+                                break;
+                            }
                         }
                     }
                 }
@@ -542,12 +546,14 @@ export class Helicopter {
 
         // Extraction
         // Only extract if it's NOT the intro heli
-        if (!this.isIntro && players) {
-            for(let p of players) {
-                if (p.health > 0 && checkRectOverlap(this, p)) {
-                    gameState.levelComplete = true;
-                    winGame();
-                    break;
+        if (!this.isIntro && activePlayers.length > 0) {
+            if (checkRectOverlap(this, playerBounds)) {
+                for (let p of activePlayers) {
+                    if (checkRectOverlap(this, p)) {
+                        gameState.levelComplete = true;
+                        winGame();
+                        break;
+                    }
                 }
             }
         }
@@ -628,11 +634,13 @@ export class TrappedBeast {
     update() {
         // Check intersection with any player
         let touchingPlayer = null;
-        if (!this.freed && players) {
-            for (let p of players) {
-                if (p.health > 0 && checkRectOverlap(this, p)) {
-                    touchingPlayer = p;
-                    break;
+        if (!this.freed && activePlayers.length > 0) {
+            if (checkRectOverlap(this, playerBounds)) {
+                for (let p of activePlayers) {
+                    if (checkRectOverlap(this, p)) {
+                        touchingPlayer = p;
+                        break;
+                    }
                 }
             }
         }
@@ -787,8 +795,8 @@ export class Decor {
 
         if (this.type === 'tree' || this.type === 'bush' || this.type === 'mushroom' || this.type === 'flower') {
              let swayTarget = 0;
-             if (players) {
-                 for (let p of players) {
+             if (activePlayers.length > 0) {
+                 for (let p of activePlayers) {
                      if (Math.abs(p.x - (this.x + this.w/2)) < 60 && Math.abs(p.y - (this.y + this.h/2)) < 60) {
                          swayTarget = (p.vx || 0) * 0.1;
                          if (swayTarget > 0.5) swayTarget = 0.5;

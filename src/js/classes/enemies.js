@@ -1,5 +1,5 @@
 import { GRAVITY, TILE_SIZE, LEVEL_HEIGHT, LEVEL_WIDTH } from '../constants.js';
-import { tiles, players, entities, gameState } from '../state.js';
+import { tiles, activePlayers, playerBounds, entities, gameState } from '../state.js';
 import { Bullet } from './projectiles.js';
 import { PropaneTank, Helicopter } from './items.js';
 import { spawnDamageNumber, spawnExplosion, createExplosion, shakeCamera } from '../utils.js';
@@ -51,12 +51,10 @@ export class Enemy {
             // Find nearest player
             let target = null;
             let minDist = 9999;
-            if (players) {
-                for (let p of players) {
-                    if (p.health > 0) {
-                        let d = Math.hypot(p.x - this.x, p.y - this.y);
-                        if (d < minDist) { minDist = d; target = p; }
-                    }
+            if (activePlayers.length > 0) {
+                for (let p of activePlayers) {
+                    let d = Math.hypot(p.x - this.x, p.y - this.y);
+                    if (d < minDist) { minDist = d; target = p; }
                 }
             }
 
@@ -246,12 +244,10 @@ export class FlyingEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.hypot(p.x - this.x, p.y - this.y);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.hypot(p.x - this.x, p.y - this.y);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
         if (!target) return;
@@ -385,12 +381,10 @@ export class KamikazeEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.hypot(p.x - this.x, p.y - this.y);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.hypot(p.x - this.x, p.y - this.y);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
 
@@ -489,12 +483,10 @@ export class HeavyGunner extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.hypot(p.x - this.x, p.y - this.y);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.hypot(p.x - this.x, p.y - this.y);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
 
@@ -593,12 +585,10 @@ export class SniperEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.abs(p.x - this.x);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.abs(p.x - this.x);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
         this.target = target;
@@ -690,12 +680,10 @@ export class ShieldBearer extends Enemy {
         // Find nearest player for shield logic
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.abs(p.x - this.x);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.abs(p.x - this.x);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
 
@@ -779,12 +767,10 @@ export class CaptainEnemy extends Enemy {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.abs(p.x - this.x);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.abs(p.x - this.x);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
 
@@ -893,19 +879,13 @@ export class Boss {
         this.dirY = 1;
     }
     update() {
-        // Player is imported as 'player' which is an array in state.js? No 'player' var is null mostly.
-        // I need to use 'players' array.
-        // Wait, Boss logic in original code used `player.x`.
-        // I need to use a valid target.
         // Let's find nearest player.
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.abs(p.x - this.x);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.abs(p.x - this.x);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
 
@@ -1093,12 +1073,10 @@ export class HelicopterBoss {
         // Find nearest player
         let target = null;
         let minDist = 9999;
-        if (players) {
-            for (let p of players) {
-                if (p.health > 0) {
-                    let d = Math.hypot(p.x - this.x, p.y - this.y);
-                    if (d < minDist) { minDist = d; target = p; }
-                }
+        if (activePlayers.length > 0) {
+            for (let p of activePlayers) {
+                let d = Math.hypot(p.x - this.x, p.y - this.y);
+                if (d < minDist) { minDist = d; target = p; }
             }
         }
 

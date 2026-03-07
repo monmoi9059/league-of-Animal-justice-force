@@ -1,5 +1,5 @@
 import { INTERVAL, CANVAS, CTX, TILE_SIZE, LEVEL_WIDTH, LEVEL_HEIGHT, CHARACTERS, DEBUG_HUD } from './constants.js';
-import { gameState, entities, setEntities, players, setPlayers, particles, setParticles, damageNumbers, setDamageNumbers, debris, setDebris, setTiles, tiles, player, setPlayer, lastTime, setLastTime, playerKeys } from './state.js';
+import { gameState, entities, setEntities, players, setPlayers, activePlayers, setActivePlayers, playerBounds, setPlayerBounds, particles, setParticles, damageNumbers, setDamageNumbers, debris, setDebris, setTiles, tiles, player, setPlayer, lastTime, setLastTime, playerKeys } from './state.js';
 import { updateUI } from './ui.js';
 import { winGame, endGame } from './game-flow.js';
 import { SoundManager, soundManager } from './sound.js';
@@ -373,10 +373,26 @@ function loop(timestamp) {
                 gameState.frame++;
 
                 // Update all players
+                let currentActivePlayers = [];
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
                 if (players) {
                     players.forEach(p => {
-                        if (p.health > 0) p.update();
+                        if (p.health > 0) {
+                            p.update();
+                            currentActivePlayers.push(p);
+                            if (p.x < minX) minX = p.x;
+                            if (p.y < minY) minY = p.y;
+                            if (p.x + p.w > maxX) maxX = p.x + p.w;
+                            if (p.y + p.h > maxY) maxY = p.y + p.h;
+                        }
                     });
+                }
+                setActivePlayers(currentActivePlayers);
+                if (currentActivePlayers.length > 0) {
+                    setPlayerBounds({ x: minX, y: minY, w: maxX - minX, h: maxY - minY });
+                } else {
+                    setPlayerBounds({ x: 0, y: 0, w: 0, h: 0 });
                 }
 
                 // Entities: Filter dead (in-place) then update
