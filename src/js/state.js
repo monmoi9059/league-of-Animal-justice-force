@@ -31,6 +31,8 @@ export let particles = [];
 export let damageNumbers = [];
 export let debris = [];
 export let players = [];
+export let activePlayers = [];
+export let playerBounds = { x: 0, y: 0, w: 0, h: 0 };
 export let player = null; // Deprecated, kept for legacy reference if needed temporarily
 
 // Global Cooldowns
@@ -61,6 +63,14 @@ export function setDebris(newDebris) {
 
 export function setPlayers(newPlayers) {
     players = newPlayers;
+}
+
+export function setActivePlayers(newActivePlayers) {
+    activePlayers = newActivePlayers;
+}
+
+export function setPlayerBounds(newBounds) {
+    playerBounds = newBounds;
 }
 
 export function setPlayer(newPlayer) {
