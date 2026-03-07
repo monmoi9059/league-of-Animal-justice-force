@@ -193,7 +193,6 @@ window.startGame = function() {
     console.log("STARTGAME() CALLED");
     try {
         setTiles(generateLevel());
-        console.log("LEVEL GENERATED. TILES:", tiles.length);
         setParticles([]);
         setDamageNumbers([]);
         setDebris([]);
