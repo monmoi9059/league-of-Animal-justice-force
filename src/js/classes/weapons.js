@@ -105,25 +105,30 @@ const Behaviors = {
             let angle = Math.atan2(dy, dx);
             b.x += Math.cos(angle) * 15;
             b.y += Math.sin(angle) * 15;
-            if (Math.hypot(dx, dy) < 20) b.life = 0;
+            if (dx * dx + dy * dy < 400) b.life = 0; // 20 * 20
         }
     },
     homing: (turnRate) => (b) => {
         let target = null;
-        let minDist = 400;
+        let minDistSq = 160000; // 400 * 400
         for(let e of entities) {
             if(e.hp && e.hp > 0 && e !== b.owner && e !== b && !e.dead) {
-                let d = Math.hypot(e.x - b.x, e.y - b.y);
-                if(d < minDist) { minDist = d; target = e; }
+                let dx = e.x - b.x;
+                let dy = e.y - b.y;
+                let dSq = dx * dx + dy * dy;
+                if(dSq < minDistSq) { minDistSq = dSq; target = e; }
             }
         }
         if(target) {
             let angle = Math.atan2((target.y + target.h/2) - b.y, (target.x + target.w/2) - b.x);
             b.vx += Math.cos(angle) * turnRate;
             b.vy += Math.sin(angle) * turnRate;
-            let speed = Math.hypot(b.vx, b.vy);
+            let speedSq = b.vx * b.vx + b.vy * b.vy;
             let maxSpeed = 12;
-            if(speed > maxSpeed) { b.vx = (b.vx/speed)*maxSpeed; b.vy = (b.vy/speed)*maxSpeed; }
+            if(speedSq > 144) { // 12 * 12
+                let speed = Math.sqrt(speedSq);
+                b.vx = (b.vx/speed)*maxSpeed; b.vy = (b.vy/speed)*maxSpeed;
+            }
         }
         b.x += b.vx; b.y += b.vy;
     },
