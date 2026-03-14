@@ -371,7 +371,9 @@ export class Package {
         if (rectIntersect(this.x, this.y, this.w, this.h, player.x, player.y, player.w, player.h)) hit = true;
         if (hit || this.life <= 0) {
             spawnExplosion(this.x, this.y, "#e67e22", 1);
-            if (Math.hypot(player.x - this.x, player.y - this.y) < 60) player.takeDamage();
+            let dx = player.x - this.x;
+            let dy = player.y - this.y;
+            if (dx * dx + dy * dy < 3600) player.takeDamage(); // 60 * 60
             destroyRadius(c, r, 1);
             this.life = 0; this.hp = 0;
         }

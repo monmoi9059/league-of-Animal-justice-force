@@ -50,16 +50,18 @@ export class Enemy {
         } else {
             // Find nearest player
             let target = null;
-            let minDist = 9999;
+            let minDistSq = 99999999;
             if (activePlayers.length > 0) {
                 for (let p of activePlayers) {
-                    let d = Math.hypot(p.x - this.x, p.y - this.y);
-                    if (d < minDist) { minDist = d; target = p; }
+                    let dx = p.x - this.x;
+                    let dy = p.y - this.y;
+                    let dSq = dx * dx + dy * dy;
+                    if (dSq < minDistSq) { minDistSq = dSq; target = p; }
                 }
             }
 
             if (target) {
-                if (minDist < 600) {
+                if (minDistSq < 360000) { // 600 * 600
                     this.state = 'chase';
                 } else {
                     this.state = 'patrol';
@@ -243,20 +245,21 @@ export class FlyingEnemy extends Enemy {
     update() {
         // Find nearest player
         let target = null;
-        let minDist = 9999;
+        let minDistSq = 99999999;
         if (activePlayers.length > 0) {
             for (let p of activePlayers) {
-                let d = Math.hypot(p.x - this.x, p.y - this.y);
-                if (d < minDist) { minDist = d; target = p; }
+                let dx = p.x - this.x;
+                let dy = p.y - this.y;
+                let dSq = dx * dx + dy * dy;
+                if (dSq < minDistSq) { minDistSq = dSq; target = p; }
             }
         }
         if (!target) return;
 
-        let dist = minDist;
         let targetVx = 0;
         let targetVy = 0;
 
-        if (dist < 700) {
+        if (minDistSq < 490000) { // 700 * 700
             // Move towards player
             targetVx = (target.x - this.x) * 0.02; // Reduced speed for smoother flight
             targetVy = (target.y - this.y - 100) * 0.02; // Hover above
@@ -380,16 +383,18 @@ export class KamikazeEnemy extends Enemy {
         // Special Explode Logic
         // Find nearest player
         let target = null;
-        let minDist = 9999;
+        let minDistSq = 99999999;
         if (activePlayers.length > 0) {
             for (let p of activePlayers) {
-                let d = Math.hypot(p.x - this.x, p.y - this.y);
-                if (d < minDist) { minDist = d; target = p; }
+                let dx = p.x - this.x;
+                let dy = p.y - this.y;
+                let dSq = dx * dx + dy * dy;
+                if (dSq < minDistSq) { minDistSq = dSq; target = p; }
             }
         }
 
         if (target) {
-            if (minDist < 50) {
+            if (minDistSq < 2500) { // 50 * 50
                 this.charging = true;
                 this.chargeTimer = 60; // 1 second delay
                 // Optional: Play alert sound here if wanted
@@ -482,16 +487,18 @@ export class HeavyGunner extends Enemy {
 
         // Find nearest player
         let target = null;
-        let minDist = 9999;
+        let minDistSq = 99999999;
         if (activePlayers.length > 0) {
             for (let p of activePlayers) {
-                let d = Math.hypot(p.x - this.x, p.y - this.y);
-                if (d < minDist) { minDist = d; target = p; }
+                let dx = p.x - this.x;
+                let dy = p.y - this.y;
+                let dSq = dx * dx + dy * dy;
+                if (dSq < minDistSq) { minDistSq = dSq; target = p; }
             }
         }
 
         if (target) {
-            if (minDist < 700) {
+            if (minDistSq < 490000) { // 700 * 700
                 this.facing = target.x < this.x ? -1 : 1;
                 this.shootTimer++;
                 if (this.shootTimer > 10) {
@@ -1072,15 +1079,17 @@ export class HelicopterBoss {
     update() {
         // Find nearest player
         let target = null;
-        let minDist = 9999;
+        let minDistSq = 99999999;
         if (activePlayers.length > 0) {
             for (let p of activePlayers) {
-                let d = Math.hypot(p.x - this.x, p.y - this.y);
-                if (d < minDist) { minDist = d; target = p; }
+                let dx = p.x - this.x;
+                let dy = p.y - this.y;
+                let dSq = dx * dx + dy * dy;
+                if (dSq < minDistSq) { minDistSq = dSq; target = p; }
             }
         }
 
-        if (!gameState.bossActive && target && minDist < 800) {
+        if (!gameState.bossActive && target && minDistSq < 640000) { // 800 * 800
             gameState.bossActive = true;
             if(document.getElementById('bossHealthContainer')) document.getElementById('bossHealthContainer').style.display = 'block';
         }
