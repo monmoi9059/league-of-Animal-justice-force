@@ -1,3 +1,3 @@
 export function secureRandom() {
-    return Math.random();
+    return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
 }
