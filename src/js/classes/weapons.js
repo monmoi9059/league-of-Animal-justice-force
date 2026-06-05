@@ -181,9 +181,34 @@ const MeleeStyles = {
             renderer: (ctx, b, cx, cy, now) => {
                 ctx.save(); ctx.translate(cx + (p.facing===1?0:50), cy+50);
                 if(p.facing===-1) ctx.scale(-1, 1);
-                ctx.rotate(-Math.PI/4 + (10-b.life)*0.2);
+                ctx.rotate(-Math.PI/4 + (10-b.life)*0.3);
+                // Improved slash effect
+                let grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 50);
+                grad.addColorStop(0, "rgba(255,255,255,0.8)");
+                grad.addColorStop(1, "rgba(255,255,255,0)");
+                ctx.fillStyle = color || grad;
+                ctx.beginPath();
+                ctx.arc(0, 0, 50, -Math.PI/2, 0);
+                ctx.arc(0, 0, 30, 0, -Math.PI/2, true);
+                ctx.fill();
+                ctx.restore();
+            }
+        });
+    },
+    uppercut: (p, color) => {
+        playSound('swish');
+        p.vy = -5; // Small jump
+        createMelee(p, {
+            w: 40, h: 60, power: 5, life: 15,
+            renderer: (ctx, b, cx, cy, now) => {
+                ctx.save(); ctx.translate(cx + (p.facing===1?0:40), cy+60);
+                if(p.facing===-1) ctx.scale(-1, 1);
+                let progress = 1 - (b.life / 15);
+                ctx.translate(0, -progress * 40);
                 ctx.fillStyle = color || "white";
-                ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI/4, 0); ctx.lineTo(0,0); ctx.fill();
+                ctx.fillRect(0, 0, 20, -40);
+                ctx.fillStyle = "rgba(255,255,255,0.5)"; // motion blur
+                ctx.fillRect(0, 10, 20, -progress * 50);
                 ctx.restore();
             }
         });
@@ -194,8 +219,16 @@ const MeleeStyles = {
         createMelee(p, {
             w: 40, h: 20, power: 4, life: 15, followOwner: true, offset: {x: 20, y: 0},
             renderer: (ctx, b, cx, cy) => {
+                // Pointy spear tip style
                 ctx.fillStyle = color || "white";
-                ctx.beginPath(); ctx.moveTo(cx, cy+10); ctx.lineTo(cx+40, cy); ctx.lineTo(cx+40, cy+20); ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(cx, cy + 5);
+                ctx.lineTo(cx + 40, cy + 10);
+                ctx.lineTo(cx, cy + 15);
+                ctx.fill();
+                // Trail
+                ctx.fillStyle = "rgba(255,255,255,0.4)";
+                ctx.fillRect(cx - 20, cy + 8, 20, 4);
             }
         });
     },
@@ -205,8 +238,16 @@ const MeleeStyles = {
             w: 80, h: 80, power: 3, life: 15, followOwner: true, offset: {x: 0, y: 0},
             renderer: (ctx, b, cx, cy, now) => {
                 ctx.save(); ctx.translate(cx+40, cy+40); ctx.rotate(now*0.5);
-                ctx.strokeStyle = color || "white"; ctx.lineWidth=4;
-                ctx.beginPath(); ctx.arc(0,0,35,0,Math.PI*2); ctx.stroke();
+                // Multi-ring spin effect
+                ctx.strokeStyle = color || "white";
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(0,0,35, 0, Math.PI*1.5); ctx.stroke();
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(0,0,25, Math.PI, Math.PI*2.5); ctx.stroke();
+                // Sparks
+                ctx.fillStyle = "white";
+                ctx.beginPath(); ctx.arc(35, 0, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(-35, 0, 3, 0, Math.PI*2); ctx.fill();
                 ctx.restore();
             }
         });
@@ -219,7 +260,17 @@ const MeleeStyles = {
             renderer: (ctx, b, cx, cy, now) => {
                 ctx.fillStyle = color || "white";
                 ctx.globalAlpha = b.life/20;
-                ctx.fillRect(cx, cy, 60, 60);
+                // Heavy block smash with impact lines
+                ctx.fillRect(cx + 10, cy + 10, 40, 40);
+                ctx.strokeStyle = color || "white";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(cx, cy, 60, 60);
+                // Impact cracks
+                ctx.beginPath();
+                ctx.moveTo(cx + 30, cy + 30); ctx.lineTo(cx, cy);
+                ctx.moveTo(cx + 30, cy + 30); ctx.lineTo(cx + 60, cy);
+                ctx.moveTo(cx + 30, cy + 30); ctx.lineTo(cx + 30, cy + 60);
+                ctx.stroke();
                 ctx.globalAlpha = 1;
             }
         });
@@ -240,9 +291,14 @@ const MeleeStyles = {
             w: 30, h: 30, power: 5, life: 10,
             renderer: (ctx, b, cx, cy, now) => {
                  let open = Math.abs(Math.sin(now*0.5))*15;
+                 // Jaw logic
                  ctx.fillStyle = color || "white";
-                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+30, cy+15-open); ctx.lineTo(cx, cy+30); ctx.fill();
-                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+30, cy+15+open); ctx.lineTo(cx, cy+30); ctx.fill();
+                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+30, cy+15-open); ctx.lineTo(cx, cy+15); ctx.fill();
+                 ctx.beginPath(); ctx.moveTo(cx, cy+30); ctx.lineTo(cx+30, cy+15+open); ctx.lineTo(cx, cy+15); ctx.fill();
+                 // Teeth
+                 ctx.fillStyle = "white";
+                 ctx.beginPath(); ctx.moveTo(cx+10, cy+15-open/2); ctx.lineTo(cx+15, cy+15); ctx.lineTo(cx+20, cy+15-open/2); ctx.fill();
+                 ctx.beginPath(); ctx.moveTo(cx+10, cy+15+open/2); ctx.lineTo(cx+15, cy+15); ctx.lineTo(cx+20, cy+15+open/2); ctx.fill();
             }
         });
     }
@@ -263,7 +319,10 @@ function assignWeaponry(char) {
     // 1. DETERMINE PRIMARY ATTACK
     if (char.melee) {
         if (char.body === 'muscular' || char.body === 'brute') {
-            primary = (p) => MeleeStyles.smash(p, pColor);
+            primary = (p) => {
+                if (Math.random() > 0.5) MeleeStyles.smash(p, pColor);
+                else MeleeStyles.uppercut(p, pColor);
+            };
         } else if (char.type.includes('cat') || char.type.includes('lizard') || char.type.includes('fish')) {
             primary = (p) => MeleeStyles.slash(p, pColor);
         } else if (char.type.includes('dog') || char.type.includes('wolf')) {
@@ -298,10 +357,12 @@ function assignWeaponry(char) {
              secondary = (p) => {
                  p.vx = p.facing * 25; p.vy = -5;
                  createMelee(p, { w: 40, h: 30, power: 4, life: 20, followOwner: true });
+                 MeleeStyles.slash(p, pColor);
              };
         } else if (char.body === 'muscular') {
              secondary = (p) => {
                  createBullet(p, { vx: p.facing * 15, vy: -5, w: 20, h: 20, damage: 5, type: 'grenade', renderer: Renderers.rect('grey') });
+                 MeleeStyles.smash(p, pColor);
              };
         } else if (char.name.includes('NINJA')) {
              secondary = (p) => {
@@ -338,10 +399,18 @@ function assignWeaponry(char) {
             MeleeStyles.spin(p, pColor);
             for(let i=0; i<8; i++) {
                  let a = i * (Math.PI/4);
-                 createBullet(p, { vx: Math.cos(a)*10, vy: Math.sin(a)*10, w: 10, h: 10, damage: 5, pColor: pColor });
+                 createBullet(p, { vx: Math.cos(a)*15, vy: Math.sin(a)*15, w: 15, h: 15, damage: 8, pColor: pColor });
             }
+            p.invincible = 60;
+            p.health = Math.min(3, p.health + 1); // small heal on special
         } else {
-             for(let i=0; i<5; i++) setTimeout(() => primary(p), i*50);
+             for(let i=0; i<8; i++) setTimeout(() => {
+                 let spread = (Math.random() - 0.5) * 0.5;
+                 let config = { vx: Math.cos(spread) * p.facing * 25, vy: Math.sin(spread) * 25, w: 15, h: 15, damage: 5, pColor: pColor };
+                 createBullet(p, config);
+                 playSound('shoot');
+             }, i*50);
+             p.invincible = 30;
         }
     };
 
