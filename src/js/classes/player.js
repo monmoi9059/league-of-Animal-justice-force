@@ -37,6 +37,7 @@ export class Player {
         this.specialCooldown = 0;
         this.attackAnim = { type: null, timer: 0, max: 0 };
         this.wallJumpLocked = false;
+        this.coyoteTimer = 0;
 
         // Travel Ability Stats
         this.stamina = 100;
@@ -89,16 +90,24 @@ export class Player {
         return false;
     }
 
-    update() {
+    update(dt = 1) {
         if (this.dead) return;
         this.lastY = this.y;
 
+        if (!this.grounded) {
+            this.coyoteTimer -= dt;
+            if (this.coyoteTimer < 0) this.coyoteTimer = 0;
+        }
+
         // --- VEHICLE LOGIC ---
         if (this.inHamsterBall && this.hamsterBall) {
-            this.hamsterBall.updateDriven(this);
+            this.hamsterBall.updateDriven(this, dt);
             // Player state (invincible, etc) managed by ball collisions somewhat,
             // but if we need to decrement cooldowns:
-            if(this.invincible > 0) this.invincible--;
+            if(this.invincible > 0) {
+                this.invincible -= dt;
+                if(this.invincible < 0) this.invincible = 0;
+            }
 
             // Check world bounds
             if (this.y > (LEVEL_HEIGHT + 5) * TILE_SIZE) this.takeDamage(99);
@@ -106,12 +115,18 @@ export class Player {
             return; // Skip normal update
         }
 
-        if(this.secondaryCooldown > 0) this.secondaryCooldown--;
-        if(this.attackAnim.timer > 0) this.attackAnim.timer--;
+        if(this.secondaryCooldown > 0) {
+            this.secondaryCooldown -= dt;
+            if(this.secondaryCooldown < 0) this.secondaryCooldown = 0;
+        }
+        if(this.attackAnim.timer > 0) {
+            this.attackAnim.timer -= dt;
+            if(this.attackAnim.timer < 0) this.attackAnim.timer = 0;
+        }
 
         // Stamina Recharge
         if (this.grounded) {
-            if (this.stamina < this.maxStamina) this.stamina += this.staminaRecharge;
+            if (this.stamina < this.maxStamina) this.stamina += this.staminaRecharge * dt;
         }
 
         // INPUT SOURCE
@@ -128,8 +143,8 @@ export class Player {
             // Optional: Slight heal or invincibility?
             // Let's just make it cool for now.
             // Gravity still applies
-            this.vy += GRAVITY;
-            this.y += this.vy;
+            this.vy += GRAVITY * dt;
+            this.y += this.vy * dt;
             this.checkCollisions(false);
             return;
         }
@@ -231,20 +246,24 @@ export class Player {
             // Only apply normal physics if NOT wall jumping this frame
             if (!this.wallJumpLocked) {
                 if (input !== 0) {
-                    this.vx += input * ACCELERATION; this.facing = input;
-                    this.animFrame += isSprinting ? 2 : 1;
+                    this.vx += input * ACCELERATION * dt; this.facing = input;
+                    this.animFrame += isSprinting ? 2 * dt : 1 * dt;
                     let dustFreq = isSprinting ? 5 : 10;
-                    if(this.grounded && this.animFrame % dustFreq === 0) {
+                    if(this.grounded && Math.floor(this.animFrame) % dustFreq === 0) {
                         particles.push(new DustParticle(this.x + this.w/2, this.y + this.h, "#fff"));
                     }
-                } else { this.vx *= FRICTION; this.animFrame = 0; }
+                } else {
+                    this.vx *= Math.pow(FRICTION, dt);
+                    this.animFrame = 0;
+                }
 
                 if(Math.abs(this.vx) > this.speed) this.vx = Math.sign(this.vx) * this.speed;
             }
 
             // Normal Jump
-            if (pKeys[' '] && this.grounded && !isWallSliding) {
+            if (pKeys[' '] && (this.grounded || this.coyoteTimer > 0) && !isWallSliding) {
                 this.vy = JUMP_FORCE; this.grounded = false; this.stretchX = 0.7; this.stretchY = 1.3;
+                this.coyoteTimer = 0; // consume coyote time
                 if(soundManager) soundManager.play('jump');
                 // Jump dust
                 for(let i=0; i<3; i++) particles.push(new DustParticle(this.x + this.w/2 + (Math.random()-0.5)*10, this.y + this.h, "#fff"));
@@ -358,6 +377,7 @@ export class Player {
                                         for(let i=0; i<5; i++) particles.push(new DustParticle(this.x + this.w/2 + (Math.random()-0.5)*10, this.y + this.h, "#fff"));
                                     }
                                     this.grounded = true;
+                                    this.coyoteTimer = 10; // Frames of coyote time allowed
                                     return;
                                 }
                             } else if (this.vy < 0) {
